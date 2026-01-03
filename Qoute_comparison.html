@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Definitive Quote Comparison Tool</title>
+    <style>
+        :root {
+            --primary-color: #0056b3; --secondary-color: #f8f9fa; --border-color: #dee2e6;
+            --highlight-color: #d4edda; --best-value-color: #ffefb3; --danger-color: #dc3545;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body { font-family: var(--font-family); margin: 0; padding: 20px; background-color: #f4f4f9; }
+        .container { max-width: 95%; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h1, h2 { border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+        h3 { display: flex; justify-content: space-between; align-items: center; }
+        .nav-tabs { margin-bottom: 20px; display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); }
+        .nav-tabs button { padding: 12px 18px; border: none; background: none; cursor: pointer; font-size: 16px; border-bottom: 3px solid transparent; }
+        .nav-tabs button.active { border-bottom-color: var(--primary-color); color: var(--primary-color); font-weight: bold; }
+        .form-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .form-group, .checkbox-group { display: flex; flex-direction: column; }
+        .form-group label, .checkbox-group label { margin-bottom: 5px; font-weight: 600; }
+        .checkbox-group label { flex-direction: row; align-items: center; }
+        .checkbox-group input { margin-right: 10px; }
+        .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .action-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px; border: 1px solid var(--border-color); text-align: left; vertical-align: top; }
+        th { background-color: var(--secondary-color); }
+        .best-price { background-color: var(--highlight-color); }
+        .best-value { background-color: var(--best-value-color); font-weight: bold; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow-y: auto; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 25px; width: 90%; max-width: 800px; border-radius: 8px; }
+        .close-btn { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+
+        #print-area { display: none; }
+        @media print {
+            body { margin: 20px; background-color: #fff; }
+            .main-container { display: none; }
+            #print-area { display: block; }
+            #print-area h1, #print-area h2 { text-align: center; border-bottom: 2px solid #000; }
+            #print-area h2 { border-bottom: none; margin-bottom: 20px; }
+            #print-area table { width: 100%; }
+            #print-area th, #print-area td { border: 1px solid #999; padding: 8px; }
+            .best-price, .best-value { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            #print-footer { margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+            .signature-box p { margin: 0; padding-top: 30px; border-top: 1px solid #000; }
+            .chart-container { margin-top: 30px; border: 1px solid #ccc; padding: 10px; }
+            .bar { height: 20px; background-color: var(--primary-color); color: white; padding: 2px 5px; font-size: 12px; white-space: nowrap; margin-bottom: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container main-container">
+        <h1>Definitive Quote Comparison</h1>
+        <div class="nav-tabs">
+            <button id="tab-quotes" class="active">Quote Comparison</button>
+            <button id="tab-suppliers">Manage Suppliers</button>
+            <button id="tab-parameters">Manage Parameters</button>
+            <button id="tab-settings">Settings</button>
+        </div>
+        <div id="quotes-view"></div>
+        <div id="suppliers-view" style="display: none;"></div>
+        <div id="parameters-view" style="display: none;"></div>
+        <div id="settings-view" style="display: none;"></div>
+    </div>
+    <!-- Modals -->
+    <div id="quote-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2 id="quote-modal-title"></h2><form id="quote-form"></form></div></div>
+    <div id="supplier-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2 id="supplier-modal-title"></h2><form id="supplier-form"></form></div></div>
+    <div id="parameter-selection-modal" class="modal"><div class="modal-content"><span class="close-btn">&times;</span><h2>Select Parameters for This Group</h2><div id="parameter-checkboxes" class="form-container"></div><button id="save-group-parameters" class="btn btn-primary">Save and Continue</button></div></div>
+    <!-- Print Area -->
+    <div id="print-area">
+        <h1>Quote Comparison Report</h1><h2 id="print-header-details"></h2>
+        <div id="print-table-container"></div>
+        <div class="chart-container"><h3>Price Comparison Chart</h3><div id="print-chart-container"></div></div>
+        <div id="print-footer">
+            <div class="signature-box"><p>Approved By</p></div><div class="signature-box"><p>Signature</p></div><div class="signature-box"><p>Date</p></div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let db, currencySymbol = '$';
+    const DB_NAME = 'QuoteComparisonDB';  // QuoteComparisonDB or QuoteComparisonDB_Pro
+    const DB_VERSION = 5;
+
+    // --- DB HELPERS ---
+    const dbGet = (store, key) => new Promise((resolve, reject) => {
+        if (!db) return reject("DB not initialized");
+        db.transaction(store).objectStore(store).get(key).onsuccess = e => resolve(e.target.result);
+    });
+    const dbGetAll = (store) => new Promise((resolve, reject) => {
+        if (!db) return reject("DB not initialized");
+        db.transaction(store).objectStore(store).getAll().onsuccess = e => resolve(e.target.result);
+    });
+    const dbPut = (store, data) => new Promise((resolve, reject) => {
+        if (!db) return reject("DB not initialized");
+        db.transaction(store, 'readwrite').objectStore(store).put(data).onsuccess = e => resolve(e.target.result);
+    });
+    const dbDelete = (store, key) => new Promise((resolve, reject) => {
+        if (!db) return reject("DB not initialized");
+        db.transaction(store, 'readwrite').objectStore(store).delete(key).onsuccess = resolve;
+    });
+
+    // --- INITIALIZATION ---
+    async function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = e => {
+                const dbInstance = e.target.result;
+                if (!dbInstance.objectStoreNames.contains('suppliers')) dbInstance.createObjectStore('suppliers', { keyPath: 'id', autoIncrement: true });
+                if (!dbInstance.objectStoreNames.contains('quotes')) dbInstance.createObjectStore('quotes', { keyPath: 'id', autoIncrement: true });
+                if (!dbInstance.objectStoreNames.contains('parameters')) dbInstance.createObjectStore('parameters', { keyPath: 'id', autoIncrement: true });
+                if (!dbInstance.objectStoreNames.contains('settings')) dbInstance.createObjectStore('settings', { keyPath: 'key' });
+                if (!dbInstance.objectStoreNames.contains('groupParameters')) dbInstance.createObjectStore('groupParameters', { keyPath: 'groupName' });
+            };
+            request.onsuccess = e => { db = e.target.result; resolve(db); };
+            request.onerror = e => reject(e.target.error);
+        });
+    }
+
+    const views = { quotes: document.getElementById('quotes-view'), suppliers: document.getElementById('suppliers-view'), parameters: document.getElementById('parameters-view'), settings: document.getElementById('settings-view')};
+    document.querySelectorAll('.nav-tabs button').forEach(tab => tab.addEventListener('click', e => switchView(e.target.id.replace('tab-', ''))));
+    document.querySelectorAll('.close-btn').forEach(btn => btn.addEventListener('click', e => e.target.closest('.modal').style.display = 'none'));
+    
+    // --- GLOBALLY SCOPED FUNCTIONS ---
+    window.showQuoteModal = async () => {
+        const groupNameInput = document.getElementById('new-group-name');
+        if (!groupNameInput || !groupNameInput.value) {
+            alert('Please enter a name for the new comparison group first.');
+            return;
+        }
+        const groupName = groupNameInput.value;
+        const groupParams = await dbGet('groupParameters', groupName);
+
+        if (!groupParams) {
+            const allParams = await dbGetAll('parameters');
+            const paramCheckboxes = document.getElementById('parameter-checkboxes');
+            paramCheckboxes.innerHTML = allParams.map(p => `<div class="checkbox-group"><label><input type="checkbox" value="${p.id}"> ${p.name} (Weight: ${p.weight})</label></div>`).join('') || '<p>No parameters defined. Please add some in the "Manage Parameters" tab.</p>';
+            document.getElementById('parameter-selection-modal').style.display = 'block';
+
+            document.getElementById('save-group-parameters').onclick = async () => {
+                const selectedParamIds = Array.from(paramCheckboxes.querySelectorAll('input:checked')).map(input => parseInt(input.value));
+                await dbPut('groupParameters', { groupName, parameterIds: selectedParamIds });
+                document.getElementById('parameter-selection-modal').style.display = 'none';
+                await openQuoteForm(null, groupName);
+            };
+        } else {
+            await openQuoteForm(null, groupName);
+        }
+    };
+    
+    window.editQuote = async (id) => {
+        await openQuoteForm(id);
+    };
+
+    async function openQuoteForm(id, groupNameOverride = null) {
+        const quote = id ? await dbGet('quotes', id) : {};
+        const groupName = groupNameOverride || quote.group;
+        if (!groupName) { alert("Could not determine the group name."); return; }
+
+        const modal = document.getElementById('quote-modal');
+        const suppliers = await dbGetAll('suppliers');
+        const groupParams = await dbGet('groupParameters', groupName);
+        const allParams = await dbGetAll('parameters');
+        const relevantParams = groupParams ? allParams.filter(p => groupParams.parameterIds.includes(p.id)) : [];
+        
+        modal.querySelector('#quote-modal-title').textContent = id ? `Edit Quote in ${groupName}` : `Add Quote to ${groupName}`;
+        modal.querySelector('#quote-form').innerHTML = `
+            <input type="hidden" id="quote-id" value="${id || ''}">
+            <input type="hidden" id="quote-group" value="${groupName}">
+            <div class="form-container">
+                <div class="form-group"><label>Supplier</label><select id="quote-supplier" required>${suppliers.map(s => `<option value="${s.id}" ${s.id == quote.supplierId ? 'selected':''}>${s.name}</option>`).join('')}</select></div>
+                <div class="form-group"><label>Item/Service</label><input type="text" id="quote-item" value="${quote.item || ''}" required></div>
+                <div class="form-group"><label>Price</label><input type="number" id="quote-price" value="${quote.price || ''}" step="0.01" required></div>
+                <div class="form-group"><label>Attach File</label><input type="file" id="quote-file"></div>
+            </div><hr><h3>Custom Parameters</h3><div id="custom-fields-container" class="form-container"></div>
+            <button type="submit" class="btn btn-primary">Save</button>`;
+        
+        document.getElementById('custom-fields-container').innerHTML = relevantParams.map(p => `<div class="form-group">
+            <label for="param-${p.id}">${p.name}</label><input id="param-${p.id}" value="${(quote.customFields && quote.customFields[p.name]) || ''}"></div>`).join('');
+        modal.style.display = 'block';
+        modal.querySelector('#quote-form').addEventListener('submit', handleQuoteFormSubmit);
+    }
+    
+    window.showSupplierModal = async (id) => {
+        const supplier = id ? await dbGet('suppliers', id) : {};
+        const modal = document.getElementById('supplier-modal');
+        modal.querySelector('#supplier-modal-title').textContent = id ? 'Edit Supplier' : 'Add Supplier';
+        const form = modal.querySelector('#supplier-form');
+        form.innerHTML = `
+            <input type="hidden" id="supplier-id" value="${id || ''}">
+            <div class="form-container">
+                <div class="form-group"><label>Name</label><input id="supplier-name" value="${supplier.name || ''}" required></div>
+                <div class="form-group"><label>Contact</label><input id="supplier-contact" value="${supplier.contact || ''}"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="supplier-email" value="${supplier.email || ''}"></div>
+                <div class="form-group"><label>Phone</label><input type="tel" id="supplier-phone" value="${supplier.phone || ''}"></div>
+            </div><button type="submit" class="btn btn-primary">Save</button>`;
+        modal.style.display = 'block';
+        form.addEventListener('submit', handleSupplierFormSubmit);
+    };
+
+    window.deleteQuote = async (id) => { if (confirm('Delete quote?')) { await dbDelete('quotes', id); await renderQuotes(); } };
+    window.deleteSupplier = async (id) => { if (confirm('Delete supplier?')) { await dbDelete('suppliers', id); await renderSuppliers(); } };
+    window.deleteParameter = async (id) => { if (confirm('Delete parameter?')) { await dbDelete('parameters', id); await renderParameters(); } };
+    
+    window.downloadFile = async (id) => {
+        const quote = await dbGet('quotes', id);
+        if (quote && quote.fileBlob) {
+            const a = document.createElement('a'); a.href = URL.createObjectURL(quote.fileBlob); a.download = quote.fileName;
+            a.click(); URL.revokeObjectURL(a.href);
+        }
+    };
+    
+    // [FIXED] Print function now globally scoped
+    window.generatePrintPreview = async (groupName) => {
+        const quotes = await dbGetAll('quotes');
+        const parameters = await dbGetAll('parameters');
+        const suppliers = await dbGetAll('suppliers');
+        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+        
+        const groupParams = await dbGet('groupParameters', groupName);
+        const relevantParams = groupParams ? parameters.filter(p => groupParams.parameterIds.includes(p.id)) : [];
+        const group = calculateScores(quotes.filter(q => q.group === groupName), relevantParams);
+        
+        document.getElementById('print-header-details').innerHTML = `Group: <strong>${groupName}</strong> | Date: ${new Date().toLocaleDateString()}`;
+        
+        let tableHTML = `<table><thead><tr><th>Supplier</th><th>Item</th><th>Price</th>${relevantParams.map(p => `<th>${p.name}</th>`).join('')}<th>Score</th></tr></thead><tbody>`;
+        group.forEach(q => {
+             tableHTML += `<tr><td>${supplierMap.get(q.supplierId)}</td><td>${q.item}</td><td>${currencySymbol}${q.price.toFixed(2)}</td>
+             ${relevantParams.map(p => `<td>${q.customFields ? q.customFields[p.name] || '-' : '-'}</td>`).join('')}
+             <td>${q.score.toFixed(2)}%</td></tr>`;
+        });
+        document.getElementById('print-table-container').innerHTML = tableHTML + '</tbody></table>';
+        
+        const maxPrice = Math.max(...group.map(q => q.price).filter(p => !isNaN(p)));
+        if (maxPrice > 0) {
+            document.getElementById('print-chart-container').innerHTML = group.map(q => `<div><span>${q.item} (${currencySymbol}${q.price.toFixed(2)})</span><div class="bar" style="width: ${(q.price / maxPrice) * 100}%;"></div></div>`).join('');
+        }
+        
+        window.print();
+    };
+
+    // --- VIEW RENDERING & LOGIC ---
+    async function switchView(viewName) {
+        document.querySelectorAll('.nav-tabs button').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${viewName}`).classList.add('active');
+        for (const key in views) views[key].style.display = key === viewName ? 'block' : 'none';
+        
+        if (viewName === 'quotes') await renderQuotes();
+        else if (viewName === 'suppliers') await renderSuppliers();
+        else if (viewName === 'parameters') await renderParameters();
+        else if (viewName === 'settings') await loadSettings();
+    }
+
+    async function renderQuotes() {
+        const quotes = await dbGetAll('quotes');
+        const allParams = await dbGetAll('parameters');
+        const suppliers = await dbGetAll('suppliers');
+        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+        const groupedQuotes = quotes.reduce((acc, q) => { (acc[q.group] = acc[q.group] || []).push(q); return acc; }, {});
+        
+        let html = `<div class="action-bar"><input type="text" id="new-group-name" placeholder="Enter New Group Name..."><button class="btn btn-primary" onclick="showQuoteModal()">Add Quote to Group</button></div>`;
+        for (const groupName in groupedQuotes) {
+            const groupParams = await dbGet('groupParameters', groupName);
+            const relevantParams = groupParams ? allParams.filter(p => groupParams.parameterIds.includes(p.id)) : [];
+            const group = calculateScores(groupedQuotes[groupName], relevantParams);
+            
+            html += `<h3><span>Group: ${groupName}</span><button class="btn btn-secondary" onclick="generatePrintPreview('${groupName}')">Print</button></h3>
+                <table><thead><tr><th>Supplier</th><th>Item</th><th>Price</th>${relevantParams.map(p => `<th>${p.name}</th>`).join('')}<th>Score</th><th>File</th><th>Actions</th></tr></thead><tbody>`;
+            group.forEach(q => {
+                const bestValue = Math.max(...group.map(g => g.score).filter(s => !isNaN(s)));
+                const isBestValue = q.score === bestValue && bestValue > 0;
+                html += `<tr class="${isBestValue ? 'best-value' : ''}"><td>${supplierMap.get(q.supplierId) || 'N/A'}</td><td>${q.item}</td>
+                    <td>${currencySymbol}${q.price.toFixed(2)}</td>
+                    ${relevantParams.map(p => `<td>${q.customFields ? q.customFields[p.name] || '-' : '-'}</td>`).join('')}
+                    <td>${q.score.toFixed(2)}%</td>
+                    <td>${q.fileName ? `<a href="#" onclick="downloadFile(${q.id})">File</a>` : '-'}</td>
+                    <td><button onclick="editQuote(${q.id})">Edit</button><button onclick="deleteQuote(${q.id})">Del</button></td></tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        views.quotes.innerHTML = html;
+    }
+    
+    function calculateScores(group, parameters) {
+        const paramStats = {};
+        parameters.forEach(param => {
+            const allValues = group.map(q => q.customFields ? parseFloat(q.customFields[param.name]) : NaN).filter(v => !isNaN(v));
+            if (allValues.length > 0) paramStats[param.name] = { min: Math.min(...allValues), max: Math.max(...allValues) };
+        });
+        const prices = group.map(q => q.price).filter(p => !isNaN(p));
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+        const priceWeight = 10;
+
+        return group.map(quote => {
+            let weightedScoreSum = 0;
+            let totalWeightSum = 0;
+            if (!isNaN(quote.price)) {
+                totalWeightSum += priceWeight;
+                const priceScore = (maxPrice === minPrice) ? 1 : (maxPrice - quote.price) / (maxPrice - minPrice);
+                weightedScoreSum += priceScore * priceWeight;
+            }
+            parameters.forEach(param => {
+                const stats = paramStats[param.name];
+                if (stats && quote.customFields) {
+                    const value = parseFloat(quote.customFields[param.name]);
+                    if (!isNaN(value)) {
+                        totalWeightSum += param.weight;
+                        const paramScore = (stats.max === stats.min) ? 1 : (value - stats.min) / (stats.max - stats.min);
+                        weightedScoreSum += paramScore * param.weight;
+                    }
+                }
+            });
+            const finalScore = (totalWeightSum > 0) ? (weightedScoreSum / totalWeightSum) * 100 : 0;
+            return { ...quote, score: finalScore };
+        });
+    }
+
+    // --- FORM SUBMISSION & OTHER HELPERS ---
+    async function handleQuoteFormSubmit(e) {
+        e.preventDefault();
+        const idString = document.getElementById('quote-id').value;
+        const fileInput = document.getElementById('quote-file');
+        let fileData = {};
+        if (fileInput.files[0]) fileData = { fileBlob: fileInput.files[0], fileName: fileInput.files[0].name, fileType: fileInput.files[0].type };
+        
+        const customFields = {};
+        document.querySelectorAll('#custom-fields-container input').forEach(input => {
+            customFields[document.querySelector(`label[for="${input.id}"]`).textContent] = input.value;
+        });
+
+        const quote = {
+            supplierId: parseInt(document.getElementById('quote-supplier').value),
+            group: document.getElementById('quote-group').value,
+            item: document.getElementById('quote-item').value,
+            price: parseFloat(document.getElementById('quote-price').value),
+            customFields,
+        };
+
+        if (idString && !isNaN(parseInt(idString, 10))) {
+            quote.id = parseInt(idString, 10);
+            const existingQuote = await dbGet('quotes', quote.id);
+            quote.fileBlob = fileData.fileBlob || existingQuote.fileBlob;
+            quote.fileName = fileData.fileName || existingQuote.fileName;
+            quote.fileType = fileData.fileType || existingQuote.fileType;
+        } else {
+            quote.fileBlob = fileData.fileBlob;
+            quote.fileName = fileData.fileName;
+            quote.fileType = fileData.fileType;
+        }
+        await dbPut('quotes', quote);
+        document.getElementById('quote-modal').style.display = 'none';
+        await renderQuotes();
+    }
+    
+    async function handleSupplierFormSubmit(e) {
+        e.preventDefault();
+        const idString = document.getElementById('supplier-id').value;
+        const supplier = { 
+            name: document.getElementById('supplier-name').value, 
+            contact: document.getElementById('supplier-contact').value, 
+            email: document.getElementById('supplier-email').value, 
+            phone: document.getElementById('supplier-phone').value 
+        };
+        if (idString && !isNaN(parseInt(idString, 10))) {
+            supplier.id = parseInt(idString, 10);
+        }
+        await dbPut('suppliers', supplier);
+        document.getElementById('supplier-modal').style.display = 'none';
+        await renderSuppliers();
+    }
+
+    async function loadSettings() {
+        const setting = await dbGet('settings', 'currency');
+        currencySymbol = setting ? setting.value : '$';
+        views.settings.innerHTML = `<h2>Settings</h2><div class="form-group">
+            <label>Currency Symbol</label><input id="currency-symbol" value="${currencySymbol}" style="width:50px;">
+            <button id="save-settings" class="btn btn-primary" style="margin-top:10px;">Save</button></div>`;
+        document.getElementById('save-settings').addEventListener('click', async () => {
+            await dbPut('settings', { key: 'currency', value: document.getElementById('currency-symbol').value });
+            await loadSettings();
+            await renderQuotes();
+        });
+    }
+
+    async function renderParameters() {
+        views.parameters.innerHTML = `<h2>Manage Parameters</h2>
+            <form id="parameter-form" class="action-bar">
+                <input id="parameter-name" placeholder="Parameter Name" required style="flex-grow:1;"><input id="parameter-weight" placeholder="Weight (1-10)" type="number" min="1" max="10" required>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form><div id="parameter-list-container"></div>`;
+        document.getElementById('parameter-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const param = { name: e.target.elements['parameter-name'].value, weight: parseInt(e.target.elements['parameter-weight'].value) };
+            if (!param.name || !param.weight) return;
+            await dbPut('parameters', param);
+            await renderParameters();
+        });
+        const params = await dbGetAll('parameters');
+        document.getElementById('parameter-list-container').innerHTML = `<table><thead><tr><th>Name</th><th>Weight</th><th>Actions</th></tr></thead><tbody>${
+            params.map(p => `<tr><td>${p.name}</td><td>${p.weight}</td><td><button class="btn btn-danger" onclick="deleteParameter(${p.id})">Del</button></td></tr>`).join('')
+        }</tbody></table>`;
+    }
+
+    async function renderSuppliers() {
+        const suppliers = await dbGetAll('suppliers');
+        views.suppliers.innerHTML = `<div class="action-bar"><button class="btn btn-primary" onclick="showSupplierModal()">Add</button></div>
+            <table><thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead><tbody>${
+            suppliers.map(s => `<tr><td>${s.name}</td><td>${s.contact||'-'}</td><td>${s.email||'-'}</td><td>${s.phone||'-'}</td>
+                <td><button class="btn btn-secondary" onclick="showSupplierModal(${s.id})">Edit</button><button class="btn btn-danger" onclick="deleteSupplier(${s.id})">Del</button></td></tr>`).join('')
+        }</tbody></table>`;
+    }
+
+    // --- STARTUP ---
+    async function main() {
+        try {
+            await initDB();
+            await loadSettings();
+            await switchView('quotes');
+        } catch (error) {
+            console.error("Failed to initialize the application:", error);
+            alert("Error: Could not start the application. Please check the console for details and consider clearing site data.");
+        }
+    }
+    
+    main();
+});
+</script>
+</body>
+</html>

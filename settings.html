@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Form Generator</title>
+    <!-- Include the SheetJS library for reading Excel files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #f0f2f5; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0;
+        }
+        .container { 
+            background: #fff; 
+            padding: 40px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            text-align: center; 
+            max-width: 500px;
+        }
+        h1 { 
+            color: #333; 
+            margin-bottom: 20px; 
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        input[type="file"] { 
+            border: 2px dashed #007bff; 
+            padding: 20px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #status { 
+            margin-top: 20px; 
+            font-weight: bold; 
+        }
+        #download-container a {
+            display: block;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        #download-container a:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Standalone Form Generator</h1>
+    <p>Select the Excel file that defines the form structure to generate a single, portable HTML form file.</p>
+    <input type="file" id="excel-file-input" accept=".xlsx, .xls">
+    <div id="status"></div>
+    <div id="download-container"></div>
+</div>
+
+<script>
+// This function creates the full HTML content for the final, standalone form.
+// It takes the form structure (as a JSON string) and embeds it directly into the script tag.
+const createStandaloneFormHTML = (formStructureJSON) => {
+    // Note: We use template literals (backticks ``) to create a multi-line string.
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New POC Requirement Form</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333; background-color: #f8f9fa; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: auto; background: #ffffff; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+        h1 { font-size: 2rem; color: #212529; text-align: center; border-bottom: 1px solid #dee2e6; padding-bottom: 1rem; margin-bottom: 2rem; }
+        fieldset { border: none; padding: 0; margin: 0 0 2rem 0; }
+        legend { font-size: 1.5rem; font-weight: 600; color: #0056b3; padding-bottom: 0.5rem; margin-bottom: 1.5rem; width: 100%; border-bottom: 1px solid #e9ecef;}
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #495057; }
+        .form-field { margin-bottom: 1.5rem; }
+        input[type="text"], input[type="date"], input[type="number"], input[type="url"], input[type="file"], textarea, select { width: 100%; padding: 0.75rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ced4da; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+        textarea { min-height: 120px; resize: vertical; }
+        input:focus, textarea:focus, select:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); }
+        .radio-group label, .checkbox-group label { font-weight: normal; display: flex; align-items: center; margin-bottom: 0.5rem; }
+        .radio-group input, .checkbox-group input { margin-right: 0.5rem; }
+        .form-actions { display: flex; gap: 1rem; margin-top: 2rem; }
+        button { flex: 1; padding: 12px; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        #submit-btn { background-color: #007bff; }
+        #print-btn { background-color: #6c757d; }
+        .hidden { display: none; }
+        @media print {
+            body { background: #fff; } .container { display: none; } .print-view { display: block; }
+            .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 10px; margin-bottom: 30px; }
+            .print-header h1 { font-size: 22pt; color: #0056b3; margin: 0; } .print-header .date { font-size: 11pt; color: #555; }
+            .print-section { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 25px; page-break-inside: avoid; }
+            .print-section-title { background-color: #0056b3; color: white; padding: 10px 15px; font-size: 14pt; font-weight: 600; }
+            .print-section-content { padding: 15px; } .print-field { display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+            .print-field:last-child { border-bottom: none; } .print-label { font-weight: bold; color: #333; width: 35%; padding-right: 15px; box-sizing: border-box; }
+            .print-value { width: 65%; color: #555; white-space: pre-wrap; word-break: break-word; }
+            .print-terms { margin-top: 40px; padding-top: 15px; border-top: 1px solid #ccc; font-size: 9pt; color: #666; }
+            .print-terms h3 { font-size: 11pt; color: #333; }
+        }
+    </style>
+</head>
+<body>
+<div id="form-container" class="container"></div>
+<div id="print-view-container" class="print-view"></div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. The form structure is embedded directly here! ---
+    const formStructure = ${formStructureJSON};
+
+    const formContainer = document.getElementById('form-container');
+    const printContainer = document.getElementById('print-view-container');
+    const toId = (str) => str ? str.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '') : '';
+
+    const form = document.createElement('form');
+    form.addEventListener('submit', (e) => e.preventDefault());
+    let sections = {};
+    const conditionalRules = [];
+    let formTitle = 'New POC Requirement Form';
+    let termsText = '';
+
+    const titleRow = formStructure.find(r => r.section && r.section.toLowerCase() === 'form title');
+    if (titleRow && titleRow.defaultValue) formTitle = titleRow.defaultValue;
+    const termsRow = formStructure.find(r => r.section && r.section.toLowerCase() === 'terms and conditions');
+    if (termsRow && termsRow.defaultValue) termsText = termsRow.defaultValue;
+
+    document.title = formTitle;
+    const h1 = document.createElement('h1');
+    h1.textContent = formTitle;
+    formContainer.appendChild(h1);
+
+    formStructure.forEach(field => {
+        if (!field.section || ['form title', 'terms and conditions'].includes(field.section.toLowerCase())) return;
+        if (!sections[field.section]) sections[field.section] = [];
+        if (field.fieldName) sections[field.section].push(field);
+    });
+
+    for (const sectionName in sections) {
+        const fieldset = document.createElement('fieldset');
+        fieldset.id = toId(sectionName);
+        const legend = document.createElement('legend');
+        legend.textContent = sectionName;
+        fieldset.appendChild(legend);
+
+        sections[sectionName].forEach(field => {
+            const fieldId = toId(field.fieldName);
+            const fieldWrapper = document.createElement('div');
+            fieldWrapper.className = 'form-field';
+            const wrapperId = \`wrapper_\${fieldId || toId(sectionName + field.subSection)}\`;
+            fieldWrapper.id = wrapperId;
+
+            const label = document.createElement('label');
+            label.setAttribute('for', fieldId);
+            label.textContent = \`\${field.fieldName}:\`;
+            fieldWrapper.appendChild(label);
+
+            const fieldType = (field.fieldType || 'Text').toLowerCase();
+            if (['text', 'date', 'number', 'url', 'textarea', 'document upload'].includes(fieldType)) {
+                const el = document.createElement(fieldType === 'textarea' ? 'textarea' : 'input');
+                if (el.tagName === 'INPUT') el.type = (fieldType === 'document upload') ? 'file' : fieldType;
+                el.id = fieldId; el.name = fieldId;
+                if (field.defaultValue) el.value = field.defaultValue;
+                fieldWrapper.appendChild(el);
+            } else if (fieldType.includes('radio') || fieldType.includes('checkbox')) {
+                const groupDiv = document.createElement('div');
+                const groupType = fieldType.includes('radio') ? 'radio' : 'checkbox';
+                groupDiv.className = \`\${groupType}-group\`;
+                (field.options || '').split(',').map(s => s.trim()).forEach(option => {
+                    const optionLabel = document.createElement('label');
+                    const optionInput = document.createElement('input');
+                    optionInput.type = groupType; optionInput.name = fieldId; optionInput.value = option;
+                    if (field.defaultValue === option) optionInput.checked = true;
+                    optionLabel.appendChild(optionInput); optionLabel.append(\` \${option}\`);
+                    groupDiv.appendChild(optionLabel);
+                });
+                fieldWrapper.appendChild(groupDiv);
+            }
+
+            if (field.conditionalRule) {
+                const match = field.conditionalRule.match(/Show "(.+?)" if "(.+?)"/);
+                if (match) {
+                    const targetName = match[1];
+                    const targetIsSection = Object.keys(sections).includes(targetName);
+                    const targetId = targetIsSection ? toId(targetName) : \`wrapper_\${toId(targetName)}\`;
+                    conditionalRules.push({ triggerName: fieldId, targetId: targetId, showValue: match[2] });
+                }
+            }
+            fieldset.appendChild(fieldWrapper);
+        });
+        form.appendChild(fieldset);
+    }
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'form-actions';
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit'; submitButton.id = 'submit-btn'; submitButton.textContent = 'Submit';
+    const printButton = document.createElement('button');
+    printButton.type = 'button'; printButton.id = 'print-btn'; printButton.textContent = 'Print Form';
+    printButton.addEventListener('click', generatePrintView);
+    actionsDiv.appendChild(submitButton); actionsDiv.appendChild(printButton);
+    form.appendChild(actionsDiv);
+    formContainer.appendChild(form);
+
+    conditionalRules.forEach(rule => {
+        const targetElement = document.getElementById(rule.targetId);
+        if (targetElement) targetElement.classList.add('hidden');
+        const triggerElements = document.querySelectorAll(\`input[name="\${rule.triggerName}"]\`);
+        const updateVisibility = () => {
+            const selectedRadio = document.querySelector(\`input[name="\${rule.triggerName}"][type=radio]:checked\`);
+            const selectedCheckboxes = Array.from(document.querySelectorAll(\`input[name="\${rule.triggerName}"][type=checkbox]:checked\`)).map(cb => cb.value);
+            let show = (selectedRadio && selectedRadio.value === rule.showValue) || selectedCheckboxes.includes(rule.showValue);
+            if (targetElement) targetElement.classList.toggle('hidden', !show);
+        };
+        triggerElements.forEach(el => el.addEventListener('change', updateVisibility));
+        updateVisibility();
+    });
+
+    function generatePrintView() {
+        const printDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        let printHTML = \`<div class="print-header"><h1>\${formTitle}</h1><div class="date">Printed on: \${printDate}</div></div>\`;
+        form.querySelectorAll('fieldset:not(.hidden)').forEach(fieldset => {
+            printHTML += \`<div class="print-section"><div class="print-section-title">\${fieldset.querySelector('legend').textContent}</div><div class="print-section-content">\`;
+            fieldset.querySelectorAll('div.form-field:not(.hidden)').forEach(wrapper => {
+                const label = wrapper.querySelector('label').textContent; let value = 'N/A';
+                const input = wrapper.querySelector('input:not([type=radio]):not([type=checkbox]), textarea');
+                if (input) { value = (input.type === 'file' && input.files.length > 0) ? Array.from(input.files).map(f => f.name).join(', ') : input.value || ' ';
+                } else {
+                    const checkedRadios = wrapper.querySelectorAll('input[type=radio]:checked');
+                    if (checkedRadios.length > 0) { value = checkedRadios[0].value;
+                    } else { const checkedCheckboxes = Array.from(wrapper.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value); if (checkedCheckboxes.length > 0) value = checkedCheckboxes.join(', '); }
+                }
+                printHTML += \`<div class="print-field"><div class="print-label">\${label}</div><div class="print-value">\${value}</div></div>\`;
+            });
+            printHTML += \`</div></div>\`;
+        });
+        if (termsText) { printHTML += \`<div class="print-terms"><h3>Terms and Conditions</h3><p>\${termsText}</p></div>\`; }
+        printContainer.innerHTML = printHTML; window.print();
+    }
+});
+<\/script>
+</body>
+</html>`;
+};
+
+
+document.getElementById('excel-file-input').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+    
+    const statusDiv = document.getElementById('status');
+    const downloadContainer = document.getElementById('download-container');
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const formStructure = XLSX.utils.sheet_to_json(worksheet, {
+                header: ["sn", "section", "subSection", "fieldName", "fieldType", "isMandatory", "options", "conditionalRule", "defaultValue"],
+                range: 1,
+                defval: ""
+            }).filter(field => field.section || field.fieldName);
+
+            const formStructureJSON = JSON.stringify(formStructure, null, 2);
+            const finalHTML = createStandaloneFormHTML(formStructureJSON);
+            const blob = new Blob([finalHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+
+            downloadContainer.innerHTML = '';
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = 'generated_form.html';
+            downloadLink.textContent = 'Download Standalone Form';
+            downloadContainer.appendChild(downloadLink);
+
+            statusDiv.textContent = 'Form generated successfully! Click the link to download.';
+            statusDiv.style.color = 'green';
+
+        } catch (error) {
+            console.error("Error processing Excel file:", error);
+            statusDiv.textContent = 'Error: Could not process the Excel file. Please ensure it is valid.';
+            statusDiv.style.color = 'red';
+        }
+    };
+    
+    reader.onerror = function() {
+        statusDiv.textContent = 'Error reading the file.';
+        statusDiv.style.color = 'red';
+    };
+
+    reader.readAsArrayBuffer(file);
+});
+</script>
+
+</body>
+</html>

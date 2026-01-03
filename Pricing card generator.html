@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Pricing Configurator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary-color: #8A2BE2;
+            --accent-color: #4682B4;
+            --success-color: #90EE90;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --bg-color: #121212;
+            --surface-color: #1E1E1E;
+            --controls-bg-color: #242424;
+            --border-color: #333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-headings: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .header-container { display: flex; justify-content: space-between; align-items: center; max-width: 1660px; margin: 0 auto 2rem; }
+        h1, h2 { color: var(--text-headings); font-weight: 600; }
+        .container { display: flex; gap: 2rem; width: 100%; max-width: 1660px; margin: auto; align-items: flex-start; }
+        .controls, .library { background-color: var(--controls-bg-color); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); }
+        .controls { width: 350px; flex-shrink: 0; position: sticky; top: 2rem; }
+        .library { width: 310px; flex-shrink: 0; max-height: 80vh; overflow-y: auto; }
+        
+        .library h2 { font-size: 1.1rem; color: var(--primary-color); margin-top: 0; margin-bottom: 1rem; }
+        #libraryList { list-style: none; padding: 0; margin: 0; }
+        #libraryList li { background-color: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-primary); margin-bottom: 0.75rem; padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; }
+        #libraryList span { font-weight: 600; cursor: pointer; }
+        .library-actions button { background-color: var(--primary-color); border: none; color: white; border-radius: 5px; margin-left: 5px; cursor: pointer; padding: 0.4rem 0.8rem; }
+        .library-actions button.delete-lib { background-color: var(--danger-color); }
+        .library-actions button:hover { filter: brightness(1.2); }
+        
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        .control-group input[type="text"], .control-group input[type="number"], .control-group textarea, .control-group select {
+            width: calc(100% - 1.4rem); padding: 0.6rem; background-color: #333; border: 1px solid #555; border-radius: 6px; color: var(--text-primary); font-family: inherit;
+        }
+        .control-group input:focus, .control-group textarea:focus, .control-group select:focus { outline: none; border-color: var(--primary-color); }
+        .features-list { max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); padding: 0.8rem; border-radius: 6px; background-color: #333; margin-bottom: 1rem; }
+        
+        .feature-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+        .feature-item-main { display: flex; align-items: center; flex-grow: 1; }
+        .feature-item input[type="checkbox"] { margin-right: 0.5rem; }
+        .feature-item label.bold { font-weight: 700; }
+
+        .feature-actions button { background: #555; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; margin-left: 5px; }
+        .feature-actions button:hover { background: #666; }
+        .feature-actions .bold-btn { font-weight: bold; }
+
+        .color-picker-group { display: flex; align-items: center; gap: 10px; justify-content: space-around; }
+        input[type="color"] { width: 35px; height: 35px; border: none; cursor: pointer; border-radius: 50%; overflow: hidden; background-color: transparent; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid var(--border-color); border-radius: 50%; }
+
+        .action-button { width: 100%; padding: 0.8rem; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.3s, filter 0.3s; margin-top: 1rem; }
+        #generateCardBtn, #updateCardBtn { background-color: var(--primary-color); }
+        #generateCardBtn:hover, #updateCardBtn:hover { filter: brightness(1.1); }
+        #printBtn { background-color: var(--success-color); width: auto; }
+        #printBtn:hover { filter: brightness(1.1); }
+        
+        .pricing-container.cards-view { display: flex; flex-wrap: wrap; gap: 1.5rem; flex-grow: 1; }
+        .pricing-container.list-view { display: flex; flex-direction: column; gap: 2.5rem; flex-grow: 1; }
+        .price-card { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; position: relative; transition: box-shadow 0.3s, background-color 0.3s; }
+        .cards-view .price-card { width: 320px; display: flex; flex-direction: column; }
+        .list-view .price-card { display: block; background-color: transparent; border: none; padding: 0; }
+        .price-card.editing { box-shadow: 0 0 15px var(--primary-color); }
+
+        .popular-tag { position: absolute; top: 1rem; right: 1rem; background-color: var(--accent-color); color: white; padding: 0.3rem 0.8rem; border-radius: 16px; font-size: 0.8rem; font-weight: 500; }
+        .list-view .popular-tag { display: none; }
+        .price-card h3 { font-size: 1.5rem; margin: 0 0 0.5rem; font-weight: 600; color: var(--text-headings); }
+        .price-tag { font-size: 2.5rem; font-weight: 700; margin: 0 0 1.5rem; color: var(--text-headings); }
+        .price-tag span { font-size: 1rem; font-weight: 400; color: var(--text-secondary); }
+        .card-description { margin: 0 0 1.5rem; color: var(--text-secondary); }
+        .cards-view .card-description { flex-grow: 1; }
+        
+        .list-view h3 { display: inline; margin-right: 1rem; }
+        .list-view .price-tag { display: inline; font-size: 1.5rem; }
+        .list-view .card-description { margin-top: 0.5rem; }
+
+        .card-buttons { display: flex; gap: 0.5rem; margin-top: 1.5rem; }
+        .list-view .card-buttons { display: inline-flex; width: auto; vertical-align: middle; margin-left: 2rem; }
+        .list-view .card-btn { flex-grow: 0; padding: 0.4rem 0.8rem; }
+        .card-btn { padding: 0.6rem; border-radius: 6px; border: none; color: white; font-weight: 500; cursor: pointer; transition: filter 0.3s; }
+        .cards-view .card-btn { flex-grow: 1; }
+        .card-btn:hover { filter: brightness(1.2); }
+        .edit-btn { background-color: var(--warning-color); color: #111; }
+        .delete-btn { background-color: var(--danger-color); }
+        .save-lib-btn { background-color: var(--primary-color); }
+
+        .features { list-style: none; padding: 0; margin: 1.5rem 0 0; border-top: 1px solid var(--border-color); }
+        .cards-view .features { flex-grow: 1; }
+        .list-view .features { border-top: none; }
+        .features li { display: flex; align-items: flex-start; margin-top: 1.2rem; color: var(--text-primary); }
+        .features li.bold { font-weight: 700; }
+        .features li svg { width: 16px; height: 16px; margin-right: 0.8rem; color: var(--success-color); flex-shrink: 0; margin-top: 3px; }
+        
+        @media print {
+            body { padding: 1rem; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .controls, .header-container, .card-buttons, .library { display: none !important; }
+            .container { max-width: 100%; display: block; }
+            body.print-dark { background-color: #0d0d1a !important; }
+            body.print-light { background-color: #ffffff !important; }
+            .price-card { page-break-inside: avoid; border-radius: 16px; padding: 2.5rem; margin-bottom: 2rem; }
+            .print-dark .price-card { background-color: #1a1a2e !important; border: 1px solid #33334d !important; }
+            .print-light .price-card { background-color: #ffffff !important; border: 1px solid #e0e0e0 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+            .pricing-container.print-horizontal { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem;}
+            .pricing-container.print-horizontal .price-card { width: calc(50% - 5rem); }
+            .price-card h3, .price-tag, .card-description, .features li, .popular-tag { font-weight: 500; }
+            .print-dark .price-card h3, .print-dark .price-tag, .print-dark .features li { color: #ffffff !important; }
+            .print-dark .card-description, .print-dark .price-tag span { color: #b0b0b0 !important; }
+            .print-dark .features { border-top-color: #33334d !important; }
+            .print-dark .features li svg { color: var(--success-color) !important; }
+            .print-light .price-card h3 { color: var(--primary-color) !important; }
+            .print-light .price-card .price-tag { color: #111 !important; }
+            .print-light .features li { color: #333 !important; }
+            .print-light .card-description, .print-light .price-tag span { color: #666 !important; }
+            .print-light .features { border-top-color: #e0e0e0 !important; }
+            .print-light .features li svg { color: var(--success-color) !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1>Device Pricing Configurator</h1>
+        <button id="printBtn" class="action-button">Print Cards</button>
+    </div>
+    <div class="container">
+        <div class="library">
+            <h2>Saved Card Library</h2>
+            <ul id="libraryList"></ul>
+        </div>
+        <div class="controls">
+            <h2 id="form-title">Create a New Model</h2>
+            <input type="hidden" id="editingCardId">
+            <div class="control-group"><label for="modelName">Model Name</label><input type="text" id="modelName"></div>
+            <div class="control-group"><label for="unitPrice">Unit Price ($)</label><input type="number" id="unitPrice"></div>
+            <div class="control-group"><label for="description">Description</label><textarea id="description" rows="3"></textarea></div>
+            <div class="control-group">
+                <label>Included Features</label><div id="featuresChecklist" class="features-list"></div>
+                <label for="newFeature" style="margin-top:.7rem">Add Custom Feature</label><input type="text" id="newFeature">
+                <button id="addFeatureBtn" style="padding:.5rem .8rem; background-color:#555; color:white; border:1px solid #777; border-radius:6px; cursor:pointer; margin-top:.5rem;">Add</button>
+            </div>
+            <div class="control-group">
+                <label>Theme Colors</label><div class="color-picker-group">
+                <div><label for="primaryColor">Primary</label><input type="color" id="primaryColor" value="#8A2BE2"></div>
+                <div><label for="accentColor">Accent</label><input type="color" id="accentColor" value="#4682B4"></div>
+                <div><label for="successColor">Success</label><input type="color" id="successColor" value="#90EE90"></div>
+            </div></div>
+            <div class="control-group"><label for="viewLayout">Display Style</label><select id="viewLayout"><option value="cards-view">Cards</option><option value="list-view">List</option></select></div>
+            <div class="control-group"><label for="printLayout">Print Layout</label><select id="printLayout"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></div>
+            <div class="control-group"><label for="printTheme">Print Theme</label><select id="printTheme"><option value="dark">Dark</option><option value="light">Light</option></select></div>
+            <div class="control-group feature-item"><input type="checkbox" id="isPopular"><label for="isPopular">Mark as "Popular"</label></div>
+            <div id="form-buttons"><button id="generateCardBtn" class="action-button">Generate Model Card</button></div>
+        </div>
+        <div id="pricingContainer" class="pricing-container cards-view"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const APP_PREFIX = 'pricingConfigurator_v3_';
+            let allFeatures = JSON.parse(localStorage.getItem(APP_PREFIX + 'features')) || [
+                { id: 1, text: "4G LTE with 2G fallback", bold: false }, { id: 2, text: "CAN protocol support", bold: true }
+            ];
+            let cardsData = JSON.parse(localStorage.getItem(APP_PREFIX + 'cards')) || [];
+            let cardLibrary = JSON.parse(localStorage.getItem(APP_PREFIX + 'library')) || [];
+
+            const checklistContainer = document.getElementById('featuresChecklist');
+            const pricingContainer = document.getElementById('pricingContainer');
+            const printLayoutSelect = document.getElementById('printLayout');
+            const viewLayoutSelect = document.getElementById('viewLayout');
+            const printThemeSelect = document.getElementById('printTheme');
+
+            const saveData = () => {
+                localStorage.setItem(APP_PREFIX + 'features', JSON.stringify(allFeatures));
+                localStorage.setItem(APP_PREFIX + 'cards', JSON.stringify(cardsData));
+                localStorage.setItem(APP_PREFIX + 'library', JSON.stringify(cardLibrary));
+            };
+
+            const renderAll = () => {
+                renderChecklist();
+                renderAllCards();
+                renderLibrary();
+                saveData();
+            };
+
+            function renderChecklist() {
+				// 1. Gather currently checked boxes – preserves ticked features
+				const checkedIds = Array.from(document.querySelectorAll('#featuresChecklist input:checked')).map(cb => cb.dataset.id);
+
+				// 2. Rebuild checklist, restoring checked state
+				checklistContainer.innerHTML = '';
+				allFeatures.forEach(feature => {
+					const isChecked = checkedIds.includes(String(feature.id));
+					checklistContainer.innerHTML += `
+						<div class="feature-item">
+							<div class="feature-item-main">
+								<input type="checkbox" id="feature-check-${feature.id}" data-id="${feature.id}" ${isChecked ? 'checked' : ''}>
+								<label for="feature-check-${feature.id}" class="${feature.bold ? 'bold' : ''}">${feature.text}</label>
+							</div>
+							<div class="feature-actions">
+								<button class="bold-btn" data-id="${feature.id}">B</button>
+								<button class="delete-feature-btn" data-id="${feature.id}">Del</button>
+							</div>
+						</div>`;
+				});
+			}
+
+
+            function renderAllCards() {
+                pricingContainer.innerHTML = '';
+                cardsData.forEach(card => {
+                    if (!Array.isArray(card.featureIds)) card.featureIds = []; // Data correction
+                    const newCardEl = document.createElement('div');
+                    newCardEl.className = 'price-card';
+                    newCardEl.id = `card-${card.id}`;
+                    newCardEl.innerHTML = createCardHTML(card);
+                    pricingContainer.appendChild(newCardEl);
+                });
+            }
+            
+            function renderLibrary() {
+                const libList = document.getElementById('libraryList');
+                libList.innerHTML = '';
+                if (!cardLibrary.length) {
+                    libList.innerHTML = '<li><em>No saved cards.</em></li>';
+                    return;
+                }
+                cardLibrary.forEach(card => {
+                    libList.innerHTML += `<li><span data-id="${card.id}" class="load-lib-card">${card.modelName}</span><div class="library-actions"><button class="load-lib" data-id="${card.id}">Load</button><button class="delete-lib" data-id="${card.id}">Del</button></div></li>`;
+                });
+            }
+
+            function createCardHTML(cardData) {
+                let featuresHTML = (cardData.featureIds || []).map(id => {
+                    const feature = allFeatures.find(f => f.id === id);
+                    return feature ? `<li class="${feature.bold ? 'bold' : ''}"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z" clip-rule="evenodd" /></svg><span>${feature.text}</span></li>` : '';
+                }).join('');
+                return `${cardData.isPopular ? '<div class="popular-tag">Popular</div>' : ''}<div><h3>${cardData.modelName}</h3><p class="price-tag">$${parseFloat(cardData.unitPrice).toFixed(2)} <span>/ device</span></p><div class="card-buttons"><button class="card-btn edit-btn" data-id="${cardData.id}">Edit</button><button class="card-btn delete-btn" data-id="${cardData.id}">Delete</button><button class="card-btn save-lib-btn" data-id="${cardData.id}">Save</button></div></div><p class="card-description">${cardData.description || ''}</p><ul class="features">${featuresHTML}</ul>`;
+            }
+
+            function getFormValues() {
+                const selectedFeatureIds = Array.from(document.querySelectorAll('#featuresChecklist input:checked')).map(cb => parseInt(cb.dataset.id));
+                return {
+                    id: parseInt(document.getElementById('editingCardId').value) || Date.now(),
+                    modelName: document.getElementById('modelName').value || 'New Model',
+                    unitPrice: document.getElementById('unitPrice').value || '0',
+                    description: document.getElementById('description').value || 'Model description',
+                    isPopular: document.getElementById('isPopular').checked,
+                    featureIds: selectedFeatureIds
+                };
+            }
+
+            function resetForm() {
+                document.getElementById('modelName').value = '';
+                document.getElementById('unitPrice').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('isPopular').checked = false;
+                document.querySelectorAll('#featuresChecklist input').forEach(c => c.checked = false);
+                document.getElementById('editingCardId').value = '';
+                document.getElementById('form-title').textContent = 'Create a New Model';
+                document.getElementById('form-buttons').innerHTML = '<button id="generateCardBtn" class="action-button">Generate Model Card</button>';
+                document.querySelectorAll('.price-card.editing').forEach(c => c.classList.remove('editing'));
+            }
+
+            document.getElementById('addFeatureBtn').addEventListener('click', () => {
+                const newFeatureInput = document.getElementById('newFeature');
+                const featureText = newFeatureInput.value.trim();
+                if (featureText) {
+                    allFeatures.push({ id: Date.now(), text: featureText, bold: false });
+                    newFeatureInput.value = '';
+                    renderAll();
+                }
+            });
+
+            checklistContainer.addEventListener('click', function(e) {
+                const id = parseInt(e.target.dataset.id);
+                if (e.target.classList.contains('bold-btn')) {
+                    const feature = allFeatures.find(f => f.id === id);
+                    if (feature) { feature.bold = !feature.bold; renderAll(); }
+                }
+                if (e.target.classList.contains('delete-feature-btn')) {
+                    allFeatures = allFeatures.filter(f => f.id !== id);
+                    cardsData.forEach(card => card.featureIds = (card.featureIds || []).filter(fid => fid !== id));
+                    renderAll();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                const target = e.target;
+                if (target.id === 'generateCardBtn' || target.id === 'updateCardBtn') {
+                    e.preventDefault();
+                    const values = getFormValues();
+                    const cardIndex = cardsData.findIndex(c => c.id === values.id);
+                    if (cardIndex > -1) { cardsData[cardIndex] = values; } else { cardsData.push(values); }
+                    renderAllCards(); resetForm(); saveData();
+                }
+            });
+
+            pricingContainer.addEventListener('click', function(e) {
+                const target = e.target;
+                const cardId = parseInt(target.dataset.id);
+                if (target.classList.contains('save-lib-btn')) {
+                    const card = cardsData.find(c => c.id === cardId);
+                    if (card && !cardLibrary.some(l => l.id === cardId)) {
+                        cardLibrary.push(JSON.parse(JSON.stringify(card)));
+                        renderLibrary(); saveData(); alert('Card saved to library!');
+                    } else if (card) { alert('Card is already in library.'); }
+                }
+                if (target.classList.contains('delete-btn')) {
+                    cardsData = cardsData.filter(c => c.id !== cardId);
+                    renderAllCards(); saveData();
+                }
+                if (target.classList.contains('edit-btn')) {
+                    resetForm();
+                    const cardData = cardsData.find(c => c.id === cardId);
+                    document.getElementById(`card-${cardId}`).classList.add('editing');
+                    document.getElementById('editingCardId').value = cardData.id;
+                    document.getElementById('modelName').value = cardData.modelName;
+                    document.getElementById('unitPrice').value = cardData.unitPrice;
+                    document.getElementById('description').value = cardData.description;
+                    document.getElementById('isPopular').checked = cardData.isPopular;
+                    (cardData.featureIds || []).forEach(id => {
+                        const checkbox = document.getElementById(`feature-check-${id}`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                    document.getElementById('form-title').textContent = 'Editing Model';
+                    document.getElementById('form-buttons').innerHTML = '<button id="updateCardBtn" class="action-button">Update Card</button>';
+                }
+            });
+
+            document.getElementById('libraryList').addEventListener('click', function(e) {
+                const target = e.target;
+                const libId = parseInt(target.dataset.id);
+                if (target.classList.contains('delete-lib')) {
+                    cardLibrary = cardLibrary.filter(card => card.id !== libId);
+                    renderLibrary(); saveData();
+                }
+                if (target.classList.contains('load-lib') || target.classList.contains('load-lib-card')) {
+                    const cardToLoad = cardLibrary.find(card => card.id === libId);
+                    if (cardToLoad) {
+                        const newCard = { ...JSON.parse(JSON.stringify(cardToLoad)), id: Date.now() };
+                        cardsData.push(newCard);
+                        renderAllCards(); saveData();
+                        alert('Card loaded into workspace.');
+                    }
+                }
+            });
+
+            function updateThemeColors() {
+                const root = document.documentElement;
+                root.style.setProperty('--primary-color', document.getElementById('primaryColor').value);
+                root.style.setProperty('--accent-color', document.getElementById('accentColor').value);
+                root.style.setProperty('--success-color', document.getElementById('successColor').value);
+            }
+            ['primaryColor', 'accentColor', 'successColor'].forEach(id => document.getElementById(id).addEventListener('input', updateThemeColors));
+            
+            document.getElementById('printBtn').addEventListener('click', () => {
+                document.body.classList.remove('print-light', 'print-dark');
+                document.body.classList.add(`print-${printThemeSelect.value}`);
+                window.print();
+            });
+
+            printLayoutSelect.addEventListener('change', (e) => {
+                pricingContainer.classList.remove('print-vertical', 'print-horizontal');
+                pricingContainer.classList.add(`print-${e.target.value}`);
+            });
+            viewLayoutSelect.addEventListener('change', (e) => {
+                pricingContainer.className = `pricing-container ${e.target.value} print-${printLayoutSelect.value}`;
+            });
+
+            // Initial setup
+            renderAll();
+            updateThemeColors();
+            pricingContainer.classList.add(`print-${printLayoutSelect.value}`);
+        });
+    </script>
+</body>
+</html>

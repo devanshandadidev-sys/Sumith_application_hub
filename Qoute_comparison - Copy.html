@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Quote Comparison Tool - Pro</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --secondary-color: #f8f9fa;
+            --border-color: #dee2e6;
+            --highlight-color: #d4edda; /* Best price */
+            --approved-color: #cce5ff; /* Approved status */
+            --rejected-color: #f8d7da; /* Rejected status */
+            --pending-color: #fff3cd; /* Pending status */
+            --danger-color: #dc3545;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .nav-tabs {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .nav-tabs button {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            background-color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 16px;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            margin-bottom: -1px;
+        }
+
+        .nav-tabs button.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .form-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px;
+        }
+
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: #004494; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        
+        .action-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border: 1px solid var(--border-color); text-align: left; vertical-align: top; }
+        th { background-color: var(--secondary-color); font-weight: 600; }
+        th.sortable { cursor: pointer; }
+        th.sortable:hover { background-color: #e2e6ea; }
+        th .sort-icon { margin-left: 5px; opacity: 0.5; }
+
+        .best-price { background-color: var(--highlight-color); font-weight: bold; }
+        
+        .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; color: #333;}
+        .status-pending { background-color: var(--pending-color); }
+        .status-approved { background-color: var(--approved-color); }
+        .status-rejected { background-color: var(--rejected-color); }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+
+        .star-rating { display: inline-flex; flex-direction: row-reverse; }
+        .star-rating input { display: none; }
+        .star-rating label { font-size: 24px; color: #ccc; cursor: pointer; padding: 0 2px; }
+        .star-rating input:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #f9d71c; }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .dashboard-card { background: var(--secondary-color); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .dashboard-card h3 { margin-top: 0; }
+        .dashboard-card .stat { font-size: 36px; font-weight: bold; color: var(--primary-color); }
+
+        @media print {
+            body { padding: 0; background-color: #fff; }
+            .container { box-shadow: none; padding: 0; max-width: 100%; }
+            .nav-tabs, .action-bar, .modal, .btn, .no-print { display: none !important; }
+            table, th, td { border: 1px solid #ccc; }
+            .best-price, .status-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .best-price { background-color: #e9f5ec !important; }
+            .status-approved { background-color: #d1e7dd !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Quote Comparison Pro</h1>
+
+        <div class="nav-tabs">
+            <button id="tab-dashboard" class="active">Dashboard</button>
+            <button id="tab-quotes">Quote Comparison</button>
+            <button id="tab-suppliers">Manage Suppliers</button>
+            <button id="tab-audit">Audit Log</button>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboard-view">
+            <h2>Dashboard</h2>
+            <div id="dashboard-container" class="dashboard-grid">
+                <!-- Dashboard cards will be rendered here -->
+            </div>
+        </div>
+
+        <!-- Quote Comparison View -->
+        <div id="quote-comparison-view" style="display: none;">
+            <h2>Quote Comparison</h2>
+            <div class="action-bar">
+                <button id="show-add-quote-modal" class="btn btn-primary">Add New Quote</button>
+                <input type="text" id="search-quotes" placeholder="Search by item name..." style="padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); flex-grow: 1;">
+                <select id="filter-status" style="padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+                <button id="export-csv" class="btn btn-secondary">Export to CSV</button>
+            </div>
+            <div id="comparison-table-container"></div>
+        </div>
+        
+        <!-- Suppliers View -->
+        <div id="suppliers-view" style="display: none;">
+            <h2>Manage Suppliers</h2>
+            <div class="action-bar">
+                <button id="show-add-supplier-modal" class="btn btn-primary">Add New Supplier</button>
+            </div>
+            <div id="supplier-list-container"></div>
+        </div>
+        
+        <!-- Audit Log View -->
+        <div id="audit-log-view" style="display: none;">
+            <h2>Audit Log</h2>
+            <div id="audit-log-container"></div>
+        </div>
+    </div>
+
+    <!-- Modals (Add/Edit Quote, Add/Edit Supplier) -->
+    <div id="quote-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="quote-modal-title">Add Quote</h2>
+            <form id="quote-form">
+                <input type="hidden" id="quote-id">
+                <div class="form-container">
+                    <div class="form-group">
+                        <label for="quote-supplier">Supplier</label>
+                        <select id="quote-supplier" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="quote-group">Comparison Group</label>
+                        <input type="text" id="quote-group" placeholder="e.g., 'Project Alpha Laptops'" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quote-item">Item/Service Name</label>
+                        <input type="text" id="quote-item" placeholder="e.g., 'Laptop Model X'" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quote-price">Price ($)</label>
+                        <input type="number" id="quote-price" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quote-validity">Quote Validity</label>
+                        <input type="date" id="quote-validity">
+                    </div>
+                    <div class="form-group">
+                        <label for="quote-status">Status</label>
+                        <select id="quote-status">
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="quote-specs">Specifications / Notes</label>
+                        <textarea id="quote-specs" rows="4"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Quote</button>
+            </form>
+        </div>
+    </div>
+    <div id="supplier-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="supplier-modal-title">Add Supplier</h2>
+            <form id="supplier-form">
+                <input type="hidden" id="supplier-id">
+                 <div class="form-container">
+                    <div class="form-group">
+                        <label for="supplier-name">Supplier Name</label>
+                        <input type="text" id="supplier-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="supplier-contact">Contact Person</label>
+                        <input type="text" id="supplier-contact">
+                    </div>
+                    <div class="form-group">
+                        <label for="supplier-email">Email</label>
+                        <input type="email" id="supplier-email">
+                    </div>
+                    <div class="form-group">
+                        <label for="supplier-phone">Phone</label>
+                        <input type="tel" id="supplier-phone">
+                    </div>
+                    <div class="form-group">
+                        <label>Rating</label>
+                        <div class="star-rating" id="supplier-rating">
+                            <input type="radio" id="star5" name="rating" value="5"><label for="star5" title="5 stars">★</label>
+                            <input type="radio" id="star4" name="rating" value="4"><label for="star4" title="4 stars">★</label>
+                            <input type="radio" id="star3" name="rating" value="3"><label for="star3" title="3 stars">★</label>
+                            <input type="radio" id="star2" name="rating" value="2"><label for="star2" title="2 stars">★</label>
+                            <input type="radio" id="star1" name="rating" value="1"><label for="star1" title="1 star">★</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Supplier</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DATABASE SETUP ---
+    const DB_NAME = 'QuoteComparisonDB';  // QuoteComparisonDB or QuoteComparisonDB_Pro
+    const DB_VERSION = 2; // Incremented version for upgrade
+    let db;
+    let quoteSortConfig = { key: 'price', dir: 'asc' };
+
+    function initDB() {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+            const dbInstance = event.target.result;
+            // Suppliers Store
+            if (!dbInstance.objectStoreNames.contains('suppliers')) {
+                const supplierStore = dbInstance.createObjectStore('suppliers', { keyPath: 'id', autoIncrement: true });
+                supplierStore.createIndex('name', 'name', { unique: true });
+            }
+            // Quotes Store
+            if (!dbInstance.objectStoreNames.contains('quotes')) {
+                const quoteStore = dbInstance.createObjectStore('quotes', { keyPath: 'id', autoIncrement: true });
+                quoteStore.createIndex('supplierId', 'supplierId', { unique: false });
+                quoteStore.createIndex('group', 'group', { unique: false });
+                quoteStore.createIndex('status', 'status', { unique: false }); // New index
+            }
+            // Audit Log Store
+            if (!dbInstance.objectStoreNames.contains('logs')) {
+                dbInstance.createObjectStore('logs', { keyPath: 'id', autoIncrement: true });
+            }
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            console.log('Database initialized successfully.');
+            switchView('dashboard'); // Start on dashboard
+        };
+        request.onerror = (e) => console.error('Database error:', e.target.errorCode);
+    }
+    
+    // --- GENERIC DB & LOGIC ---
+    async function logAction(action, details) {
+        const log = { action, details, timestamp: new Date() };
+        const transaction = db.transaction(['logs'], 'readwrite');
+        transaction.objectStore('logs').add(log);
+    }
+
+    // --- VIEW SWITCHING ---
+    const views = {
+        dashboard: document.getElementById('dashboard-view'),
+        quotes: document.getElementById('quote-comparison-view'),
+        suppliers: document.getElementById('suppliers-view'),
+        audit: document.getElementById('audit-log-view')
+    };
+    const tabs = document.querySelectorAll('.nav-tabs button');
+
+    function switchView(viewName) {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${viewName}`).classList.add('active');
+        
+        for (const key in views) {
+            views[key].style.display = key === viewName ? 'block' : 'none';
+        }
+
+        // Call render functions for the activated view
+        switch (viewName) {
+            case 'dashboard': renderDashboard(); break;
+            case 'quotes': renderQuotes(); populateSupplierDropdown(); break;
+            case 'suppliers': renderSuppliers(); break;
+            case 'audit': renderAuditLog(); break;
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => switchView(e.target.id.replace('tab-', '')));
+    });
+
+    // --- MODAL HANDLING --- (largely unchanged)
+    function setupModal(modalId, openBtnId, formId) {
+        const modal = document.getElementById(modalId);
+        const openBtn = document.getElementById(openBtnId);
+        const closeBtn = modal.querySelector('.close-btn');
+        const form = document.getElementById(formId);
+
+        openBtn.addEventListener('click', () => {
+            form.reset();
+            // Reset special inputs
+            document.getElementById('quote-id').value = '';
+            document.getElementById('supplier-id').value = '';
+            if (formId === 'supplier-form') {
+                 document.querySelectorAll('#supplier-rating input').forEach(r => r.checked = false);
+            }
+            modal.querySelector('h2').textContent = formId.includes('quote') ? 'Add Quote' : 'Add Supplier';
+            modal.style.display = 'block';
+        });
+
+        closeBtn.addEventListener('click', () => modal.style.display = 'none');
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) modal.style.display = 'none';
+        });
+    }
+
+    setupModal('quote-modal', 'show-add-quote-modal', 'quote-form');
+    setupModal('supplier-modal', 'show-add-supplier-modal', 'supplier-form');
+
+    // --- SUPPLIER LOGIC ---
+    document.getElementById('supplier-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('supplier-id').value;
+        const name = document.getElementById('supplier-name').value;
+        const ratingInput = document.querySelector('#supplier-rating input:checked');
+        const supplierData = {
+            name: name,
+            contact: document.getElementById('supplier-contact').value,
+            email: document.getElementById('supplier-email').value,
+            phone: document.getElementById('supplier-phone').value,
+            rating: ratingInput ? parseInt(ratingInput.value) : null
+        };
+        const transaction = db.transaction(['suppliers'], 'readwrite');
+        const request = id ? transaction.objectStore('suppliers').put({ ...supplierData, id: parseInt(id) }) : transaction.objectStore('suppliers').add(supplierData);
+        request.onsuccess = async () => {
+            await logAction(id ? 'Supplier Updated' : 'Supplier Created', `Name: ${name}`);
+            document.getElementById('supplier-modal').style.display = 'none';
+            renderSuppliers();
+            populateSupplierDropdown();
+        };
+    });
+
+    async function renderSuppliers() {
+        const suppliers = await new Promise(resolve => db.transaction('suppliers').objectStore('suppliers').getAll().onsuccess = e => resolve(e.target.result));
+        const quotes = await new Promise(resolve => db.transaction('quotes').objectStore('quotes').getAll().onsuccess = e => resolve(e.target.result));
+
+        const container = document.getElementById('supplier-list-container');
+        if (suppliers.length === 0) {
+            container.innerHTML = '<p>No suppliers added yet.</p>'; return;
+        }
+
+        let tableHTML = '<table><thead><tr><th>Name</th><th>Contact Person</th><th>Email</th><th>Avg. Rating</th><th class="no-print">Actions</th></tr></thead><tbody>';
+        suppliers.forEach(s => {
+            const supplierQuotes = quotes.filter(q => q.supplierId === s.id);
+            const totalRating = supplierQuotes.reduce((acc, q) => acc + (q.rating || 0), 0) + (s.rating || 0);
+            const ratingCount = supplierQuotes.length + (s.rating ? 1 : 0);
+            const avgRating = ratingCount > 0 ? (totalRating / ratingCount).toFixed(1) + ' ★' : 'N/A';
+
+            tableHTML += `
+                <tr>
+                    <td>${s.name}</td>
+                    <td>${s.contact || ''}</td>
+                    <td>${s.email || ''}</td>
+                    <td>${avgRating}</td>
+                    <td class="no-print">
+                        <button class="btn btn-secondary btn-sm" onclick="editSupplier(${s.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteSupplier(${s.id}, '${s.name}')">Delete</button>
+                    </td>
+                </tr>`;
+        });
+        container.innerHTML = tableHTML + '</tbody></table>';
+    }
+
+    window.editSupplier = (id) => {
+        db.transaction('suppliers').objectStore('suppliers').get(id).onsuccess = e => {
+            const s = e.target.result;
+            document.getElementById('supplier-id').value = s.id;
+            document.getElementById('supplier-name').value = s.name;
+            document.getElementById('supplier-contact').value = s.contact;
+            document.getElementById('supplier-email').value = s.email;
+            document.getElementById('supplier-phone').value = s.phone;
+            if (s.rating) {
+                document.getElementById(`star${s.rating}`).checked = true;
+            } else {
+                 document.querySelectorAll('#supplier-rating input').forEach(r => r.checked = false);
+            }
+            document.getElementById('supplier-modal-title').textContent = 'Edit Supplier';
+            document.getElementById('supplier-modal').style.display = 'block';
+        };
+    };
+
+    window.deleteSupplier = async (id, name) => {
+        if (!confirm(`Are you sure you want to delete supplier "${name}" and all their quotes?`)) return;
+        const trans = db.transaction(['suppliers', 'quotes'], 'readwrite');
+        trans.objectStore('suppliers').delete(id);
+        const quoteIndex = trans.objectStore('quotes').index('supplierId');
+        quoteIndex.openCursor(IDBKeyRange.only(id)).onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) { cursor.delete(); cursor.continue(); }
+        }
+        trans.oncomplete = async () => {
+            await logAction('Supplier Deleted', `Name: ${name}`);
+            switchView('suppliers');
+        };
+    };
+
+    // --- QUOTE LOGIC ---
+    document.getElementById('quote-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('quote-id').value;
+        const item = document.getElementById('quote-item').value;
+        const quoteData = {
+            supplierId: parseInt(document.getElementById('quote-supplier').value),
+            group: document.getElementById('quote-group').value.trim(),
+            item: item,
+            price: parseFloat(document.getElementById('quote-price').value),
+            validity: document.getElementById('quote-validity').value,
+            specs: document.getElementById('quote-specs').value,
+            status: document.getElementById('quote-status').value,
+            lastModified: new Date()
+        };
+        const transaction = db.transaction(['quotes'], 'readwrite');
+        const request = id ? transaction.objectStore('quotes').put({ ...quoteData, id: parseInt(id) }) : transaction.objectStore('quotes').add(quoteData);
+
+        request.onsuccess = async () => {
+            await logAction(id ? 'Quote Updated' : 'Quote Created', `Item: ${item}`);
+            document.getElementById('quote-modal').style.display = 'none';
+            renderQuotes();
+        };
+    });
+
+    async function getQuotesAndSuppliers() {
+        const trans = db.transaction(['quotes', 'suppliers'], 'readonly');
+        const quotes = await new Promise(r => trans.objectStore('quotes').getAll().onsuccess = e => r(e.target.result));
+        const suppliers = await new Promise(r => trans.objectStore('suppliers').getAll().onsuccess = e => r(e.target.result));
+        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+        return quotes.map(q => ({ ...q, supplierName: supplierMap.get(q.supplierId) || 'N/A' }));
+    }
+
+    async function renderQuotes() {
+        let allQuotes = await getQuotesAndSuppliers();
+        // Filtering
+        const searchTerm = document.getElementById('search-quotes').value.toLowerCase();
+        const statusFilter = document.getElementById('filter-status').value;
+
+        if (searchTerm) allQuotes = allQuotes.filter(q => q.item.toLowerCase().includes(searchTerm));
+        if (statusFilter !== 'all') allQuotes = allQuotes.filter(q => q.status === statusFilter);
+        
+        const container = document.getElementById('comparison-table-container');
+        if (allQuotes.length === 0) {
+            container.innerHTML = '<p>No quotes match the current filters.</p>'; return;
+        }
+
+        const groupedQuotes = allQuotes.reduce((acc, quote) => {
+            (acc[quote.group] = acc[quote.group] || []).push(quote);
+            return acc;
+        }, {});
+
+        // Sorting
+        for (const group in groupedQuotes) {
+            groupedQuotes[group].sort((a, b) => {
+                const valA = quoteSortConfig.key === 'price' ? a.price : a[quoteSortConfig.key];
+                const valB = quoteSortConfig.key === 'price' ? b.price : b[quoteSortConfig.key];
+                if (valA < valB) return quoteSortConfig.dir === 'asc' ? -1 : 1;
+                if (valA > valB) return quoteSortConfig.dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        
+        const sortIcon = (key) => quoteSortConfig.key === key ? (quoteSortConfig.dir === 'asc' ? '▲' : '▼') : '↕';
+
+        let tableHTML = '';
+        for (const groupName in groupedQuotes) {
+            const group = groupedQuotes[groupName];
+            const minPrice = Math.min(...group.map(q => q.price));
+
+            tableHTML += `<h3>Comparison Group: ${groupName}</h3>`;
+            tableHTML += `<table><thead><tr>
+                <th class="sortable" onclick="setSort('supplierName')">Supplier <span class="sort-icon">${sortIcon('supplierName')}</span></th>
+                <th class="sortable" onclick="setSort('item')">Item/Service <span class="sort-icon">${sortIcon('item')}</span></th>
+                <th class="sortable" onclick="setSort('price')">Price <span class="sort-icon">${sortIcon('price')}</span></th>
+                <th>Status</th><th>Validity</th><th>Specifications</th><th class="no-print">Actions</th>
+            </tr></thead><tbody>`;
+            
+            group.forEach(q => {
+                const isBestPrice = q.price === minPrice && group.length > 1;
+                tableHTML += `
+                    <tr class="${isBestPrice ? 'best-price' : ''}">
+                        <td>${q.supplierName}</td>
+                        <td>${q.item}</td>
+                        <td>$${q.price.toFixed(2)} ${isBestPrice ? '⭐' : ''}</td>
+                        <td><span class="status-badge status-${q.status.toLowerCase()}">${q.status}</span></td>
+                        <td>${q.validity || 'N/A'}</td>
+                        <td>${q.specs.replace(/\n/g, '<br>') || 'N/A'}</td>
+                        <td class="no-print">
+                            <button class="btn btn-secondary btn-sm" onclick="editQuote(${q.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteQuote(${q.id}, '${q.item}')">Delete</button>
+                        </td>
+                    </tr>`;
+            });
+            tableHTML += '</tbody></table>';
+        }
+        container.innerHTML = tableHTML;
+    }
+
+    window.setSort = (key) => {
+        if (quoteSortConfig.key === key) {
+            quoteSortConfig.dir = quoteSortConfig.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            quoteSortConfig.key = key;
+            quoteSortConfig.dir = 'asc';
+        }
+        renderQuotes();
+    };
+
+    window.editQuote = (id) => {
+        db.transaction('quotes').objectStore('quotes').get(id).onsuccess = e => {
+            const q = e.target.result;
+            document.getElementById('quote-id').value = q.id;
+            document.getElementById('quote-supplier').value = q.supplierId;
+            document.getElementById('quote-group').value = q.group;
+            document.getElementById('quote-item').value = q.item;
+            document.getElementById('quote-price').value = q.price;
+            document.getElementById('quote-validity').value = q.validity;
+            document.getElementById('quote-specs').value = q.specs;
+            document.getElementById('quote-status').value = q.status;
+            document.getElementById('quote-modal-title').textContent = 'Edit Quote';
+            document.getElementById('quote-modal').style.display = 'block';
+        };
+    };
+    
+    window.deleteQuote = (id, item) => {
+        if (!confirm(`Are you sure you want to delete quote for "${item}"?`)) return;
+        db.transaction(['quotes'], 'readwrite').objectStore('quotes').delete(id).onsuccess = async () => {
+            await logAction('Quote Deleted', `Item: ${item}`);
+            renderQuotes();
+        };
+    };
+    
+    document.getElementById('search-quotes').addEventListener('input', renderQuotes);
+    document.getElementById('filter-status').addEventListener('change', renderQuotes);
+    
+    // --- UTILITY FUNCTIONS ---
+    async function populateSupplierDropdown() {
+        const suppliers = await new Promise(r => db.transaction('suppliers').objectStore('suppliers').getAll().onsuccess = e => r(e.target.result));
+        const select = document.getElementById('quote-supplier');
+        select.innerHTML = '<option value="">-- Select a Supplier --</option>';
+        suppliers.forEach(s => {
+            select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }
+
+    // --- DASHBOARD & AUDIT LOG ---
+    async function renderDashboard() {
+        const quotes = await getQuotesAndSuppliers();
+        const suppliers = await new Promise(r => db.transaction('suppliers').objectStore('suppliers').getAll().onsuccess = e => r(e.target.result));
+
+        const pendingCount = quotes.filter(q => q.status === 'Pending').length;
+        const approvedValue = quotes.filter(q => q.status === 'Approved').reduce((sum, q) => sum + q.price, 0);
+
+        const supplierRatings = suppliers.map(s => {
+             const supplierQuotes = quotes.filter(q => q.supplierId === s.id);
+             const totalRating = (s.rating || 0);
+             const ratingCount = s.rating ? 1 : 0;
+             return { name: s.name, avgRating: ratingCount > 0 ? (totalRating / ratingCount) : 0 };
+        }).sort((a,b) => b.avgRating - a.avgRating).slice(0, 5);
+        
+        let topSuppliersHTML = '<ul>';
+        supplierRatings.filter(s => s.avgRating > 0).forEach(s => {
+            topSuppliersHTML += `<li>${s.name} (${s.avgRating.toFixed(1)} ★)</li>`;
+        });
+        topSuppliersHTML += '</ul>';
+
+        const container = document.getElementById('dashboard-container');
+        container.innerHTML = `
+            <div class="dashboard-card"><h3>Pending Quotes</h3><div class="stat">${pendingCount}</div></div>
+            <div class="dashboard-card"><h3>Total Value Approved</h3><div class="stat">$${approvedValue.toFixed(2)}</div></div>
+            <div class="dashboard-card"><h3>Top Rated Suppliers</h3>${topSuppliersHTML || '<p>No rated suppliers yet.</p>'}</div>
+        `;
+    }
+
+    async function renderAuditLog() {
+        const logs = (await new Promise(r => db.transaction('logs').objectStore('logs').getAll().onsuccess = e => r(e.target.result))).reverse();
+        const container = document.getElementById('audit-log-container');
+        if(logs.length === 0){
+             container.innerHTML = '<p>No actions have been logged yet.</p>'; return;
+        }
+        let tableHTML = '<table><thead><tr><th>Timestamp</th><th>Action</th><th>Details</th></tr></thead><tbody>';
+        logs.forEach(log => {
+            tableHTML += `<tr>
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td>${log.action}</td>
+                <td>${log.details}</td>
+            </tr>`;
+        });
+        container.innerHTML = tableHTML + '</tbody></table>';
+    }
+
+    // --- CSV EXPORT --- (unchanged)
+    document.getElementById('export-csv').addEventListener('click', async () => {
+        const quotes = await getQuotesAndSuppliers();
+        if (quotes.length === 0) { alert('No data to export.'); return; }
+        let csvContent = "data:text/csv;charset=utf-8,";
+        const headers = ['Comparison Group', 'Supplier', 'Item', 'Price', 'Status', 'Validity', 'Specifications'];
+        csvContent += headers.join(',') + '\r\n';
+        quotes.forEach(q => {
+            const row = [`"${q.group}"`, `"${q.supplierName}"`, `"${q.item}"`, q.price, q.status, `"${q.validity}"`, `"${q.specs.replace(/"/g, '""')}"`];
+            csvContent += row.join(',') + '\r\n';
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'quote_comparison.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // --- INITIALIZE ---
+    initDB();
+});
+</script>
+
+</body>
+</html>

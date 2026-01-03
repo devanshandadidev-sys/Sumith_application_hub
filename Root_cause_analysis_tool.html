@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Root Cause Analysis (RCA) Tool - Final Version</title>
+    <style>
+        :root {
+            --primary-color: #005A9E;
+            --secondary-color: #f0f8ff;
+            --border-color: #dee2e6;
+            --font-color: #333;
+            --header-bg: #f8f9fa;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --dark-bg: #121212;
+            --dark-bg-secondary: #1e1e1e;
+            --dark-font-color: #e0e0e0;
+            --dark-border-color: #444;
+            --dark-primary-color: #3399ff;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--secondary-color); color: var(--font-color); line-height: 1.6; transition: background-color 0.3s, color 0.3s; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; transition: background-color 0.3s, box-shadow 0.3s; }
+        header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); gap: 15px; }
+        header h1 { color: var(--primary-color); margin: 0; font-size: 24px; transition: color 0.3s; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn { padding: 10px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: background-color 0.3s, transform 0.2s; }
+        .btn-primary { background-color: var(--primary-color); color: #fff; }
+        .btn-secondary { background-color: #6c757d; color: #fff; }
+        .btn-success { background-color: var(--success-color); color: #fff; }
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        #rca-list table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #rca-list th, #rca-list td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        #rca-list th { background-color: var(--header-bg); font-weight: 600; }
+        #rca-list tr:hover { background-color: var(--secondary-color); }
+        .status { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; text-align: center; }
+        .status-open { background-color: #fff0dd; color: #f39c12; }
+        .status-investigating { background-color: #e0f7fa; color: #00bcd4; }
+        .status-closed { background-color: #e8f5e9; color: var(--success-color); }
+        .tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; }
+        .tab-link { padding: 10px 20px; cursor: pointer; background: var(--header-bg); border: 1px solid var(--border-color); border-bottom: none; margin-right: 5px; border-radius: 5px 5px 0 0; font-weight: 500; }
+        .tab-link.active { background: #fff; border-bottom: 2px solid #fff; position: relative; top: 2px; font-weight: 700; color: var(--primary-color); }
+        .tab-content { display: none; padding-top: 10px; }
+        .tab-content.active { display: block; }
+        h2, h3 { color: var(--primary-color); }
+        h2 { font-size: 20px; border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; margin-top: 0; }
+        h3 { font-size: 18px; margin-top: 30px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        label { font-weight: 600; margin-bottom: 6px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 14px; font-family: inherit; }
+        textarea { resize: vertical; min-height: 40px; }
+        table.dynamic-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .dynamic-table th, .dynamic-table td { border: 1px solid var(--border-color); padding: 8px; text-align: left; vertical-align: middle; }
+        .dynamic-table th { background-color: var(--header-bg); }
+        .dynamic-table textarea { width: 100%; min-height: 40px; }
+        .action-buttons { margin-top: 30px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        body.dark { background-color: var(--dark-bg); color: var(--dark-font-color); }
+        body.dark .container { background-color: var(--dark-bg-secondary); }
+        body.dark header { border-bottom-color: var(--dark-border-color); }
+        body.dark h1, body.dark h2, body.dark h3 { color: var(--dark-primary-color); }
+        body.dark table, body.dark th, body.dark td { border-color: var(--dark-border-color); }
+        body.dark tr:hover { background-color: #2c2c2c; }
+        body.dark th { background-color: #252525; }
+        body.dark .tab-link { background: #252525; border-color: var(--dark-border-color); }
+        body.dark .tab-link.active { background: var(--dark-bg-secondary); color: var(--dark-primary-color); }
+        body.dark input, body.dark select, body.dark textarea { background-color: #252525; color: var(--dark-font-color); border-color: #555; }
+        #theme-toggle { position: fixed; top: 10px; right: 10px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <button id="theme-toggle" title="Toggle Dark/Light Theme" class="btn btn-primary">Dark Mode</button>
+    <div class="container">
+        <div id="dashboard-view">
+            <header>
+                <h1>RCA Dashboard</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="showFormView()">+ New RCA</button>
+                    <button class="btn btn-success" onclick="exportData()">Download Backup</button>
+                    <button class="btn btn-secondary" onclick="importData()">Import from Backup</button>
+                    <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+                </div>
+            </header>
+            <div id="rca-list"></div>
+        </div>
+        <div id="form-view" style="display: none;">
+            <header><h1>Root Cause Analysis Record</h1><button class="btn btn-secondary" onclick="showDashboardView()">Back to Dashboard</button></header>
+            <div class="rca-form-container">
+                <input type="hidden" id="rca-id">
+                <div class="tabs">
+                    <span class="tab-link active" onclick="openTab(event, 'definition')">1. Definition</span>
+                    <span class="tab-link" onclick="openTab(event, 'investigation')">2. Investigation</span>
+                    <span class="tab-link" onclick="openTab(event, 'capa')">3. CAPA Plan</span>
+                    <span class="tab-link" onclick="openTab(event, 'verification')">4. Verification</span>
+                </div>
+                <div id="definition" class="tab-content active">
+                    <h2>Problem Definition</h2>
+                    <div class="form-grid">
+                        <div class="form-group"><label for="problem-title">Problem Title</label><textarea id="problem-title" rows="2"></textarea></div>
+                        <div class="form-group"><label for="assigned-investigator">Assigned Investigator</label><textarea id="assigned-investigator" rows="2"></textarea></div>
+                        <div class="form-group"><label for="incident-date">Date & Time of Incident</label><input type="datetime-local" id="incident-date"></div>
+                        <div class="form-group"><label for="impact-severity">Impact Severity</label><select id="impact-severity"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+                    </div>
+                    <div class="form-group" style="margin-top: 20px;"><label for="problem-description">Detailed Problem Description</label><textarea id="problem-description" rows="4"></textarea></div>
+                </div>
+                <div id="investigation" class="tab-content">
+                    <h3>5 Whys Analysis</h3>
+                    <table id="five-whys-table" class="dynamic-table"><thead><tr><th>Why?</th><th>Answer</th></tr></thead><tbody></tbody></table>
+                    <button class="btn btn-secondary" onclick="addWhyRow()">+ Add Why</button>
+                    <h3>Fishbone Diagram Categories</h3>
+                    <div class="form-grid">
+                        <div class="form-group"><label>People</label><textarea class="fishbone-cause" data-category="People"></textarea></div>
+                        <div class="form-group"><label>Process</label><textarea class="fishbone-cause" data-category="Process"></textarea></div>
+                        <div class="form-group"><label>Machinery</label><textarea class="fishbone-cause" data-category="Machinery"></textarea></div>
+                        <div class="form-group"><label>Materials</label><textarea class="fishbone-cause" data-category="Materials"></textarea></div>
+                        <div class="form-group"><label>Environment</label><textarea class="fishbone-cause" data-category="Environment"></textarea></div>
+                        <div class="form-group"><label>Measurement</label><textarea class="fishbone-cause" data-category="Measurement"></textarea></div>
+                    </div>
+                    <h3>Root Cause Statement</h3>
+                    <div class="form-group"><textarea id="root-cause-statement" rows="4"></textarea></div>
+                </div>
+                <div id="capa" class="tab-content">
+                    <h3>Corrective Actions</h3>
+                    <table id="corrective-actions-table" class="dynamic-table"><thead><tr><th>Action</th><th>Owner</th><th>Due Date</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+                    <button class="btn btn-secondary" onclick="addCapaRow('corrective')">+ Add</button>
+                    <h3>Preventive Actions</h3>
+                    <table id="preventive-actions-table" class="dynamic-table"><thead><tr><th>Action</th><th>Owner</th><th>Due Date</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+                    <button class="btn btn-secondary" onclick="addCapaRow('preventive')">+ Add</button>
+                </div>
+                <div id="verification" class="tab-content">
+                    <h3>Verification & Closure</h3>
+                    <div class="form-group"><label for="verification-method">Verification Method</label><textarea id="verification-method" rows="4"></textarea></div>
+                    <div class="form-group"><label for="verification-results">Verification Results</label><textarea id="verification-results" rows="4"></textarea></div>
+                    <div class="form-group"><label for="rca-status">Mark RCA Status as:</label><select id="rca-status"><option>Open</option><option>Investigating</option><option>Closed</option></select></div>
+                </div>
+                <div class="action-buttons"><button class="btn btn-primary" onclick="saveRca()">Save RCA</button><button class="btn btn-secondary" onclick="printReport()">Print Report</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rcaDb = {
+            db: null, dbName: 'RCA_Database', storeName: 'rca_records',
+            async open() { if (this.db) return this.db; return new Promise((resolve, reject) => { const req = indexedDB.open(this.dbName, 1); req.onerror = () => reject("DB Error"); req.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); }; req.onupgradeneeded = (e) => e.target.result.createObjectStore(this.storeName, { keyPath: 'id' }); }); },
+            async getTransaction(mode) { await this.open(); return this.db.transaction(this.storeName, mode); },
+            async save(record) { const tx = await this.getTransaction('readwrite'); return new Promise((resolve, reject) => { const req = tx.objectStore(this.storeName).put(record); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); },
+            async get(id) { const tx = await this.getTransaction('readonly'); return new Promise((resolve, reject) => { const req = tx.objectStore(this.storeName).get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); },
+            async getAll() { const tx = await this.getTransaction('readonly'); return new Promise((resolve, reject) => { const req = tx.objectStore(this.storeName).getAll(); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); },
+            async delete(id) { const tx = await this.getTransaction('readwrite'); return new Promise((resolve, reject) => { const req = tx.objectStore(this.storeName).delete(id); req.onsuccess = () => resolve(); req.onerror = () => reject(req.error); }); },
+            async clear() { const tx = await this.getTransaction('readwrite'); return new Promise((resolve, reject) => { const req = tx.objectStore(this.storeName).clear(); req.onsuccess = () => resolve(); req.onerror = () => reject(req.error); }); }
+        };
+        const dashboardView = document.getElementById('dashboard-view'), formView = document.getElementById('form-view');
+        async function exportData() { const data = await rcaDb.getAll(); if (data.length === 0) { alert('No data to export.'); return; } const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `rca_backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); }
+        function importData() { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json,application/json'; input.onchange = e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async readerEvent => { if (!confirm('This will clear existing data and replace it. Continue?')) return; try { const data = JSON.parse(readerEvent.target.result); if (Array.isArray(data)) { await rcaDb.clear(); for (const record of data) await rcaDb.save(record); alert('Data imported successfully!'); renderRcaList(); } else alert('Invalid file format.'); } catch (error) { alert('Error parsing file.'); } }; reader.readAsText(file); }; input.click(); }
+        async function clearAllData() { if (confirm('WARNING: This will permanently delete all RCA records. Continue?')) { await rcaDb.clear(); renderRcaList(); alert('All data has been cleared.'); } }
+        function showDashboardView() { renderRcaList(); dashboardView.style.display = 'block'; formView.style.display = 'none'; }
+        async function showFormView(rcaId = null) { resetForm(); if (rcaId) await loadRcaIntoForm(rcaId); dashboardView.style.display = 'none'; formView.style.display = 'block'; }
+        function openTab(evt, tabName) { formView.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none'); formView.querySelectorAll('.tab-link').forEach(tl => tl.classList.remove('active')); formView.querySelector(`#${tabName}`).style.display = 'block'; evt.currentTarget.classList.add('active'); }
+        function addWhyRow() { document.getElementById('five-whys-table').tBodies[0].insertRow().innerHTML = `<td><textarea rows="2"></textarea></td><td><textarea rows="2"></textarea></td>`; }
+        function addCapaRow(type) { document.getElementById(`${type}-actions-table`).tBodies[0].insertRow().innerHTML = `<td><textarea rows="2"></textarea></td><td><textarea rows="2"></textarea></td><td><input type="date"></td><td><select><option>Not Started</option><option>In Progress</option><option>Completed</option></select></td><td style="text-align:center;"><button onclick="this.parentNode.parentNode.remove()" class="btn-danger">-</button></td>`; }
+        async function saveRca() {
+            const rcaData = {
+                id: document.getElementById('rca-id').value || `rca-${Date.now()}`,
+                title: document.getElementById('problem-title').value, incidentDate: document.getElementById('incident-date').value, severity: document.getElementById('impact-severity').value, investigator: document.getElementById('assigned-investigator').value, description: document.getElementById('problem-description').value,
+                fiveWhys: Array.from(document.querySelectorAll('#five-whys-table tbody tr')).map(r => ({ why: r.cells[0].querySelector('textarea').value, because: r.cells[1].querySelector('textarea').value })),
+                fishbone: Array.from(document.querySelectorAll('.fishbone-cause')).reduce((acc, el) => ({...acc, [el.dataset.category]: el.value}), {}),
+                rootCause: document.getElementById('root-cause-statement').value,
+                correctiveActions: Array.from(document.querySelectorAll('#corrective-actions-table tbody tr')).map(r => ({ action: r.cells[0].querySelector('textarea').value, owner: r.cells[1].querySelector('textarea').value, dueDate: r.cells[2].querySelector('input').value, status: r.cells[3].querySelector('select').value })),
+                preventiveActions: Array.from(document.querySelectorAll('#preventive-actions-table tbody tr')).map(r => ({ action: r.cells[0].querySelector('textarea').value, owner: r.cells[1].querySelector('textarea').value, dueDate: r.cells[2].querySelector('input').value, status: r.cells[3].querySelector('select').value })),
+                verificationMethod: document.getElementById('verification-method').value, verificationResults: document.getElementById('verification-results').value, status: document.getElementById('rca-status').value
+            };
+            if (!rcaData.title) { alert('Problem Title is required.'); return; }
+            await rcaDb.save(rcaData);
+            showDashboardView();
+        }
+        function resetForm() { formView.querySelectorAll('input, textarea, select').forEach(el => el.value = ''); formView.querySelectorAll('.dynamic-table tbody').forEach(tbody => tbody.innerHTML = ''); addWhyRow(); addCapaRow('corrective'); addCapaRow('preventive'); openTab({currentTarget: formView.querySelector('.tab-link')}, 'definition'); }
+        async function loadRcaIntoForm(rcaId) {
+            const rca = await rcaDb.get(rcaId); if (!rca) { alert('Record not found.'); return; }
+            document.getElementById('rca-id').value = rca.id;
+            document.getElementById('problem-title').value = rca.title || '';
+            document.getElementById('incident-date').value = rca.incidentDate || '';
+            document.getElementById('impact-severity').value = rca.severity || 'Low';
+            document.getElementById('assigned-investigator').value = rca.investigator || '';
+            document.getElementById('problem-description').value = rca.description || '';
+            const whyTbody = document.getElementById('five-whys-table').tBodies[0];
+            if (rca.fiveWhys) rca.fiveWhys.forEach(item => { whyTbody.insertRow().innerHTML = `<td><textarea rows="2">${item.why || ''}</textarea></td><td><textarea rows="2">${item.because || ''}</textarea></td>`; });
+            document.querySelectorAll('.fishbone-cause').forEach(el => { if(rca.fishbone) el.value = rca.fishbone[el.dataset.category] || ''; });
+            document.getElementById('root-cause-statement').value = rca.rootCause || '';
+            const loadCapa = (type, data) => { if (!data) return; const tbody = document.getElementById(`${type}-actions-table`).tBodies[0]; data.forEach(item => { tbody.insertRow().innerHTML = `<td><textarea rows="2">${item.action || ''}</textarea></td><td><textarea rows="2">${item.owner || ''}</textarea></td><td><input type="date" value="${item.dueDate || ''}"></td><td><select><option ${item.status === 'Not Started' ? 'selected' : ''}>Not Started</option><option ${item.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${item.status === 'Completed' ? 'selected' : ''}>Completed</option></select></td><td style="text-align:center;"><button onclick="this.parentNode.parentNode.remove()" class="btn-danger">-</button></td>`; }); };
+            loadCapa('corrective', rca.correctiveActions); loadCapa('preventive', rca.preventiveActions);
+            document.getElementById('verification-method').value = rca.verificationMethod || '';
+            document.getElementById('verification-results').value = rca.verificationResults || '';
+            document.getElementById('rca-status').value = rca.status || 'Open';
+        }
+        async function renderRcaList() {
+            const listContainer = document.getElementById('rca-list');
+            const allRcas = await rcaDb.getAll();
+            const sortedRcas = allRcas.sort((a,b) => (b.incidentDate || '').localeCompare(a.incidentDate || ''));
+            if (sortedRcas.length === 0) { listContainer.innerHTML = '<p>No records found.</p>'; return; }
+            listContainer.innerHTML = `<table><thead><tr><th>Title</th><th>Date</th><th>Investigator</th><th>Status</th><th>Actions</th></tr></thead><tbody>${sortedRcas.map(rca => `<tr><td>${rca.title || ''}</td><td>${rca.incidentDate ? new Date(rca.incidentDate).toLocaleDateString() : ''}</td><td>${rca.investigator || ''}</td><td><span class="status status-${(rca.status || 'open').toLowerCase()}">${rca.status}</span></td><td><button onclick="showFormView('${rca.id}')" class="btn btn-secondary">Edit</button> <button onclick="deleteRca('${rca.id}')" class="btn btn-danger">Delete</button></td></tr>`).join('')}</tbody></table>`;
+        }
+        async function deleteRca(rcaId) { if (confirm('Permanently delete this record?')) { await rcaDb.delete(rcaId); renderRcaList(); } }
+        
+        // --- CORRECTED Print Report Function ---
+        function generateReportHtml(rca) {
+            const escape = text => text ? text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]) : '';
+            const formatDate = dateStr => dateStr ? new Date(dateStr).toLocaleString() : 'N/A';
+            const renderActionsTable = (actions, headers = ['Action', 'Owner', 'Due Date', 'Status']) => {
+                if (!actions || !actions.length) return '<p>None recorded.</p>';
+                return `<table border="1"><thead><tr><th>${headers[0]}</th><th>${headers[1]}</th><th>${headers[2]}</th><th>${headers[3]}</th></tr></thead><tbody>${actions.map(act => `<tr><td><pre>${escape(act.action)}</pre></td><td><pre>${escape(act.owner)}</pre></td><td>${escape(act.dueDate)}</td><td>${escape(act.status)}</td></tr>`).join('')}</tbody></table>`;
+            };
+            const generateFishboneHtml = (fishboneData = {}) => {
+                const categories = ['People', 'Process', 'Machinery', 'Materials', 'Environment', 'Measurement'];
+                let html = `<div class="fishbone-grid">${categories.map(cat => {
+                    const causes = (fishboneData[cat] || '').split('\n').filter(c => c.trim()).map(c => `<li>${escape(c)}</li>`).join('');
+                    return `<div class="fishbone-cell"><h4>${cat}</h4><ul>${causes || '<li>No causes listed</li>'}</ul></div>`;
+                }).join('')}</div>`;
+                html += `<div class="fishbone-problem"><strong>Problem:</strong> ${escape(rca.title)}</div>`;
+                return html;
+            };
+            return `
+                <html><head><title>RCA Report: ${escape(rca.title)}</title><style>
+                    body { font-family: Arial, sans-serif; margin: 20px; color: #333; } h1, h2, h3, h4 { color: #004175; border-bottom: 2px solid #e0eaf6; padding-bottom: 5px; } 
+                    .section { margin-bottom: 25px; page-break-inside: avoid; } table { width: 100%; border-collapse: collapse; margin: 15px 0; } th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; } th { background-color: #f2f6fa; }
+                    pre { background: #f9f9f9; padding: 10px; border: 1px solid #eee; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 14px; margin: 0;}
+                    .fishbone-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; border: 2px solid #005A9E; padding: 15px; border-radius: 8px; }
+                    .fishbone-cell { background-color: #f9fafd; border: 1px solid #e0eaf6; padding: 15px; border-radius: 5px; } .fishbone-cell ul { margin: 0; padding-left: 20px; }
+                    .fishbone-problem { text-align: center; font-weight: bold; font-size: 18px; color: #dc3545; margin-top: 20px; }
+                </style></head><body>
+                    <h1>Root Cause Analysis Report</h1>
+                    <div class="section"><h2>1. Problem Definition</h2><p><strong>Title:</strong><pre>${escape(rca.title)}</pre></p><p><strong>Date:</strong> ${formatDate(rca.incidentDate)}</p><p><strong>Investigator(s):</strong><pre>${escape(rca.investigator)}</pre></p><h3>Description</h3><pre>${escape(rca.description)}</pre></div>
+                    <div class="section"><h2>2. Investigation</h2><h3>Fishbone Diagram</h3>${generateFishboneHtml(rca.fishbone)}</div>
+                    <div class="section"><h3>5 Whys</h3>${renderActionsTable(rca.fiveWhys.map(w=>({action:w.why, owner:w.because, dueDate:'',status:''})), ['Why?', 'Because...', '', ''])}</div>
+                    <div class="section"><h3>Root Cause Statement</h3><pre>${escape(rca.rootCause)}</pre></div>
+                    <div class="section"><h2>3. CAPA Plan</h2><h3>Corrective Actions</h3>${renderActionsTable(rca.correctiveActions)}<h3>Preventive Actions</h3>${renderActionsTable(rca.preventiveActions)}</div>
+                    <div class="section"><h2>4. Verification</h2><h3>Method</h3><pre>${escape(rca.verificationMethod)}</pre><h3>Results</h3><pre>${escape(rca.verificationResults)}</pre><p><strong>Final Status:</strong> ${escape(rca.status)}</p></div>
+                </body></html>`;
+        }
+        async function printReport() {
+            const rcaId = document.getElementById('rca-id').value; if (!rcaId) { alert('Please save before printing.'); return; }
+            const rca = await rcaDb.get(rcaId); if (!rca) { alert('Record not found.'); return; }
+            const reportHtml = generateReportHtml(rca);
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(reportHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 500);
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => { if (localStorage.getItem('rcaTheme') === 'dark') { document.body.classList.add('dark'); document.getElementById('theme-toggle').textContent = 'Light Mode'; } showDashboardView(); });
+        document.getElementById('theme-toggle').addEventListener('click', () => { document.body.classList.toggle('dark'); const isDark = document.body.classList.contains('dark'); document.getElementById('theme-toggle').textContent = isDark ? 'Light Mode' : 'Dark Mode'; localStorage.setItem('rcaTheme', isDark ? 'dark' : 'light'); });
+    </script>
+</body>
+</html>

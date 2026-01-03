@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primavera P6 Live Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5; margin: 0; padding: 20px; color: #333;
+        }
+        .container {
+            max-width: 1800px; margin: auto; background: #fff; padding: 25px;
+            border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #e0e0e0; padding-bottom: 15px; margin-bottom: 25px;
+        }
+        header h1 { margin: 0; font-size: 28px; color: #1a237e; }
+        .controls { display: flex; align-items: center; gap: 10px; }
+        #file-input { display: none; }
+        .button {
+            padding: 10px 18px; color: white; border: none;
+            border-radius: 5px; cursor: pointer; font-size: 16px; text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        .button-primary { background-color: #007bff; }
+        .button-primary:hover { background-color: #0056b3; }
+        .button-success { background-color: #28a745; }
+        .button-success:hover { background-color: #218838; }
+
+        #file-name { font-style: italic; color: #555; }
+        h2 {
+            border-bottom: 2px solid #1a237e; padding-bottom: 8px; margin: 40px 0 20px 0; font-size: 22px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex; flex-direction: column;
+        }
+        .card h3 {
+            margin: 0 0 15px 0; font-size: 16px; color: #555;
+            text-transform: uppercase; text-align: left;
+        }
+        .chart-container { flex-grow: 1; position: relative; min-height: 250px; }
+        
+        .kpi-card-content { display: flex; align-items: center; gap: 20px; }
+        .kpi-donut-container { flex-basis: 180px; flex-shrink: 0; }
+        .kpi-sub-metrics { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: center; }
+        .kpi-metric .value { font-size: 24px; font-weight: 600; color: #1a237e; }
+        .kpi-metric .label { font-size: 14px; color: #666; }
+        
+        .milestone-table-container { margin-top: 20px; max-height: 180px; overflow-y: auto; }
+        #milestones-table { width: 100%; border-collapse: collapse; }
+        #milestones-table th, #milestones-table td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
+        #milestones-table th { font-weight: bold; }
+
+        .schedule-progress { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+        .progress-item { display: flex; align-items: center; gap: 10px; }
+        .progress-label { width: 100px; font-size: 14px; }
+        .progress-bar-container { flex-grow: 1; background-color: #e9ecef; border-radius: 5px; height: 25px; }
+        .progress-bar { height: 100%; border-radius: 5px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; color: white; font-weight: bold; font-size: 14px; }
+        
+        #timesheet-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #timesheet-table th, #timesheet-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #timesheet-table th { background-color: #f2f2f2; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Primavera P6 Dashboard</h1>
+            <div class="controls">
+                <input type="file" id="file-input" accept=".xlsx, .xls" />
+                <label for="file-input" class="button button-success">Load P6 Data (.xlsx)</label>
+                <span id="file-name">No file selected</span>
+            </div>
+        </header>
+        
+        <div class="grid-container">
+            <div class="card">
+                <h3>Tasks</h3>
+                <div class="kpi-card-content">
+                    <div class="kpi-donut-container"><canvas id="task-status-donut"></canvas></div>
+                    <div class="kpi-sub-metrics">
+                        <div class="kpi-metric"><div id="total-tasks" class="value">0</div><div class="label">Total Tasks</div></div>
+                        <div class="kpi-metric"><div id="unassigned-tasks" class="value">0</div><div class="label">Unassigned</div></div>
+                        <div class="kpi-metric"><div id="overdue-tasks" class="value">0</div><div class="label">Overdue</div></div>
+                        <div class="kpi-metric"><div id="completed-tasks" class="value">0</div><div class="label">Completed</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Milestones</h3>
+                 <div class="kpi-card-content">
+                    <div class="kpi-donut-container"><canvas id="milestones-pie-chart"></canvas></div>
+                    <div class="milestone-table-container">
+                        <table id="milestones-table">
+                            <thead><tr><th>Milestone</th><th>Date</th><th>Status</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Schedule</h3>
+                <div class="schedule-progress">
+                    <div class="progress-item">
+                        <div class="progress-label">Planned Progress</div>
+                        <div class="progress-bar-container"><div id="planned-progress-bar" class="progress-bar" style="width: 0%; background-color: #17a2b8;">0%</div></div>
+                    </div>
+                    <div class="progress-item">
+                        <div class="progress-label">Actual Progress</div>
+                        <div class="progress-bar-container"><div id="actual-progress-bar" class="progress-bar" style="width: 0%; background-color: #007bff;">0%</div></div>
+                    </div>
+                     <div class="progress-item">
+                        <div class="progress-label">Ahead</div>
+                        <div class="progress-bar-container"><div id="ahead-progress-bar" class="progress-bar" style="width: 0%; background-color: #ffc107; color: #333;">0%</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Budget</h3>
+                <div class="chart-container"><canvas id="budget-chart"></canvas></div>
+            </div>
+        </div>
+
+        <div>
+            <h2>Timesheet</h2>
+            <button class="button button-primary" id="export-csv">Export Timesheet to CSV</button>
+            <div style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
+                <table id="timesheet-table">
+                    <thead><tr><th>Resource</th><th>Task ID</th><th>Task Name</th><th>Start Date</th><th>End Date</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let timesheetData = [];
+
+        document.getElementById('file-input').addEventListener('change', e => {
+            if (e.target.files[0]) {
+                document.getElementById('file-name').textContent = e.target.files[0].name;
+                parseXLSX(e.target.files[0]);
+            }
+        });
+        document.getElementById('export-csv').addEventListener('click', exportToCSV);
+        
+        function toYYYYMMDD(date) { return (date instanceof Date && !isNaN(date)) ? date.toISOString().split('T')[0] : ''; }
+
+        function parseXLSX(file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+                    processP6Data(wb);
+                } catch (error) { console.error("Error processing XLSX file:", error); alert("Failed to process Excel file."); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function processP6Data(workbook) {
+            const taskSheet = workbook.Sheets['TASK'];
+            if (!taskSheet) return alert('Error: "TASK" sheet not found.');
+            const tasks = XLSX.utils.sheet_to_json(taskSheet, { range: 1 });
+            
+            timesheetData = [];
+            let taskMetrics = { total: 0, unassigned: 0, overdue: 0, completed: 0 };
+            let milestoneMetrics = { open: 0, done: 0, data: [] };
+            let budgetMetrics = { actual: 0, baseline: 0 };
+            let totalBaselineCost = 0, plannedValue = 0, earnedValue = 0;
+            const today = new Date();
+
+            tasks.forEach(row => {
+                const start = new Date(row['(*)Start']), end = new Date(row['(*)Finish']);
+                if (!row['Activity ID'] || isNaN(start) || isNaN(end)) return;
+
+                taskMetrics.total++;
+                const isCompleted = row['Activity Status'] === 'Completed';
+                if (isCompleted) taskMetrics.completed++;
+                if (!row['(*)Resources']?.trim()) taskMetrics.unassigned++;
+                if (!isCompleted && end < today) taskMetrics.overdue++;
+
+                const baselineCost = parseFloat(row['Baseline Cost']) || 0;
+                const actualCost = parseFloat(row['Actual Cost']) || 0;
+                const progress = parseFloat(row['Schedule % Complete']) || 0;
+                
+                budgetMetrics.baseline += baselineCost;
+                budgetMetrics.actual += actualCost;
+                
+                totalBaselineCost += baselineCost;
+                if (start <= today) {
+                    const duration = (end - start);
+                    const elapsed = (today - start);
+                    plannedValue += duration > 0 ? baselineCost * (Math.min(elapsed, duration) / duration) : (end <= today ? baselineCost : 0);
+                }
+                earnedValue += baselineCost * (progress / 100);
+
+                if ((end - start) === 0) {
+                    const status = isCompleted ? 'Done' : 'Open';
+                    if (status === 'Done') milestoneMetrics.done++; else milestoneMetrics.open++;
+                    milestoneMetrics.data.push({ name: row['Activity Name'], date: toYYYYMMDD(end), status });
+                }
+
+                (row['(*)Resources'] || '').split(',').forEach(r => { if (r.trim()) timesheetData.push({ resource: r.trim(), taskId: row['Activity ID'], taskName: row['Activity Name'], start: toYYYYMMDD(start), end: toYYYYMMDD(end) }); });
+            });
+            
+            const plannedProgress = totalBaselineCost > 0 ? (plannedValue / totalBaselineCost) * 100 : 0;
+            const actualProgress = totalBaselineCost > 0 ? (earnedValue / totalBaselineCost) * 100 : 0;
+            
+            updateTaskKPIs(taskMetrics);
+            renderMilestones(milestoneMetrics);
+            renderScheduleChart(plannedProgress, actualProgress);
+            renderBudgetChart(budgetMetrics.actual, budgetMetrics.baseline);
+            renderTimesheet(timesheetData);
+        }
+
+        function updateTaskKPIs(data) {
+            document.getElementById('total-tasks').textContent = data.total;
+            document.getElementById('unassigned-tasks').textContent = data.unassigned;
+            document.getElementById('overdue-tasks').textContent = data.overdue;
+            document.getElementById('completed-tasks').textContent = data.completed;
+            renderTaskStatusDonut(data);
+        }
+
+        let taskStatusDonut, milestonesPieChart, budgetChart;
+        function renderTaskStatusDonut({ total, completed }) {
+            if (taskStatusDonut) taskStatusDonut.destroy();
+            taskStatusDonut = new Chart('task-status-donut', { type: 'doughnut', data: { labels: ['Open', 'Completed'], datasets: [{ data: [total - completed, completed], backgroundColor: ['#007bff', '#28a745'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        }
+        
+        function renderMilestones(data) {
+            if (milestonesPieChart) milestonesPieChart.destroy();
+            milestonesPieChart = new Chart('milestones-pie-chart', { type: 'pie', data: { labels: ['Open', 'Done'], datasets: [{ data: [data.open, data.done], backgroundColor: ['#6c757d', '#007bff'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+            const tableBody = document.querySelector("#milestones-table tbody");
+            tableBody.innerHTML = data.data.sort((a,b) => new Date(a.date) - new Date(b.date)).map(m => `<tr><td>${m.name}</td><td>${m.date}</td><td>${m.status}</td></tr>`).join('');
+        }
+        
+        function renderScheduleChart(planned, actual) {
+            const ahead = Math.max(0, actual - planned);
+            document.getElementById('planned-progress-bar').style.width = `${planned}%`;
+            document.getElementById('planned-progress-bar').textContent = `${planned.toFixed(0)}%`;
+            document.getElementById('actual-progress-bar').style.width = `${actual}%`;
+            document.getElementById('actual-progress-bar').textContent = `${actual.toFixed(0)}%`;
+            document.getElementById('ahead-progress-bar').style.width = `${ahead}%`;
+            document.getElementById('ahead-progress-bar').textContent = `${ahead.toFixed(0)}%`;
+        }
+        
+        function renderBudgetChart(actual, budget) {
+            if (budgetChart) budgetChart.destroy();
+            const variance = budget - actual;
+            budgetChart = new Chart('budget-chart', { type: 'bar', data: { labels: ['Total Actual Cost', 'Total Budget', 'Variance'], datasets: [{ data: [actual, budget, variance], backgroundColor: ['#007bff', '#6c757d', variance >= 0 ? '#28a745' : '#dc3545'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+        }
+
+        function renderTimesheet(data) {
+            data.sort((a, b) => a.resource.localeCompare(b.resource) || new Date(a.start) - new Date(b.start));
+            document.querySelector("#timesheet-table tbody").innerHTML = data.map(item => `<tr><td>${item.resource}</td><td>${item.taskId}</td><td>${item.taskName}</td><td>${item.start}</td><td>${item.end}</td></tr>`).join('');
+        }
+        
+        function exportToCSV() {
+            if (timesheetData.length === 0) return alert("No data to export.");
+            let csv = "Resource,Task ID,Task Name,Start Date,End Date\n";
+            timesheetData.forEach(item => { csv += `${item.resource},${item.taskId},"${item.taskName.replace(/"/g, '""')}",${item.start},${item.end}\n`; });
+            const link = document.createElement("a");
+            link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
+            link.download = "timesheet.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    });
+    </script>
+</body>
+</html>

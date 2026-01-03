@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New POC Requirement Form</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333; background-color: #f8f9fa; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: auto; background: #ffffff; padding: 2.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+        h1 { font-size: 2rem; color: #212529; text-align: center; border-bottom: 1px solid #dee2e6; padding-bottom: 1rem; margin-bottom: 2rem; }
+        fieldset { border: none; padding: 0; margin: 0 0 2rem 0; }
+        legend { font-size: 1.5rem; font-weight: 600; color: #0056b3; padding-bottom: 0.5rem; margin-bottom: 1.5rem; width: 100%; border-bottom: 1px solid #e9ecef;}
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #495057; }
+        .form-field { margin-bottom: 1.5rem; }
+        input[type="text"], input[type="date"], input[type="number"], input[type="url"], input[type="file"], textarea, select { width: 100%; padding: 0.75rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ced4da; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+        textarea { min-height: 120px; resize: vertical; }
+        input:focus, textarea:focus, select:focus { border-color: #80bdff; outline: 0; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); }
+        .radio-group label, .checkbox-group label { font-weight: normal; display: flex; align-items: center; margin-bottom: 0.5rem; }
+        .radio-group input, .checkbox-group input { margin-right: 0.5rem; }
+        .form-actions { display: flex; gap: 1rem; margin-top: 2rem; }
+        button { flex: 1; padding: 12px; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        #submit-btn { background-color: #007bff; }
+        #print-btn { background-color: #6c757d; }
+        .hidden { display: none; }
+        @media print {
+            body { background: #fff; } .container { display: none; } .print-view { display: block; }
+            .print-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 10px; margin-bottom: 30px; }
+            .print-header h1 { font-size: 22pt; color: #0056b3; margin: 0; } .print-header .date { font-size: 11pt; color: #555; }
+            .print-section { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 25px; page-break-inside: avoid; }
+            .print-section-title { background-color: #0056b3; color: white; padding: 10px 15px; font-size: 14pt; font-weight: 600; }
+            .print-section-content { padding: 15px; } .print-field { display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+            .print-field:last-child { border-bottom: none; } .print-label { font-weight: bold; color: #333; width: 35%; padding-right: 15px; box-sizing: border-box; }
+            .print-value { width: 65%; color: #555; white-space: pre-wrap; word-break: break-word; }
+            .print-terms { margin-top: 40px; padding-top: 15px; border-top: 1px solid #ccc; font-size: 9pt; color: #666; }
+            .print-terms h3 { font-size: 11pt; color: #333; }
+        }
+    </style>
+</head>
+<body>
+<div id="form-container" class="container"></div>
+<div id="print-view-container" class="print-view"></div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 1. The form structure is embedded directly here! ---
+    const formStructure = [
+  {
+    "sn": "",
+    "section": "form title",
+    "subSection": "",
+    "fieldName": "",
+    "fieldType": "",
+    "isMandatory": "",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": "SOR Submission Form"
+  },
+  {
+    "sn": 1,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Client Name",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 2,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Project Name",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 3,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Upload Customer Requirements Document",
+    "fieldType": "Document upload",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 4,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "What kind of POC is this?",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 5,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "POC Requirements",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 6,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "POC Contact Person Detail",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 7,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "POC Delivery Address",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 8,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "ROM involved in POC. (R&D measurements to prioritize the POC such as Qty for immediate, Qty for 1 year):",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 9,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Customer Proposed POC completion date",
+    "fieldType": "Date",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 10,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Internally Proposed POC completion date",
+    "fieldType": "Date",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 11,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Expected POC Duration",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 12,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Requirement for standard/custom product",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes Standard Product, No New/Customized Product",
+    "conditionalRule": "Show \"Section 4: Device Custom Requirements\" if \"No New/Customized Product\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": 13,
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Preferred Device Model",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Discovery 4G, Discovery 4G with CAN, Compass 4G, Compass 4G with CAN, Discovery 2G, Compass 2G, Rover Series, Vision Series, Other",
+    "conditionalRule": "Show \"Other Device Model\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 1: Client Information",
+    "subSection": "",
+    "fieldName": "Other Device Model",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 15,
+    "section": "Section 2: General Use Case & Objectives",
+    "subSection": "",
+    "fieldName": "Requirement pertains to EV",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes, No",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 16,
+    "section": "Section 2: General Use Case & Objectives",
+    "subSection": "",
+    "fieldName": "Main Purpose of POC",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Location & Tracking, Geo Fence, Course Over Ground, GNSS Module, Odometer (Differential/Accumulated), Fuel Sensor, Tilt, Over Speed, Ignition Source (Pin/Speed/Voltage Based), Deep Sleep (Ignition/Accelerometer), Harsh Acceleration, Harsh Breaking, Rash Turning, Panic Buzzer, Over Speed Buzzer, Alert SMS, Emergency Server, Immobilizer, Panic Button, Password Authentication, Feature Configuration (Panic/Immobilizer/Vibration Alert), BMS, Turn Angle Configuration, Update Rate Source (Ignition/Speed), Buzzer Time Configuration, APN Mode Configuration (Common/Operator/Profile), Batch Count, Subscription, Current Loop, Supply Voltage Scale, Module (MC20, EC200EU), Bootstrap MCU, Bootstrap Controller Firmware, Flash Memory Part No and Size, File System Mode (LIFO/FIFO), SIM Lock, Time Zone, Restart Configuration, OBD Status, Ignition Timing Configuration, SIM TYPE (eSIM), SIM TYPE (Plastic), ESIM Profile Switching, Other",
+    "conditionalRule": "Show \"Other Purpose\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 2: General Use Case & Objectives",
+    "subSection": "",
+    "fieldName": "Other Purpose",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 18,
+    "section": "Section 2: General Use Case & Objectives",
+    "subSection": "",
+    "fieldName": "POC Objectives",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 19,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Battery Backup Duration",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 20,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Communication Interfaces",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "RS232, RS485, 1-Wire, WiFi, Bluetooth, Other",
+    "conditionalRule": "Show \"Other Communication Interface\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Other Communication Interface",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 22,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Specific Communication Requirement",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 23,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Digital Inputs",
+    "fieldType": "Number",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 24,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Digital Outputs",
+    "fieldType": "Number",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 25,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Operating Temperature Range",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Other Technical Specifications",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 27,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Communication Protocols",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "MQTT, TCP, UDP, HTTPS, Other",
+    "conditionalRule": "Show \"Other Protocol\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Other Protocol",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 30,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Reporting Triggers",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Engine On/Off, Speed Threshold, Harsh Driving Events, Geofence Entry/Exit, Other",
+    "conditionalRule": "Show \"Other Trigger\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Other Trigger",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 32,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Data Output Format",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "JSON, XML, CSV, Binary, Other",
+    "conditionalRule": "Show \"Other Data Output Format\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Other Data Output Format",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 33,
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "Authentication & Security Methods",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "SSL/TLS, API Key, OAuth2, Device Token, VPN/Mesh, Other",
+    "conditionalRule": "Show \"Other Security Method\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 3: Device Standard Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "Other Security Method",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 36,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Flash Memory Capacity",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 37,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "GPS Accuracy",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 39,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "External Sensor Integration",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes, No",
+    "conditionalRule": "Show \"Sensor List\" if \"Yes\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": 40,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Sensor List",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Fuel sensor, Temperature, Ignition status, Hall sensors, Other",
+    "conditionalRule": "Show \"Other Sensor\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Other Sensor",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 42,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Fuel Sensor Brand",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Omnicom, Technoton, Other",
+    "conditionalRule": "Show \"Other Fuel Sensor Brand\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Other Fuel Sensor Brand",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 44,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "CAN/OBD-II Interface Required",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes, No",
+    "conditionalRule": "Show \"CAN Parameters\" if \"Yes\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": 44.5,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "CAN Parameters",
+    "fieldType": "Number",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 45,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Required IP Rating",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 46,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.1 Hardware Specifications",
+    "fieldName": "Installation Type",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Hardwired, Plug & Play",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 47,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Real-time Updates Required",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes, No",
+    "conditionalRule": "Show \"Minimum Reporting Interval (sec)\" if \"Yes\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": 47.5,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Minimum Reporting Interval (sec)",
+    "fieldType": "Number",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 48,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Firmware Customizations",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 49,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Firmware Types",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Bootloader changes, Power management logic, Custom data parsing logic, Event filtering logic, Other",
+    "conditionalRule": "Show \"Other Firmware Type\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.2 Firmware Specifications",
+    "fieldName": "Other Firmware Type",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 52,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "API Documentation URL",
+    "fieldType": "URL",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "Other Data Format",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 54,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "UI Customization Required",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes, No",
+    "conditionalRule": "Show \"UI Preferences\" if \"Yes\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": 55,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "UI Preferences",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Logo & Colour Scheme, Language Localization, Custom Reports Layout, Other",
+    "conditionalRule": "Show \"Other UI Preference\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "Other UI Preference",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 57,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "Backend Systems",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "ERP System, Fleet Management System, Mobile App, Cloud Platform, API Endpoints, Other",
+    "conditionalRule": "Show \"Other Backend System\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.3 Software Specifications",
+    "fieldName": "Other Backend System",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 60,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.4 Integration Specifications",
+    "fieldName": "Integration with Existing Systems",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Yes, No",
+    "conditionalRule": "Show \"System Integrator Application\" if \"Yes\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": 59,
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.4 Integration Specifications",
+    "fieldName": "System Integrator Application",
+    "fieldType": "Radio",
+    "isMandatory": "No",
+    "options": "Fleetx, Wialon, Own Platform, Other",
+    "conditionalRule": "Show \"Other Integrator\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 4: Device Custom Requirements",
+    "subSection": "3.4 Integration Specifications",
+    "fieldName": "Other Integrator",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 61,
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.1 Acceptance Criteria",
+    "fieldName": "POC Success Criteria",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 62,
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.1 Acceptance Criteria",
+    "fieldName": "Acceptance Types",
+    "fieldType": "Checkbox Group",
+    "isMandatory": "No",
+    "options": "Accurate tracking, Reliable transmission, Backend integration, Low latency, High uptime, Multi-device support, Other",
+    "conditionalRule": "Show \"Other Acceptance Criteria\" if \"Other\" is selected",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.1 Acceptance Criteria",
+    "fieldName": "Other Acceptance Criteria",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 63,
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.1 Acceptance Criteria",
+    "fieldName": "Low Latency Value",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 64,
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.1 Acceptance Criteria",
+    "fieldName": "High Uptime Value",
+    "fieldType": "Text",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 66,
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.2 Test Scenarios",
+    "fieldName": "Test Scenarios",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": 67,
+    "section": "Section 5: Testing & Validation",
+    "subSection": "6.2 Test Scenarios",
+    "fieldName": "Additional Notes",
+    "fieldType": "Textarea",
+    "isMandatory": "No",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": ""
+  },
+  {
+    "sn": "",
+    "section": "terms and conditions",
+    "subSection": "",
+    "fieldName": "",
+    "fieldType": "",
+    "isMandatory": "",
+    "options": "",
+    "conditionalRule": "",
+    "defaultValue": "This report is confidential. All data is for evaluation purposes only and should not be distributed without prior written consent from Transight."
+  }
+];
+
+    const formContainer = document.getElementById('form-container');
+    const printContainer = document.getElementById('print-view-container');
+    const toId = (str) => str ? str.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '') : '';
+
+    const form = document.createElement('form');
+    form.addEventListener('submit', (e) => e.preventDefault());
+    let sections = {};
+    const conditionalRules = [];
+    let formTitle = 'New POC Requirement Form';
+    let termsText = '';
+
+    const titleRow = formStructure.find(r => r.section && r.section.toLowerCase() === 'form title');
+    if (titleRow && titleRow.defaultValue) formTitle = titleRow.defaultValue;
+    const termsRow = formStructure.find(r => r.section && r.section.toLowerCase() === 'terms and conditions');
+    if (termsRow && termsRow.defaultValue) termsText = termsRow.defaultValue;
+
+    document.title = formTitle;
+    const h1 = document.createElement('h1');
+    h1.textContent = formTitle;
+    formContainer.appendChild(h1);
+
+    formStructure.forEach(field => {
+        if (!field.section || ['form title', 'terms and conditions'].includes(field.section.toLowerCase())) return;
+        if (!sections[field.section]) sections[field.section] = [];
+        if (field.fieldName) sections[field.section].push(field);
+    });
+
+    for (const sectionName in sections) {
+        const fieldset = document.createElement('fieldset');
+        fieldset.id = toId(sectionName);
+        const legend = document.createElement('legend');
+        legend.textContent = sectionName;
+        fieldset.appendChild(legend);
+
+        sections[sectionName].forEach(field => {
+            const fieldId = toId(field.fieldName);
+            const fieldWrapper = document.createElement('div');
+            fieldWrapper.className = 'form-field';
+            const wrapperId = `wrapper_${fieldId || toId(sectionName + field.subSection)}`;
+            fieldWrapper.id = wrapperId;
+
+            const label = document.createElement('label');
+            label.setAttribute('for', fieldId);
+            label.textContent = `${field.fieldName}:`;
+            fieldWrapper.appendChild(label);
+
+            const fieldType = (field.fieldType || 'Text').toLowerCase();
+            if (['text', 'date', 'number', 'url', 'textarea', 'document upload'].includes(fieldType)) {
+                const el = document.createElement(fieldType === 'textarea' ? 'textarea' : 'input');
+                if (el.tagName === 'INPUT') el.type = (fieldType === 'document upload') ? 'file' : fieldType;
+                el.id = fieldId; el.name = fieldId;
+                if (field.defaultValue) el.value = field.defaultValue;
+                fieldWrapper.appendChild(el);
+            } else if (fieldType.includes('radio') || fieldType.includes('checkbox')) {
+                const groupDiv = document.createElement('div');
+                const groupType = fieldType.includes('radio') ? 'radio' : 'checkbox';
+                groupDiv.className = `${groupType}-group`;
+                (field.options || '').split(',').map(s => s.trim()).forEach(option => {
+                    const optionLabel = document.createElement('label');
+                    const optionInput = document.createElement('input');
+                    optionInput.type = groupType; optionInput.name = fieldId; optionInput.value = option;
+                    if (field.defaultValue === option) optionInput.checked = true;
+                    optionLabel.appendChild(optionInput); optionLabel.append(` ${option}`);
+                    groupDiv.appendChild(optionLabel);
+                });
+                fieldWrapper.appendChild(groupDiv);
+            }
+
+            if (field.conditionalRule) {
+                const match = field.conditionalRule.match(/Show "(.+?)" if "(.+?)"/);
+                if (match) {
+                    const targetName = match[1];
+                    const targetIsSection = Object.keys(sections).includes(targetName);
+                    const targetId = targetIsSection ? toId(targetName) : `wrapper_${toId(targetName)}`;
+                    conditionalRules.push({ triggerName: fieldId, targetId: targetId, showValue: match[2] });
+                }
+            }
+            fieldset.appendChild(fieldWrapper);
+        });
+        form.appendChild(fieldset);
+    }
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'form-actions';
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit'; submitButton.id = 'submit-btn'; submitButton.textContent = 'Submit';
+    const printButton = document.createElement('button');
+    printButton.type = 'button'; printButton.id = 'print-btn'; printButton.textContent = 'Print Form';
+    printButton.addEventListener('click', generatePrintView);
+    actionsDiv.appendChild(submitButton); actionsDiv.appendChild(printButton);
+    form.appendChild(actionsDiv);
+    formContainer.appendChild(form);
+
+    conditionalRules.forEach(rule => {
+        const targetElement = document.getElementById(rule.targetId);
+        if (targetElement) targetElement.classList.add('hidden');
+        const triggerElements = document.querySelectorAll(`input[name="${rule.triggerName}"]`);
+        const updateVisibility = () => {
+            const selectedRadio = document.querySelector(`input[name="${rule.triggerName}"][type=radio]:checked`);
+            const selectedCheckboxes = Array.from(document.querySelectorAll(`input[name="${rule.triggerName}"][type=checkbox]:checked`)).map(cb => cb.value);
+            let show = (selectedRadio && selectedRadio.value === rule.showValue) || selectedCheckboxes.includes(rule.showValue);
+            if (targetElement) targetElement.classList.toggle('hidden', !show);
+        };
+        triggerElements.forEach(el => el.addEventListener('change', updateVisibility));
+        updateVisibility();
+    });
+
+    function generatePrintView() {
+        const printDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        let printHTML = `<div class="print-header"><h1>${formTitle}</h1><div class="date">Printed on: ${printDate}</div></div>`;
+        form.querySelectorAll('fieldset:not(.hidden)').forEach(fieldset => {
+            printHTML += `<div class="print-section"><div class="print-section-title">${fieldset.querySelector('legend').textContent}</div><div class="print-section-content">`;
+            fieldset.querySelectorAll('div.form-field:not(.hidden)').forEach(wrapper => {
+                const label = wrapper.querySelector('label').textContent; let value = 'N/A';
+                const input = wrapper.querySelector('input:not([type=radio]):not([type=checkbox]), textarea');
+                if (input) { value = (input.type === 'file' && input.files.length > 0) ? Array.from(input.files).map(f => f.name).join(', ') : input.value || ' ';
+                } else {
+                    const checkedRadios = wrapper.querySelectorAll('input[type=radio]:checked');
+                    if (checkedRadios.length > 0) { value = checkedRadios[0].value;
+                    } else { const checkedCheckboxes = Array.from(wrapper.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value); if (checkedCheckboxes.length > 0) value = checkedCheckboxes.join(', '); }
+                }
+                printHTML += `<div class="print-field"><div class="print-label">${label}</div><div class="print-value">${value}</div></div>`;
+            });
+            printHTML += `</div></div>`;
+        });
+        if (termsText) { printHTML += `<div class="print-terms"><h3>Terms and Conditions</h3><p>${termsText}</p></div>`; }
+        printContainer.innerHTML = printHTML; window.print();
+    }
+});
+</script>
+</body>
+</html>

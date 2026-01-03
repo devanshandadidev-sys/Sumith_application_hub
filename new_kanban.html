@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board with Sorted Tabular Print</title>
+    <style>
+        :root {
+            --priority-high: #ef5350;
+            --priority-medium: #ffab40;
+            --priority-low: #42a5f5;
+            --bg-color: #f8f9fa;
+            --surface-color: #ffffff;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --primary-color: #007bff;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        #app-container {
+            display: flex; flex-direction: column;
+            height: calc(100vh - 40px);
+        }
+        .top-bar {
+            display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;
+            padding: 15px; background-color: var(--surface-color);
+            border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            align-items: center;
+        }
+        .top-bar input {
+            padding: 8px 12px; border: 1px solid var(--border-color);
+            border-radius: 4px; font-size: 14px;
+        }
+        .top-bar button {
+            padding: 8px 16px; background-color: var(--primary-color);
+            color: white; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 14px; font-weight: 500;
+        }
+        #print-btn { background-color: #6c757d; }
+        #search-input { flex-grow: 1; min-width: 200px; }
+        .analytics-section {
+            display: flex; gap: 20px; font-size: 14px; align-items: center;
+        }
+        #board-container {
+            display: flex; flex-direction: column;
+            flex-grow: 1; overflow: auto;
+        }
+        .swimlane {
+            margin-bottom: 20px; background-color: var(--surface-color);
+            border-radius: 8px; padding: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.07);
+        }
+        .swimlane-header {
+            display: flex; align-items: center; padding: 5px;
+            margin-bottom: 10px; border-bottom: 1px solid var(--border-color);
+        }
+        .swimlane-title { font-size: 18px; font-weight: 600; cursor: pointer; }
+        .delete-btn {
+            background: none; border: none; font-size: 20px;
+            color: #adb5bd; cursor: pointer; margin-left: auto;
+            line-height: 1;
+        }
+        .delete-btn:hover { color: #dc3545; }
+        .stage-container {
+            display: flex; gap: 15px;
+            min-height: 200px; overflow-x: auto; padding-bottom: 10px;
+        }
+        .stage {
+            flex: 0 0 300px; background-color: #f1f3f5;
+            border-radius: 5px; padding: 10px;
+            display: flex; flex-direction: column;
+        }
+        .stage-header {
+            padding: 8px 5px; font-weight: bold; text-align: center;
+            cursor: grab; display: flex; align-items: center; justify-content: center;
+            border-bottom: 2px solid #ced4da; margin-bottom: 10px;
+        }
+        .stage-title { flex-grow: 1; cursor: pointer; }
+        .tasks { flex-grow: 1; min-height: 100px; }
+        .task {
+            background-color: var(--surface-color); padding: 10px 12px;
+            border-radius: 4px; margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: grab; position: relative;
+            border-left: 5px solid transparent;
+        }
+        .task[data-priority="High"] { border-left-color: var(--priority-high); }
+        .task[data-priority="Medium"] { border-left-color: var(--priority-medium); }
+        .task[data-priority="Low"] { border-left-color: var(--priority-low); }
+        .task-title { font-weight: 600; margin-bottom: 5px; }
+        .task-description { font-size: 14px; color: #6c757d; margin-bottom: 8px; }
+        .task-date { font-size: 12px; color: #495057; font-weight: 500;}
+        .task .delete-btn { position: absolute; top: 4px; right: 8px; font-size: 18px; opacity: 0; }
+        .task:hover .delete-btn { opacity: 1; }
+        .add-task-btn {
+            width: 100%; padding: 10px; margin-top: 10px;
+            background-color: #e9ecef; color: #495057;
+            border: 1px dashed #ced4da; border-radius: 4px;
+            cursor: pointer; font-weight: 500;
+        }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 8px;
+            width: 90%; max-width: 500px;
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-content .form-group { margin-bottom: 15px; }
+        .modal-content label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .modal-content input, .modal-content textarea, .modal-content select {
+            width: 100%; padding: 10px; font-size: 14px; box-sizing: border-box;
+            border: 1px solid var(--border-color); border-radius: 4px;
+        }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
+
+        /* --- TABULAR PRINT STYLES --- */
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area {
+                position: absolute; left: 20px; top: 20px;
+                width: calc(100% - 40px); font-family: Arial, sans-serif;
+            }
+            #print-area h1 {
+                font-size: 22pt; margin-bottom: 20px; text-align: center;
+            }
+            #print-area table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10pt;
+            }
+            #print-area th, #print-area td {
+                border: 1px solid #ccc;
+                padding: 8px;
+                text-align: left;
+            }
+            #print-area thead {
+                background-color: #f2f2f2;
+                font-weight: bold;
+                page-break-after: auto;
+            }
+            #print-area tbody tr { page-break-inside: avoid; }
+            #print-area tbody tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+            #print-area .col-desc { width: 30%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="top-bar">
+        <input type="text" id="new-stage-name" placeholder="New Stage Name..."><button id="add-stage-btn">Add Stage</button>
+        <div style="width:1px; background:#ccc; margin:0 10px;"></div>
+        <input type="text" id="new-actioner-name" placeholder="New Actioner Name..."><button id="add-actioner-btn">Add Actioner</button>
+        <div style="width:1px; background:#ccc; margin:0 10px;"></div>
+        <input type="text" id="search-input" placeholder="Search tasks..."><button id="print-btn">Print Report</button>
+        <div class="analytics-section" id="analytics-summary"></div>
+    </div>
+    <div id="board-container"></div>
+</div>
+
+<div id="task-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 id="modal-title">New Task</h2>
+        <form id="task-form">
+            <input type="hidden" id="task-id">
+            <div class="form-group"><label for="task-title-input">Title</label><input type="text" id="task-title-input" required></div>
+            <div class="form-group"><label for="task-desc-input">Description</label><textarea id="task-desc-input" rows="3"></textarea></div>
+            <div class="form-group"><label for="task-priority-input">Priority</label><select id="task-priority-input"><option>Medium</option><option>High</option><option>Low</option></select></div>
+            <div class="form-group"><label for="task-due-date-input">Due Date</label><input type="date" id="task-due-date-input"></div>
+            <div class="modal-buttons"><button type="button" id="cancel-task-btn">Cancel</button><button type="submit">Save Task</button></div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let db;
+    const DB_NAME = 'proKanbanDB', DB_VERSION = 1;
+    const STAGES_STORE = 'stages', ACTIONERS_STORE = 'actioners', TASKS_STORE = 'tasks';
+
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = e => reject("DB Error: " + e.target.errorCode);
+            request.onsuccess = e => { db = e.target.result; resolve(); };
+            request.onupgradeneeded = e => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STAGES_STORE)) db.createObjectStore(STAGES_STORE, { keyPath: 'id', autoIncrement: true });
+                if (!db.objectStoreNames.contains(ACTIONERS_STORE)) db.createObjectStore(ACTIONERS_STORE, { keyPath: 'id', autoIncrement: true });
+                if (!db.objectStoreNames.contains(TASKS_STORE)) {
+                    const store = db.createObjectStore(TASKS_STORE, { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('stageId', 'stageId', { unique: false });
+                    store.createIndex('actionerId', 'actionerId', { unique: false });
+                }
+            };
+        });
+    }
+
+    const dbService = {
+        get: (store, key) => new Promise(r => db.transaction(store).objectStore(store).get(key).onsuccess = e => r(e.target.result)),
+        getAll: (store) => new Promise(r => db.transaction(store).objectStore(store).getAll().onsuccess = e => r(e.target.result)),
+        add: (store, item) => new Promise(r => db.transaction(store, 'readwrite').objectStore(store).add(item).onsuccess = e => r(e.target.result)),
+        update: (store, item) => db.transaction(store, 'readwrite').objectStore(store).put(item),
+        delete: (store, key) => db.transaction(store, 'readwrite').objectStore(store).delete(key),
+        getTasksByActioner: (id) => new Promise(r => db.transaction(TASKS_STORE).objectStore(TASKS_STORE).index('actionerId').getAll(id).onsuccess = e => r(e.target.result))
+    };
+
+    const boardContainer = document.getElementById('board-container');
+    
+    async function renderBoard() {
+        boardContainer.innerHTML = '';
+        const stages = (await dbService.getAll(STAGES_STORE)).sort((a, b) => a.order - b.order);
+        const actioners = await dbService.getAll(ACTIONERS_STORE);
+        for (const actioner of actioners) {
+            const swimlaneEl = document.createElement('div');
+            swimlaneEl.className = 'swimlane';
+            swimlaneEl.dataset.actionerId = actioner.id;
+            const tasksForActioner = await dbService.getTasksByActioner(actioner.id);
+            const swimlaneHeader = document.createElement('div');
+            swimlaneHeader.className = 'swimlane-header';
+            const swimlaneTitle = document.createElement('div');
+            swimlaneTitle.className = 'swimlane-title';
+            swimlaneTitle.textContent = actioner.name;
+            swimlaneTitle.ondblclick = () => editName('actioner', actioner, swimlaneTitle);
+            swimlaneHeader.append(swimlaneTitle, createDeleteButton(() => deleteEntity('actioner', actioner.id)));
+            swimlaneEl.appendChild(swimlaneHeader);
+            const stageContainerEl = document.createElement('div');
+            stageContainerEl.className = 'stage-container';
+            for (const stage of stages) {
+                const stageEl = createStageElement(stage, actioner);
+                tasksForActioner.filter(t => t.stageId === stage.id).forEach(task => {
+                    stageEl.querySelector('.tasks').appendChild(createTaskElement(task));
+                });
+                stageContainerEl.appendChild(stageEl);
+            }
+            swimlaneEl.appendChild(stageContainerEl);
+            boardContainer.appendChild(swimlaneEl);
+        }
+        setupDragAndDrop();
+        renderAnalytics();
+    }
+    
+    function createStageElement(stage, actioner) {
+        const stageEl = document.createElement('div');
+        stageEl.className = 'stage';
+        stageEl.dataset.stageId = stage.id;
+        const stageHeader = document.createElement('div');
+        stageHeader.className = 'stage-header';
+        stageHeader.draggable = true;
+        const stageTitle = document.createElement('div');
+        stageTitle.className = 'stage-title';
+        stageTitle.textContent = stage.name;
+        stageTitle.ondblclick = () => editName('stage', stage, stageTitle);
+        stageHeader.append(stageTitle, createDeleteButton(() => deleteEntity('stage', stage.id)));
+        const tasksEl = document.createElement('div');
+        tasksEl.className = 'tasks';
+        const addTaskBtn = document.createElement('button');
+        addTaskBtn.className = 'add-task-btn';
+        addTaskBtn.textContent = '+ Add Task';
+        addTaskBtn.onclick = () => openTaskModal(null, stage.id, actioner.id);
+        stageEl.append(stageHeader, tasksEl, addTaskBtn);
+        return stageEl;
+    }
+    
+    function createTaskElement(task) {
+        const taskEl = document.createElement('div');
+        taskEl.className = 'task';
+        taskEl.draggable = true;
+        taskEl.dataset.taskId = task.id;
+        taskEl.dataset.priority = task.priority;
+        taskEl.innerHTML = `<div class="task-title">${task.title}</div><div class="task-description">${task.description || ''}</div><div class="task-date">${task.dueDate || ''}</div>`;
+        taskEl.appendChild(createDeleteButton(() => deleteEntity('task', task.id)));
+        taskEl.onclick = () => openTaskModal(task);
+        return taskEl;
+    }
+    
+    function createDeleteButton(onClick) {
+        const btn = document.createElement('button');
+        btn.className = 'delete-btn';
+        btn.innerHTML = '&times;';
+        btn.onclick = (e) => { e.stopPropagation(); onClick(); };
+        return btn;
+    }
+
+    const taskModal = document.getElementById('task-modal');
+    const taskForm = document.getElementById('task-form');
+    let currentStageId, currentActionerId;
+
+    function openTaskModal(task, stageId, actionerId) {
+        taskForm.reset();
+        if (task) {
+            document.getElementById('modal-title').textContent = 'Edit Task';
+            document.getElementById('task-id').value = task.id;
+            document.getElementById('task-title-input').value = task.title;
+            document.getElementById('task-desc-input').value = task.description;
+            document.getElementById('task-priority-input').value = task.priority;
+            document.getElementById('task-due-date-input').value = task.dueDate;
+            currentStageId = task.stageId;
+            currentActionerId = task.actionerId;
+        } else {
+            document.getElementById('modal-title').textContent = 'New Task';
+            document.getElementById('task-id').value = '';
+            currentStageId = stageId;
+            currentActionerId = actionerId;
+        }
+        taskModal.style.display = 'flex';
+    }
+
+    function closeTaskModal() {
+        taskModal.style.display = 'none';
+    }
+
+    document.getElementById('cancel-task-btn').onclick = closeTaskModal;
+    taskModal.onclick = (e) => { if (e.target === taskModal) closeTaskModal(); };
+
+    taskForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const taskId = parseInt(document.getElementById('task-id').value);
+        const taskData = {
+            title: document.getElementById('task-title-input').value,
+            description: document.getElementById('task-desc-input').value,
+            priority: document.getElementById('task-priority-input').value,
+            dueDate: document.getElementById('task-due-date-input').value,
+            stageId: currentStageId,
+            actionerId: currentActionerId
+        };
+        if (taskId) {
+            taskData.id = taskId;
+            await dbService.update(TASKS_STORE, taskData);
+        } else {
+            await dbService.add(TASKS_STORE, taskData);
+        }
+        closeTaskModal();
+        renderBoard();
+    };
+
+    document.getElementById('add-stage-btn').onclick = () => addEntity('stage');
+    document.getElementById('add-actioner-btn').onclick = () => addEntity('actioner');
+    document.getElementById('search-input').oninput = (e) => filterTasks(e.target.value);
+    
+    // --- UPDATED: Stage-Sorted Tabular Print Functionality ---
+    document.getElementById('print-btn').onclick = async () => {
+        let printArea = document.getElementById('print-area');
+        if (!printArea) {
+            printArea = document.createElement('div');
+            printArea.id = 'print-area';
+            document.body.appendChild(printArea);
+        }
+        
+        const sortedStages = (await dbService.getAll(STAGES_STORE)).sort((a, b) => a.order - b.order);
+        const actioners = await dbService.getAll(ACTIONERS_STORE);
+        const tasks = await dbService.getAll(TASKS_STORE);
+        
+        let reportHTML = `<h1>Kanban Task Report</h1>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Actioner</th><th>Stage</th><th>Priority</th><th>Due Date</th><th>Title</th><th class="col-desc">Description</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
+        // Loop through actioners, then sorted stages, to build the table body
+        for (const actioner of actioners) {
+            for (const stage of sortedStages) {
+                const relevantTasks = tasks.filter(task => task.actionerId === actioner.id && task.stageId === stage.id);
+                
+                relevantTasks.forEach(task => {
+                    reportHTML += `
+                        <tr>
+                            <td>${actioner.name}</td>
+                            <td>${stage.name}</td>
+                            <td>${task.priority || ''}</td>
+                            <td>${task.dueDate || ''}</td>
+                            <td>${task.title}</td>
+                            <td>${task.description || ''}</td>
+                        </tr>`;
+                });
+            }
+        }
+
+        reportHTML += `</tbody></table>`;
+        printArea.innerHTML = reportHTML;
+        window.print();
+    };
+
+    async function addEntity(type) {
+        const inputId = type === 'stage' ? 'new-stage-name' : 'new-actioner-name';
+        const input = document.getElementById(inputId);
+        if (input.value.trim()) {
+            const item = { name: input.value.trim() };
+            if (type === 'stage') {
+                const stages = await dbService.getAll(STAGES_STORE);
+                item.order = stages.length;
+            }
+            await dbService.add(type === 'stage' ? STAGES_STORE : ACTIONERS_STORE, item);
+            input.value = '';
+            renderBoard();
+        }
+    }
+
+    async function editName(type, item, element) {
+        const oldName = item.name;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = oldName;
+        element.textContent = '';
+        element.appendChild(input);
+        input.focus();
+        const save = async () => {
+            const newName = input.value.trim();
+            if (newName && newName !== oldName) {
+                item.name = newName;
+                await dbService.update(type === 'stage' ? STAGES_STORE : ACTIONERS_STORE, item);
+            }
+            renderBoard();
+        };
+        input.onblur = save;
+        input.onkeydown = e => { if (e.key === 'Enter') input.blur(); };
+    }
+
+    async function deleteEntity(type, id) {
+        const storeName = type + 's';
+        if (confirm(`Delete this ${type}? This may also delete associated tasks.`)) {
+            const tx = db.transaction([STAGES_STORE, ACTIONERS_STORE, TASKS_STORE], 'readwrite');
+            await tx.objectStore(storeName).delete(id);
+            if (type !== 'task') {
+                const taskStore = tx.objectStore(TASKS_STORE);
+                const index = taskStore.index(type + 'Id');
+                const tasksToDelete = await new Promise(r => index.getAll(id).onsuccess = e => r(e.target.result));
+                tasksToDelete.forEach(task => taskStore.delete(task.id));
+            }
+            renderBoard();
+        }
+    }
+
+    async function renderAnalytics() {
+        const tasks = await dbService.getAll(TASKS_STORE);
+        const stages = await dbService.getAll(STAGES_STORE);
+        let summaryHTML = `<strong>Total:</strong> ${tasks.length} | `;
+        stages.sort((a,b) => a.order - b.order).forEach(stage => {
+            const count = tasks.filter(t => t.stageId === stage.id).length;
+            summaryHTML += `<strong>${stage.name}:</strong> ${count} | `;
+        });
+        document.getElementById('analytics-summary').innerHTML = summaryHTML.slice(0, -2);
+    }
+
+    function filterTasks(query) {
+        const lowerQuery = query.toLowerCase();
+        document.querySelectorAll('.task').forEach(taskEl => {
+            const content = taskEl.textContent.toLowerCase();
+            taskEl.style.display = content.includes(lowerQuery) ? '' : 'none';
+        });
+    }
+
+    function setupDragAndDrop() {
+        let draggedItem = null, draggedStageEl = null;
+        document.querySelectorAll('.task').forEach(task => {
+            task.addEventListener('dragstart', e => {
+                if (e.target.classList.contains('task')) {
+                    draggedItem = e.target;
+                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                }
+            });
+            task.addEventListener('dragend', () => draggedItem?.classList.remove('dragging'));
+        });
+        document.querySelectorAll('.stage .tasks').forEach(zone => {
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+            zone.addEventListener('drop', async e => {
+                zone.classList.remove('drag-over');
+                if (draggedItem && draggedItem.classList.contains('task')) {
+                    const taskId = parseInt(draggedItem.dataset.taskId);
+                    const newStageId = parseInt(zone.closest('.stage').dataset.stageId);
+                    const newActionerId = parseInt(zone.closest('.swimlane').dataset.actionerId);
+                    const task = await dbService.get(TASKS_STORE, taskId);
+                    if (task && (task.stageId !== newStageId || task.actionerId !== newActionerId)) {
+                        task.stageId = newStageId;
+                        task.actionerId = newActionerId;
+                        await dbService.update(TASKS_STORE, task);
+                        renderBoard();
+                    }
+                }
+            });
+        });
+        document.querySelectorAll('.stage-header').forEach(header => {
+            header.addEventListener('dragstart', e => {
+                if (e.target.classList.contains('stage-header')) {
+                    draggedStageEl = e.target.closest('.stage');
+                    e.dataTransfer.effectAllowed = 'move';
+                }
+            });
+        });
+        document.querySelectorAll('.stage').forEach(stage => {
+            stage.addEventListener('dragover', e => {
+                e.preventDefault();
+                if (draggedStageEl && draggedStageEl !== stage) stage.classList.add('stage-drag-over');
+            });
+            stage.addEventListener('dragleave', () => stage.classList.remove('stage-drag-over'));
+            stage.addEventListener('drop', async e => {
+                stage.classList.remove('stage-drag-over');
+                if (draggedStageEl && draggedStageEl !== stage) {
+                    const allStages = (await dbService.getAll(STAGES_STORE)).sort((a,b) => a.order - b.order);
+                    const fromId = parseInt(draggedStageEl.dataset.stageId);
+                    const toId = parseInt(stage.dataset.stageId);
+                    const fromIndex = allStages.findIndex(s => s.id === fromId);
+                    const toIndex = allStages.findIndex(s => s.id === toId);
+                    const [movedItem] = allStages.splice(fromIndex, 1);
+                    allStages.splice(toIndex, 0, movedItem);
+                    const updates = allStages.map((s, i) => { s.order = i; return dbService.update(STAGES_STORE, s); });
+                    await Promise.all(updates);
+                    draggedStageEl = null;
+                    renderBoard();
+                }
+            });
+        });
+    }
+
+    async function main() {
+        await initDB();
+        const stages = await dbService.getAll(STAGES_STORE);
+        if (stages.length === 0) {
+            await dbService.add(STAGES_STORE, { name: 'Backlog', order: 0 });
+            await dbService.add(STAGES_STORE, { name: 'In Progress', order: 1 });
+            await dbService.add(STAGES_STORE, { name: 'Done', order: 2 });
+            await dbService.add(ACTIONERS_STORE, { name: 'Project Team' });
+        }
+        await renderBoard();
+    }
+
+    main();
+});
+</script>
+
+</body>
+</html>

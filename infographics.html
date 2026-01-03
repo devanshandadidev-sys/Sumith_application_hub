@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-Style Infographic Generator</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+        #infographic-container {
+            width: 700px;
+            height: 700px;
+            position: relative;
+            margin-bottom: 40px;
+        }
+        #centerCircle, .circle, .arrow {
+            transition: all 0.4s ease;
+        }
+        #centerCircle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            user-select: none;
+            cursor: pointer;
+            z-index: 10;
+            box-sizing: border-box;
+        }
+        .circle {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            user-select: none;
+            z-index: 10;
+            box-sizing: border-box;
+            animation: fadeIn 0.5s ease;
+        }
+        .arrow {
+            position: absolute;
+            transform-origin: left center;
+            z-index: 5;
+            animation: fadeIn 0.5s ease;
+        }
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            transition: all 0.4s ease;
+        }
+
+        /* --- Theme 1: Modern Pro --- */
+        .theme-modern { background-color: #f4f7f6; color: #333; }
+        .theme-modern #centerCircle { width: 220px; height: 220px; background: linear-gradient(145deg, #2a9d8f, #264653); border-radius: 50%; color: white; font-weight: 700; font-size: 22px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .theme-modern .circle { width: 120px; height: 120px; border-radius: 50%; color: white; box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .theme-modern .circle i { font-size: 34px; margin-bottom: 8px; }
+        .theme-modern .circle span { font-size: 14px; font-weight: 700; }
+        .theme-modern .arrow { width: 180px; height: 3px; background: #adb5bd; }
+        .theme-modern .arrow::after { top: -6px; border-width: 8px; border-style: solid; border-color: transparent transparent transparent #adb5bd; }
+
+        /* --- Theme 2: Classic Green --- */
+        .theme-classic { background-color: #ffffff; color: #444; }
+        .theme-classic #centerCircle { width: 200px; height: 200px; background: #28a745; border-radius: 50%; color: white; font-size: 20px; font-weight: 700; }
+        .theme-classic .circle { width: 110px; height: 110px; background: #28a745; border-radius: 50%; color: white; }
+        .theme-classic .circle i { font-size: 30px; margin-bottom: 6px; }
+        .theme-classic .circle span { font-size: 13px; font-weight: 700; }
+        .theme-classic .arrow { width: 190px; height: 2px; background: #6c757d; }
+        .theme-classic .arrow::after { top: -5px; border-width: 6px; border-style: solid; border-color: transparent transparent transparent #6c757d; }
+
+        /* --- Theme 3: Corporate Blue --- */
+        .theme-corporate { background-color: #eef2f9; color: #0d3d56; }
+        .theme-corporate #centerCircle { width: 200px; height: 200px; background: #007bff; border-radius: 15px; color: white; font-family: 'Lato', sans-serif; font-size: 24px; }
+        .theme-corporate .circle { width: 110px; height: 110px; background: #007bff; border-radius: 15px; color: white; }
+        .theme-corporate .circle i { font-size: 32px; margin-bottom: 8px; }
+        .theme-corporate .circle span { font-family: 'Lato', sans-serif; font-size: 13px; text-transform: uppercase; }
+        .theme-corporate .arrow { width: 190px; height: 1px; background: #0056b3; }
+        .theme-corporate .arrow::after { display: none; } /* No arrowheads */
+
+        /* --- Theme 4: Sleek Dark --- */
+        .theme-dark { background-color: #121212; color: #e0e0e0; }
+        .theme-dark #centerCircle { width: 220px; height: 220px; background: #1f1f1f; border: 2px solid #bb86fc; border-radius: 50%; color: #bb86fc; font-size: 22px; box-shadow: 0 0 25px rgba(187, 134, 252, 0.2); }
+        .theme-dark .circle { width: 120px; height: 120px; background: #1f1f1f; border: 2px solid #03dac6; border-radius: 50%; color: #e0e0e0; }
+        .theme-dark .circle i { font-size: 34px; margin-bottom: 8px; color: #03dac6; }
+        .theme-dark .circle span { font-size: 14px; }
+        .theme-dark .arrow { width: 180px; height: 1px; background: #bb86fc; }
+        .theme-dark .arrow::after { top: -4px; border-width: 5px; border-style: solid; border-color: transparent transparent transparent #bb86fc; }
+
+        /* --- Theme 5: Minimalist --- */
+        .theme-minimalist { background-color: #fff; color: #000; font-family: 'Lato', sans-serif; }
+        .theme-minimalist #centerCircle { width: 180px; height: 180px; background: none; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 300; font-size: 20px; }
+        .theme-minimalist .circle { width: 100px; height: 100px; background: none; border: 2px solid #000; border-radius: 50%; color: #000; }
+        .theme-minimalist .circle i { font-size: 28px; margin-bottom: 5px; font-weight: 300; }
+        .theme-minimalist .circle span { font-size: 12px; font-weight: 400; }
+        .theme-minimalist .arrow { width: 200px; height: 1px; background: #000; }
+        .theme-minimalist .arrow::after { display: none; }
+        
+        /* Controls Styling */
+        #controls { width: 700px; background: white; border-radius: 12px; padding: 25px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        #style-selector { margin-bottom: 20px; }
+        label { display: block; margin: 15px 0 5px; font-weight: 700; }
+        input[type=text], input[type=color], select { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 20px; cursor: pointer; background: #e76f51; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 700; }
+        .circle-controls { margin-top: 15px; padding: 15px; border-top: 1px solid #e9ecef; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="theme-modern">
+    <div id="infographic-container">
+        <div id="centerCircle" contenteditable="true" spellcheck="false">TURNKEY SOLUTIONS</div>
+    </div>
+    <div id="controls">
+        <h3>Infographic Generator</h3>
+        <div id="style-selector">
+            <label for="theme-select">Select a Style:</label>
+            <select id="theme-select" onchange="changeTheme(this.value)">
+                <option value="theme-modern">Modern Pro</option>
+                <option value="theme-classic">Classic Green</option>
+                <option value="theme-corporate">Corporate Blue</option>
+                <option value="theme-dark">Sleek Dark</option>
+                <option value="theme-minimalist">Minimalist</option>
+            </select>
+        </div>
+        <div id="add-circle-form">
+            <label for="newCircleText">Circle Text</label>
+            <input type="text" id="newCircleText" placeholder="e.g., Smart Lighting" />
+            <label for="newCircleIcon">Icon Class (<a href="https://fontawesome.com/v5/search" target="_blank">Find Icons</a>)</label>
+            <input type="text" id="newCircleIcon" placeholder="e.g., fas fa-lightbulb" />
+            <label for="newCircleColor">Circle Color (for Modern & Classic)</label>
+            <input type="color" id="newCircleColor" value="#2a9d8f" />
+            <button onclick="addCircle()">Add Circle</button>
+        </div>
+        <div id="circleList"></div>
+    </div>
+
+    <script>
+        const infographicContainer = document.getElementById('infographic-container');
+        const body = document.body;
+        let items = [];
+
+        function changeTheme(themeClass) {
+            body.className = ''; // Clear existing themes
+            body.classList.add(themeClass);
+        }
+
+        function updateLayout() {
+            const numItems = items.length;
+            if (numItems === 0) return;
+            const radius = infographicContainer.clientWidth / 2 - 70; // Dynamic radius
+            const center_x = infographicContainer.clientWidth / 2;
+            const center_y = infographicContainer.clientHeight / 2;
+
+            items.forEach((item, i) => {
+                const angle = (i / numItems) * 2 * Math.PI - Math.PI / 2;
+                const circle = item.circle;
+                circle.style.left = `${center_x + radius * Math.cos(angle) - circle.offsetWidth / 2}px`;
+                circle.style.top = `${center_y + radius * Math.sin(angle) - circle.offsetHeight / 2}px`;
+
+                const arrow = item.arrow;
+                arrow.style.left = `${center_x}px`;
+                arrow.style.top = `${center_y}px`;
+                arrow.style.transform = `rotate(${angle * (180 / Math.PI)}deg)`;
+            });
+        }
+        
+        function createCircle(text, iconClass, color) {
+            const div = document.createElement('div');
+            div.className = 'circle';
+            // Specific themes might ignore this color, but we set it for those that use it.
+            div.style.backgroundColor = color;
+            if (body.classList.contains('theme-modern')) {
+                 div.style.background = `linear-gradient(145deg, ${color}, ${getDarkerShade(color, -20)})`;
+            }
+            
+            div.innerHTML = `<i class="${iconClass}"></i><span>${text}</span>`;
+            infographicContainer.appendChild(div);
+            return div;
+        }
+
+        function createArrow() {
+            const arrow = document.createElement('div');
+            arrow.className = 'arrow';
+            infographicContainer.appendChild(arrow);
+            return arrow;
+        }
+
+        function addCircle() {
+            const text = document.getElementById('newCircleText').value.trim() || 'New Item';
+            const iconClass = document.getElementById('newCircleIcon').value.trim() || 'fas fa-plus';
+            const color = document.getElementById('newCircleColor').value;
+            
+            const circle = createCircle(text, iconClass, color);
+            const arrow = createArrow();
+
+            items.push({ circle, arrow, text, iconClass, color });
+            
+            updateUI();
+            document.getElementById('newCircleText').value = '';
+            document.getElementById('newCircleIcon').value = '';
+        }
+
+        function removeCircle(index) {
+            infographicContainer.removeChild(items[index].circle);
+            infographicContainer.removeChild(items[index].arrow);
+            items.splice(index, 1);
+            updateUI();
+        }
+
+        function updateCircleProperty(index, prop, value) {
+            const item = items[index];
+            item[prop] = value;
+            
+            if (prop === 'text') item.circle.querySelector('span').innerText = value;
+            if (prop === 'iconClass') item.circle.querySelector('i').className = value;
+            if (prop === 'color') {
+                 item.circle.style.backgroundColor = value;
+                 if (body.classList.contains('theme-modern')) {
+                    item.circle.style.background = `linear-gradient(145deg, ${value}, ${getDarkerShade(value, -20)})`;
+                }
+            }
+        }
+        
+        function updateUI() {
+            renderAllCircleControls();
+            updateLayout();
+        }
+
+        function renderAllCircleControls() {
+            const listDiv = document.getElementById('circleList');
+            listDiv.innerHTML = items.length ? '<h3>Edit Circles</h3>' : '';
+            items.forEach((item, i) => {
+                const div = document.createElement('div');
+                div.className = 'circle-controls';
+                div.innerHTML = `
+                    <label><b>Circle ${i + 1}</b></label>
+                    <input type="text" value="${item.text}" oninput="updateCircleProperty(${i}, 'text', this.value)" />
+                    <input type="text" value="${item.iconClass}" oninput="updateCircleProperty(${i}, 'iconClass', this.value)" />
+                    <input type="color" value="${item.color}" onchange="updateCircleProperty(${i}, 'color', this.value)" />
+                    <button onclick="removeCircle(${i})">Remove</button>
+                `;
+                listDiv.appendChild(div);
+            });
+        }
+        
+        function getDarkerShade(hex, percent) {
+            hex = hex.replace('#', '');
+            let r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+            const p = percent / 100;
+            r = Math.max(0, Math.min(255, r * (1 + p)));
+            g = Math.max(0, Math.min(255, g * (1 + p)));
+            b = Math.max(0, Math.min(255, b * (1 + p)));
+            const toHex = c => ('0' + Math.round(c).toString(16)).slice(-2);
+            return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
+
+        window.onload = updateLayout;
+        window.onresize = updateLayout;
+    </script>
+</body>
+</html>

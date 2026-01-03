@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perplexity Thread Library</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --bg-color: #f4f7f9;
+            --text-color: #333;
+            --header-bg: #ffffff;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --secondary-color: #6c757d;
+            --tag-bg: #e9ecef;
+            --tag-text: #495057;
+            --code-bg: #2d2d2d;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --header-bg: #252525;
+            --card-bg: #2c2c2c;
+            --border-color: #444;
+            --primary-color: #0d6efd;
+            --primary-hover-color: #0b5ed7;
+            --secondary-color: #adb5bd;
+            --tag-bg: #343a40;
+            --tag-text: #f8f9fa;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover-color);
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        #searchInput {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        #entry-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close-btn {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        #entries-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .entry-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .entry-card h3 {
+            margin-top: 0;
+            font-size: 18px;
+        }
+        
+        .entry-card a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .entry-card .notes {
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .tags-container .tag {
+            display: inline-block;
+            background-color: var(--tag-bg);
+            color: var(--tag-text);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+
+        .code-container {
+            position: relative;
+            margin-top: 15px;
+        }
+        
+        .copy-code-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #555;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.7;
+            font-size: 12px;
+        }
+        
+        .copy-code-btn:hover {
+            opacity: 1;
+        }
+        
+        pre[class*="language-"] {
+            margin: 0;
+            border-radius: 5px;
+        }
+        
+        .entry-actions {
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* Dark Mode Toggle */
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        .theme-switch {
+            display: inline-block;
+            height: 24px;
+            position: relative;
+            width: 50px;
+        }
+        .theme-switch input {
+            display:none;
+        }
+        .slider {
+            background-color: #ccc;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            background-color: #fff;
+            bottom: 4px;
+            content: "";
+            height: 16px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 16px;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .file-input-label {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: var(--secondary-color);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #import-file {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Perplexity Library</h1>
+            <div class="actions">
+                <input type="text" id="searchInput" placeholder="Search entries...">
+                <button id="add-entry-btn" class="btn btn-primary">Add New Entry</button>
+                <div class="theme-switch-wrapper">
+                    <label class="theme-switch" for="theme-checkbox">
+                        <input type="checkbox" id="theme-checkbox" />
+                        <div class="slider round"></div>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <main>
+             <div class="actions" style="margin-bottom: 20px; justify-content: flex-start;">
+                <button id="export-btn" class="btn btn-secondary">Export to JSON</button>
+                <label for="import-file" class="file-input-label">Import from JSON</label>
+                <input type="file" id="import-file" accept=".json">
+            </div>
+            <div id="entries-grid"></div>
+        </main>
+    </div>
+
+    <div id="entry-modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title">Add New Entry</h2>
+            <form id="entry-form">
+                <input type="hidden" id="entry-id">
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="url">Perplexity URL</label>
+                    <input type="url" id="url">
+                </div>
+                <div class="form-group">
+                    <label for="tags">Tags (comma-separated)</label>
+                    <input type="text" id="tags" placeholder="e.g., python, javascript, IndexedDB">
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notes / Summary</label>
+                    <textarea id="notes"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="code">Code Snippet</label>
+                    <textarea id="code" placeholder="Paste your code here..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Entry</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const DB_NAME = 'PerplexityLibraryDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'threads';
+            let db;
+
+            // UI Elements
+            const addEntryBtn = document.getElementById('add-entry-btn');
+            const modal = document.getElementById('entry-modal');
+            const closeModalBtn = document.querySelector('.close-btn');
+            const entryForm = document.getElementById('entry-form');
+            const entriesGrid = document.getElementById('entries-grid');
+            const searchInput = document.getElementById('searchInput');
+            const exportBtn = document.getElementById('export-btn');
+            const importFile = document.getElementById('import-file');
+            const themeCheckbox = document.getElementById('theme-checkbox');
+
+            // --- THEME ---
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme) {
+                document.documentElement.setAttribute('data-theme', currentTheme);
+                if (currentTheme === 'dark') {
+                    themeCheckbox.checked = true;
+                    updatePrismTheme('dark');
+                }
+            }
+
+            themeCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    localStorage.setItem('theme', 'dark');
+                    updatePrismTheme('dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    updatePrismTheme('light');
+                }
+            });
+            
+            function updatePrismTheme(theme) {
+                const prismLink = document.querySelector('link[href*="prism"]');
+                if(theme === 'dark') {
+                    prismLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css';
+                } else {
+                    prismLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css';
+                }
+            }
+
+
+            // --- DATABASE ---
+            function initDB() {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = (event) => console.error('Database error:', event.target.errorCode);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    objectStore.createIndex('title', 'title', { unique: false });
+                    objectStore.createIndex('tags', 'tags', { multiEntry: true });
+                    console.log('Database setup complete.');
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('Database opened successfully.');
+                    displayEntries();
+                };
+            }
+
+            // --- CRUD OPERATIONS ---
+            function addEntry(entry) {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.add(entry);
+                
+                request.onsuccess = () => {
+                    console.log('Entry added successfully');
+                    displayEntries();
+                };
+                request.onerror = (e) => console.error('Error adding entry:', e.target.error);
+            }
+
+            function updateEntry(entry) {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.put(entry);
+
+                request.onsuccess = () => {
+                    console.log('Entry updated successfully');
+                    displayEntries();
+                };
+                request.onerror = (e) => console.error('Error updating entry:', e.target.error);
+            }
+            
+            function deleteEntry(id) {
+                if (!confirm('Are you sure you want to delete this entry?')) return;
+                
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.delete(id);
+
+                request.onsuccess = () => {
+                    console.log('Entry deleted successfully');
+                    displayEntries();
+                };
+            }
+
+            function getEntry(id, callback) {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.get(id);
+
+                request.onsuccess = () => {
+                    callback(request.result);
+                };
+            }
+
+            // --- DISPLAY & RENDER ---
+            function displayEntries(filterText = '', filterTag = '') {
+                entriesGrid.innerHTML = '';
+                const objectStore = db.transaction(STORE_NAME).objectStore(STORE_NAME);
+
+                objectStore.openCursor().onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        const entry = cursor.value;
+                        const searchText = filterText.toLowerCase();
+                        
+                        // Search logic
+                        const matchesSearch = !searchText || 
+                            entry.title.toLowerCase().includes(searchText) || 
+                            entry.notes.toLowerCase().includes(searchText) || 
+                            (Array.isArray(entry.tags) && entry.tags.some(t => t.toLowerCase().includes(searchText)));
+
+                        // Tag filter logic
+                        const matchesTag = !filterTag || (Array.isArray(entry.tags) && entry.tags.includes(filterTag));
+                        
+                        if (matchesSearch && matchesTag) {
+                             createEntryCard(entry);
+                        }
+                        cursor.continue();
+                    } else {
+                        // After all entries are rendered, highlight code
+                         if (typeof Prism !== 'undefined') {
+                            Prism.highlightAll();
+                        }
+                    }
+                };
+            }
+            
+            function createEntryCard(entry) {
+                const card = document.createElement('div');
+                card.className = 'entry-card';
+                card.dataset.id = entry.id;
+
+                const tagsHTML = entry.tags && Array.isArray(entry.tags) ? entry.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : '';
+
+                let codeBlockHTML = '';
+                if (entry.code) {
+                    const language = detectLanguage(entry.code, entry.tags);
+                    codeBlockHTML = `
+                        <div class="code-container">
+                            <button class="copy-code-btn">Copy</button>
+                            <pre><code class="language-${language}">${escapeHtml(entry.code)}</code></pre>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <h3><a href="${entry.url}" target="_blank" rel="noopener noreferrer">${entry.title}</a></h3>
+                    <div class="tags-container">${tagsHTML}</div>
+                    <p class="notes">${entry.notes}</p>
+                    ${codeBlockHTML}
+                    <div class="entry-actions">
+                        <button class="btn-edit btn btn-secondary">Edit</button>
+                        <button class="btn-delete btn btn-secondary">Delete</button>
+                    </div>
+                `;
+                entriesGrid.appendChild(card);
+            }
+            
+            function detectLanguage(code, tags) {
+                if (tags.includes('python')) return 'python';
+                if (tags.includes('javascript') || tags.includes('js')) return 'javascript';
+                if (tags.includes('html')) return 'html';
+                if (tags.includes('css')) return 'css';
+                if (tags.includes('sql')) return 'sql';
+                if (code.trim().startsWith('<')) return 'markup';
+                if (code.includes('function') || code.includes('const') || code.includes('let')) return 'javascript';
+                return 'clike'; // Default
+            }
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                     .replace(/&/g, "&amp;")
+                     .replace(/</g, "&lt;")
+                     .replace(/>/g, "&gt;")
+                     .replace(/"/g, "&quot;")
+                     .replace(/'/g, "&#039;");
+            }
+            
+            // --- EVENT LISTENERS ---
+            addEntryBtn.addEventListener('click', () => {
+                entryForm.reset();
+                document.getElementById('entry-id').value = '';
+                document.getElementById('modal-title').textContent = 'Add New Entry';
+                modal.style.display = 'block';
+            });
+
+            closeModalBtn.addEventListener('click', () => modal.style.display = 'none');
+            window.addEventListener('click', (e) => {
+                if (e.target == modal) modal.style.display = 'none';
+            });
+
+            entryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('entry-id').value;
+                const entry = {
+                    title: document.getElementById('title').value,
+                    url: document.getElementById('url').value,
+                    tags: document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(Boolean),
+                    notes: document.getElementById('notes').value,
+                    code: document.getElementById('code').value,
+                    timestamp: new Date().toISOString()
+                };
+
+                if (id) {
+                    entry.id = parseInt(id, 10);
+                    updateEntry(entry);
+                } else {
+                    addEntry(entry);
+                }
+                
+                entryForm.reset();
+                modal.style.display = 'none';
+            });
+
+            entriesGrid.addEventListener('click', (e) => {
+                const target = e.target;
+                const card = target.closest('.entry-card');
+                if (!card) return;
+                
+                const id = parseInt(card.dataset.id, 10);
+
+                if (target.classList.contains('btn-edit')) {
+                    getEntry(id, (entry) => {
+                        document.getElementById('entry-id').value = entry.id;
+                        document.getElementById('title').value = entry.title;
+                        document.getElementById('url').value = entry.url;
+                        document.getElementById('tags').value = entry.tags.join(', ');
+                        document.getElementById('notes').value = entry.notes;
+                        document.getElementById('code').value = entry.code;
+                        document.getElementById('modal-title').textContent = 'Edit Entry';
+                        modal.style.display = 'block';
+                    });
+                } else if (target.classList.contains('btn-delete')) {
+                    deleteEntry(id);
+                } else if (target.classList.contains('copy-code-btn')) {
+                    const code = card.querySelector('pre code').textContent;
+                    navigator.clipboard.writeText(code).then(() => {
+                        target.textContent = 'Copied!';
+                        setTimeout(() => target.textContent = 'Copy', 2000);
+                    });
+                } else if (target.classList.contains('tag')) {
+                    searchInput.value = ''; // Clear search when clicking a tag
+                    displayEntries('', target.textContent);
+                }
+            });
+            
+            searchInput.addEventListener('input', () => {
+                displayEntries(searchInput.value, '');
+            });
+
+            // --- IMPORT/EXPORT ---
+            exportBtn.addEventListener('click', () => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.getAll();
+
+                request.onsuccess = () => {
+                    const data = JSON.stringify(request.result, null, 2);
+                    const blob = new Blob([data], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `perplexity-library-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+            });
+
+            importFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (!Array.isArray(data)) throw new Error("JSON is not an array");
+
+                        const transaction = db.transaction([STORE_NAME], 'readwrite');
+                        const objectStore = transaction.objectStore(STORE_NAME);
+                        
+                        // Optional: Clear before import
+                        if (confirm('Do you want to clear existing data before importing?')) {
+                             objectStore.clear();
+                        }
+                        
+                        data.forEach(item => {
+                            // Don't import 'id' to allow autoincrement
+                            delete item.id; 
+                            objectStore.add(item);
+                        });
+                        
+                        transaction.oncomplete = () => {
+                            alert('Import successful!');
+                            displayEntries();
+                        };
+                        
+                    } catch (err) {
+                        alert('Import failed. Please check the file format.');
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // Reset file input
+            });
+
+            // Initialize the app
+            initDB();
+        });
+    </script>
+</body>
+</html>

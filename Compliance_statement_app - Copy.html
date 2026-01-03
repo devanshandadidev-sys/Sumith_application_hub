@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dynamic Technical Compliance App</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #f4f4f4; }
+  h1, h2, h3 { color: #333; }
+  .container { max-width: 1300px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+  label { font-weight: bold; display: block; margin-top: 10px; font-size: 14px; }
+  input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+  button { margin-top: 10px; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  button:hover { background-color: #0056b3; }
+  .delete-btn { background-color: #dc3545; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+  th { background-color: #007bff; color: white; }
+
+  .status-compliant { background-color: #d4edda !important; }
+  .status-noncompliant { background-color: #f8d7da !important; }
+  .status-deviation { background-color: #fff3cd !important; }
+
+  .flex-row { display: flex; gap: 20px; }
+  .flex-col { flex: 1; }
+  .search-bar { margin-top: 10px; margin-bottom: 10px; }
+
+  dialog { border: none; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); padding: 20px; width: 500px; max-height: 90vh; overflow-y: auto; }
+  dialog::backdrop { background: rgba(0,0,0,0.5); }
+  dialog header { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+  .form-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  
+  .param-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
+  .param-row input { margin-top: 0; }
+  #dashboard div { flex: 1; text-align: center; padding: 10px; background-color: #f8f9fa; border-radius: 5px; }
+  #dashboard span { display: block; font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Dynamic Technical Compliance App</h1>
+  <section id="dashboard">
+    <div style="display: flex; gap: 15px; font-size: 14px; font-weight: bold;">
+        <div>Specifications <span id="total-specs">0</span></div>
+        <div>Vendor Components <span id="total-vendors">0</span></div>
+        <div class="status-compliant">Compliant <span id="status-compliant-count">0</span></div>
+        <div class="status-noncompliant">Non-Compliant <span id="status-noncompliant-count">0</span></div>
+        <div class="status-deviation">Deviations <span id="status-deviation-count">0</span></div>
+    </div>
+  </section>
+  <hr />
+  <div class="flex-row">
+    <section class="flex-col">
+      <h2>Specification Library</h2>
+      <button onclick="openModal('spec-modal')">Add New Specification</button>
+      <input type="text" id="spec-search-input" class="search-bar" placeholder="Search specifications..." />
+      <table id="spec-table">
+        <thead><tr><th>Name</th><th>Parameters</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section class="flex-col">
+      <h2>Vendor Component Comparison</h2>
+      <button onclick="openModal('vendor-modal')">Add Vendor Component</button>
+      <input type="text" id="vendor-search-input" class="search-bar" placeholder="Search vendor components..." />
+      <table id="vendor-table">
+        <thead><tr><th>Component</th><th>Comparison</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+</div>
+
+<!-- Specification Modal -->
+<dialog id="spec-modal">
+  <header>Specification Details</header>
+  <form id="spec-form">
+    <input type="hidden" id="spec-id" />
+    <label for="spec-name">Specification Name *</label>
+    <input type="text" id="spec-name" required />
+    <h3>Parameters</h3>
+    <div id="spec-params-container"></div>
+    <button type="button" onclick="addSpecParameterRow()">+ Add Parameter</button>
+    <div class="form-buttons">
+      <button type="button" class="delete-btn" onclick="closeModal('spec-modal')">Cancel</button>
+      <button type="submit">Save Specification</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Vendor Modal -->
+<dialog id="vendor-modal">
+  <header>Vendor Component Details</header>
+  <form id="vendor-form">
+    <input type="hidden" id="vendor-id" />
+    <label for="vendor-spec-select">Select Specification to Compare *</label>
+    <select id="vendor-spec-select" required></select>
+    <label for="vendor-name">Vendor Component Name *</label>
+    <input type="text" id="vendor-name" required />
+    <h3>Enter Vendor Specifications</h3>
+    <div id="vendor-params-container"></div>
+    <label for="vendor-compliance-status">Overall Compliance Status *</label>
+    <select id="vendor-compliance-status" required><option>compliant</option><option>non-compliant</option><option>compliant-with-deviation</option></select>
+    <label for="vendor-comments">Comments / Deviation Note</label>
+    <textarea id="vendor-comments" rows="3"></textarea>
+    <div class="form-buttons">
+      <button type="button" class="delete-btn" onclick="closeModal('vendor-modal')">Cancel</button>
+      <button type="submit">Save Component</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script>
+// --- DATABASE AND CORE LOGIC ---
+const dbName = 'DynamicComplianceDB';
+const specStoreName = 'specifications';
+const vendorStoreName = 'vendorComponents';
+let db;
+async function openDB() { return new Promise((resolve, reject) => { if (db) return resolve(db); const req = indexedDB.open(dbName, 1); req.onerror = () => reject('DB Error'); req.onsuccess = () => { db = req.result; resolve(db); }; req.onupgradeneeded = e => { let db = e.target.result; if (!db.objectStoreNames.contains(specStoreName)) db.createObjectStore(specStoreName, { keyPath: 'id', autoIncrement: true }); if (!db.objectStoreNames.contains(vendorStoreName)) db.createObjectStore(vendorStoreName, { keyPath: 'id', autoIncrement: true }); }; }); }
+async function addOrUpdate(storeName, data) { const db = await openDB(); return new Promise((resolve) => { const tx = db.transaction(storeName, 'readwrite'); const req = data.id ? tx.objectStore(storeName).put(data) : tx.objectStore(storeName).add(data); req.onsuccess = () => resolve(true); }); }
+async function getAll(storeName) { const db = await openDB(); return new Promise(resolve => { const tx = db.transaction(storeName, 'readonly'); const req = tx.objectStore(storeName).getAll(); req.onsuccess = () => resolve(req.result); }); }
+async function deleteById(storeName, id) { const db = await openDB(); return new Promise(resolve => { const tx = db.transaction(storeName, 'readwrite'); const req = tx.objectStore(storeName).delete(id); req.onsuccess = () => resolve(true); }); }
+
+// --- MODALS & UTILITIES ---
+function openModal(id, callback) { document.getElementById(id).showModal(); if (callback) callback(); }
+function closeModal(id) { document.getElementById(id).close(); document.getElementById(id.replace('-modal', '-form')).reset(); }
+async function updateDashboard() { const specs = await getAll(specStoreName); const vendors = await getAll(vendorStoreName); document.getElementById('total-specs').textContent = specs.length; document.getElementById('total-vendors').textContent = vendors.length; document.getElementById('status-compliant-count').textContent = vendors.filter(v => v.complianceStatus === 'compliant').length; document.getElementById('status-noncompliant-count').textContent = vendors.filter(v => v.complianceStatus === 'non-compliant').length; document.getElementById('status-deviation-count').textContent = vendors.filter(v => v.complianceStatus === 'compliant-with-deviation').length; }
+
+// --- DYNAMIC PARAMETER ROW HANDLERS ---
+function addSpecParameterRow(name = '', value = '') {
+    const container = document.getElementById('spec-params-container');
+    const row = document.createElement('div');
+    row.className = 'param-row';
+    row.innerHTML = `<input type="text" placeholder="Parameter Name" value="${name}" class="spec-param-name"> <input type="text" placeholder="Required Value" value="${value}" class="spec-param-value"> <button type="button" class="delete-btn" onclick="this.parentElement.remove()">X</button>`;
+    container.appendChild(row);
+}
+document.getElementById('vendor-spec-select').addEventListener('change', async (e) => {
+    const specId = parseInt(e.target.value);
+    const specs = await getAll(specStoreName);
+    const spec = specs.find(s => s.id === specId);
+    const container = document.getElementById('vendor-params-container');
+    container.innerHTML = '';
+    if (spec && spec.parameters) {
+        spec.parameters.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'param-row';
+            row.innerHTML = `<label style="width: 200px; margin-top:0;">${p.name}</label> <input type="text" data-param-name="${p.name}" class="vendor-param-value">`;
+            container.appendChild(row);
+        });
+    }
+});
+
+// --- SPECIFICATIONS LOGIC ---
+function renderSpecTable(specs) {
+    const tbody = document.querySelector('#spec-table tbody');
+    tbody.innerHTML = '';
+    specs.forEach(spec => {
+        let paramsHtml = (spec.parameters || []).map(p => `<strong>${p.name}:</strong> ${p.value}`).join('<br>');
+        tbody.innerHTML += `<tr><td>${spec.name}</td><td>${paramsHtml}</td><td><button onclick="editSpec(${spec.id})">Edit</button><button class="delete-btn" onclick="deleteSpecConfirm(${spec.id})">Del</button></td></tr>`;
+    });
+}
+async function refreshSpecTable(filter = '') { let specs = await getAll(specStoreName); if (filter) specs = specs.filter(s => s.name.toLowerCase().includes(filter.toLowerCase())); renderSpecTable(specs); await updateSpecDropdown(specs); updateDashboard(); }
+async function editSpec(id) { const specs = await getAll(specStoreName); const spec = specs.find(s => s.id === id); if (!spec) return; openModal('spec-modal', () => { document.getElementById('spec-params-container').innerHTML = ''; (spec.parameters || []).forEach(p => addSpecParameterRow(p.name, p.value)); }); document.getElementById('spec-id').value = spec.id; document.getElementById('spec-name').value = spec.name; }
+async function deleteSpecConfirm(id) { if (confirm('Delete specification?')) { await deleteById(specStoreName, id); refreshSpecTable(); } }
+async function updateSpecDropdown(specs) { const select = document.getElementById('vendor-spec-select'); select.innerHTML = '<option value="" disabled selected>-- Select a Specification --</option>'; specs.forEach(s => select.innerHTML += `<option value="${s.id}">${s.name}</option>`); }
+document.getElementById('spec-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('spec-id').value;
+    const params = Array.from(document.querySelectorAll('#spec-params-container .param-row')).map(row => ({ name: row.querySelector('.spec-param-name').value, value: row.querySelector('.spec-param-value').value })).filter(p => p.name);
+    const data = { name: document.getElementById('spec-name').value, parameters: params };
+    if (id) data.id = parseInt(id);
+    await addOrUpdate(specStoreName, data);
+    closeModal('spec-modal');
+    refreshSpecTable();
+});
+
+// --- VENDOR COMPONENTS LOGIC ---
+function renderVendorTable(vendors) {
+    const tbody = document.querySelector('#vendor-table tbody');
+    tbody.innerHTML = '';
+    vendors.forEach(v => {
+        const spec = v.specification || {};
+        const statusClass = `status-${v.complianceStatus.split(' ')[0]}`;
+        let comparisonHtml = '<table>';
+        (spec.parameters || []).forEach(p => {
+            const vendorParam = (v.parameters || []).find(vp => vp.name === p.name);
+            const mismatch = vendorParam && p.value !== vendorParam.value;
+            comparisonHtml += `<tr><td><strong>${p.name}</strong></td><td>${p.value}</td><td class="${mismatch ? 'status-noncompliant':''}">${vendorParam ? vendorParam.value : 'N/A'}</td></tr>`;
+        });
+        comparisonHtml += '</table>';
+        tbody.innerHTML += `<tr><td><b>${v.vendorName}</b></td><td>${comparisonHtml}</td><td class="${statusClass}">${v.complianceStatus}</td><td><button onclick="editVendor(${v.id})">Edit</button><button onclick="generateReport(${v.id})">Report</button><button class="delete-btn" onclick="deleteVendorConfirm(${v.id})">Del</button></td></tr>`;
+    });
+}
+async function refreshVendorTable(filter = '') { let vendors = await getAll(vendorStoreName); if (filter) vendors = vendors.filter(v => v.vendorName.toLowerCase().includes(filter.toLowerCase())); const specs = await getAll(specStoreName); vendors.forEach(v => v.specification = specs.find(s => s.id === v.specId)); renderVendorTable(vendors); updateDashboard(); }
+async function editVendor(id) {
+    const vendors = await getAll(vendorStoreName);
+    const v = vendors.find(v => v.id === id);
+    if (!v) return;
+    openModal('vendor-modal', async () => {
+        await updateSpecDropdown(await getAll(specStoreName));
+        document.getElementById('vendor-spec-select').value = v.specId;
+        document.getElementById('vendor-spec-select').dispatchEvent(new Event('change'));
+        // Timeout to allow dynamic fields to be created
+        setTimeout(() => {
+            (v.parameters || []).forEach(vp => {
+                const input = document.querySelector(`#vendor-params-container .vendor-param-value[data-param-name="${vp.name}"]`);
+                if (input) input.value = vp.value;
+            });
+        }, 100);
+    });
+    document.getElementById('vendor-id').value = v.id;
+    document.getElementById('vendor-name').value = v.vendorName;
+    document.getElementById('vendor-compliance-status').value = v.complianceStatus;
+    document.getElementById('vendor-comments').value = v.comments;
+}
+async function deleteVendorConfirm(id) { if (confirm('Delete this vendor component?')) { await deleteById(vendorStoreName, id); refreshVendorTable(); } }
+document.getElementById('vendor-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('vendor-id').value;
+    const params = Array.from(document.querySelectorAll('#vendor-params-container .vendor-param-value')).map(input => ({ name: input.dataset.paramName, value: input.value }));
+    const data = { specId: parseInt(document.getElementById('vendor-spec-select').value), vendorName: document.getElementById('vendor-name').value, parameters: params, complianceStatus: document.getElementById('vendor-compliance-status').value, comments: document.getElementById('vendor-comments').value };
+    if (id) data.id = parseInt(id);
+    await addOrUpdate(vendorStoreName, data);
+    closeModal('vendor-modal');
+    refreshVendorTable();
+});
+
+// --- PDF REPORTING ---
+async function generateReport(id) {
+    const component = (await getAll(vendorStoreName)).find(v => v.id === id);
+    if (!component) return;
+    const requiredSpec = (await getAll(specStoreName)).find(s => s.id === component.specId) || {};
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(18); doc.text('Technical Compliance Report', 14, 22);
+    doc.setFontSize(11); doc.text(`Component: ${component.vendorName}`, 14, 32);
+
+    const tableBody = (requiredSpec.parameters || []).map(p => {
+        const vendorParam = (component.parameters || []).find(vp => vp.name === p.name);
+        return [p.name, p.value, vendorParam ? vendorParam.value : 'N/A', (vendorParam && p.value === vendorParam.value) ? 'Yes' : 'No'];
+    });
+
+    doc.autoTable({ startY: 40, head: [['Parameter', 'Required Spec', 'Vendor Spec', 'Match']], body: tableBody });
+    
+    let finalY = doc.lastAutoTable.finalY + 10;
+    doc.text(`Overall Status: ${component.complianceStatus}`, 14, finalY);
+    doc.text(`Comments: ${component.comments || 'None'}`, 14, finalY + 6);
+    
+    doc.save(`Compliance_Report_${component.vendorName.replace(/\s+/g, '_')}.pdf`);
+}
+
+// --- INITIAL LOAD ---
+document.addEventListener('DOMContentLoaded', () => {
+    refreshSpecTable();
+    refreshVendorTable();
+    document.getElementById('spec-search-input').addEventListener('input', e => refreshSpecTable(e.target.value));
+    document.getElementById('vendor-search-input').addEventListener('input', e => refreshVendorTable(e.target.value));
+});
+</script>
+</body>
+</html>

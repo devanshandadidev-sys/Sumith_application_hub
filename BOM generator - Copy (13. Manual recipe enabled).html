@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transight BOM Generator</title>
+    <!-- Using a reliable CDN for SheetJS library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #003B6A;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --font-color: #333;
+            --border-color: #dce3e9;
+            --white: #fff;
+            --danger-color: #d9534f;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--font-color);
+            line-height: 1.6;
+        }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        h1, h2, h3 { color: var(--secondary-color); margin-top: 0; }
+        h1 { text-align: center; flex-grow: 1; }
+        .controls-group { display: flex; gap: 15px; align-items: center; }
+        .card { background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        button { background-color: var(--primary-color); color: var(--white); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: var(--secondary-color); }
+        button.danger { background-color: var(--danger-color); }
+        button.danger:hover { background-color: #c9302c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #f2f2f2; font-weight: 600; white-space: nowrap; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: var(--white); margin: 5% auto; padding: 30px; border: 1px solid var(--border-color); width: 90%; max-width: 700px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content.small { max-width: 500px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; display: inline-block; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        .form-group { margin-bottom: 10px; }
+        label { font-weight: 600; display: block; margin-bottom: 3px; }
+        #total-cost { text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 15px; color: var(--primary-color); }
+        .bom-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        .tab-nav { overflow: hidden; border-bottom: 2px solid var(--primary-color); margin-bottom: 20px; }
+        .tab-nav button { background-color: transparent; color: var(--primary-color); border: none; outline: none; cursor: pointer; padding: 14px 20px; font-size: 18px; font-weight: 600; transition: color 0.3s, border-bottom 0.3s; border-bottom: 3px solid transparent; }
+        .tab-nav button:hover { color: var(--secondary-color); background-color: transparent; }
+        .tab-nav button.active { color: var(--secondary-color); border-bottom: 3px solid var(--accent-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .recipe-row { background-color: #e9f5ff; font-weight: bold; }
+        .component-row { background-color: #fafafa; display: none; }
+        .component-row td:first-child { padding-left: 30px; }
+        .toggle-btn { cursor: pointer; font-size: 1.2em; width: 20px; display: inline-block; text-align: center; }
+        
+        #searchResults div { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        #searchResults button { margin-left: 10px; padding: 5px 10px; font-size: 14px; }
+        
+        .recipe-component-line { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        #recipe-component-search-results div { padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; }
+        #recipe-component-search-results div:hover { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <h1>Transight BOM Generator</h1>
+        <div class="controls-group">
+            <button id="setRatesBtn">Set Currency Rates</button>
+            <div>
+                <label for="currencySelector">Display Currency:</label>
+                <select id="currencySelector">
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-nav">
+        <button class="tab-link active" data-tab="components">Component Library</button>
+        <button class="tab-link" data-tab="recipes">Recipe Library</button>
+        <button class="tab-link" data-tab="boms">BOM Projects</button>
+    </div>
+
+    <div id="components" class="tab-content active">
+        <div class="card">
+            <h2>Component & Recipe Upload</h2>
+            <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <label for="excelUpload" style="margin:0;">Upload Excel File:</label>
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv">
+                    <button id="uploadExcelBtn">Upload</button>
+                </div>
+                 <span id="uploadStatus"></span>
+            </div>
+            <p>Upload an Excel file with headers: <strong>Recipe, TPN, QTY, Package/Case, Manufacturer Name, Description, Manufacturer Part Number, Price (INR)</strong>.</p>
+            <hr>
+            <h2>Component Library</h2>
+            <div class="form-group">
+                <input type="text" id="componentSearchInput" placeholder="360 Search for any component...">
+            </div>
+            <div id="searchResults" style="margin-bottom: 20px;"></div>
+            <div style="overflow-x:auto;">
+                <table id="componentTable">
+                    <thead>
+                        <tr>
+                            <th>TPN</th>
+                            <th>Description</th>
+                            <th>Mfr. Part Number</th>
+                            <th>Mfr. Name</th>
+                            <th class="cost-header">Price</th>
+                            <th>Package/Case</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="recipes" class="tab-content">
+        <div class="card">
+            <h2>Recipe Library</h2>
+            <button id="createRecipeBtn">Create New Recipe</button>
+            <table id="recipeTable">
+                <thead><tr><th>Recipe Name</th><th>Component Count</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="boms" class="tab-content">
+        <div class="card">
+             <h2>BOM Projects</h2>
+             <button id="newBOMProjectBtn">New BOM Project</button>
+             <select id="bomProjectSelector" style="margin-left: 10px; width: 300px;"></select>
+             <button id="deleteBOMProjectBtn" class="danger" style="margin-left: 10px;">Delete Current Project</button>
+             <div id="bom-display" style="display:none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid var(--primary-color); margin-bottom: 10px;">
+                    <h2 id="current-bom-title"></h2>
+                    <div class="bom-actions">
+                        <button id="printBOMBtn">Print BOM</button>
+                        <button id="exportCSVBtn">Export to CSV</button>
+                    </div>
+                </div>
+                <div class="form-group" style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+                    <select id="item-selector" style="flex-grow: 1;"></select>
+                    <input type="number" id="item-quantity" placeholder="Quantity" value="1" min="1" style="width: 100px;">
+                    <button id="addItemToBOMBtn">Add Recipe to BOM</button>
+                </div>
+                <table id="bomTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 20px;"></th>
+                            <th>Item</th>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th class="cost-header">Unit Cost</th>
+                            <th class="cost-header">Total Cost</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="total-cost">Total BOM Cost: ₹0.00</div>
+             </div>
+        </div>
+    </div>
+    
+    <div id="currencySettingsModal" class="modal"><div class="modal-content small"><span class="close">&times;</span><h3>Set Currency Rates (from 1 INR)</h3><form id="currencyRatesForm"><div class="form-group"><label>USD Rate</label><input type="number" id="usdRate" step="any" required></div><div class="form-group"><label>EUR Rate</label><input type="number" id="eurRate" step="any" required></div><button type="submit">Save Rates</button></form></div></div>
+    
+    <div id="editComponentModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3>Edit Component</h3><form id="editComponentForm"><input type="hidden" id="editComponentId"><div class="form-group"><label>TPN</label><input type="text" id="edit-tpn" required></div><div class="form-group"><label>Description</label><textarea id="edit-description" rows="2"></textarea></div><div class="form-group"><label>Mfr. Part Number</label><input type="text" id="edit-manufacturerPartNumber"></div><div class="form-group"><label>Mfr. Name</label><input type="text" id="edit-manufacturerName"></div><div class="form-group"><label>Price (INR)</label><input type="number" step="any" id="edit-price" required></div><div class="form-group"><label>Package/Case</label><input type="text" id="edit-packageCase"></div><button type="submit">Save Changes</button></form></div></div>
+    
+    <div id="recipeModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3 id="recipeModalTitle">Create Recipe</h3><form id="recipeForm"><input type="hidden" id="recipeId"><div class="form-group"><label>Recipe Name</label><input type="text" id="recipeName" required></div><hr><h4>Components</h4><div class="form-group"><input type="text" id="recipe-component-search" placeholder="Search components to add..."></div><div id="recipe-component-search-results"></div><hr><div id="recipe-components-list"></div><button type="button" id="addComponentToRecipeBtn" style="display:none;">Add Selected Component</button><button type="submit">Save Recipe</button></form></div></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let db;
+        const dbName = "BOMGeneratorDB_v3";
+        const dbVersion = 1;
+        const request = indexedDB.open(dbName, dbVersion);
+
+        request.onerror = (event) => console.error("Database error:", event.target.error);
+        
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('components')) { const store = db.createObjectStore("components", { keyPath: "id", autoIncrement: true }); store.createIndex("tpn", "tpn", { unique: true }); }
+            if (!db.objectStoreNames.contains('recipes')) { const store = db.createObjectStore("recipes", { keyPath: "id", autoIncrement: true }); store.createIndex("name", "name", { unique: true }); }
+            if (!db.objectStoreNames.contains('boms')) { const store = db.createObjectStore("boms", { keyPath: "id", autoIncrement: true }); store.createIndex("name", "name", { unique: true }); }
+        };
+
+        request.onsuccess = (event) => { db = event.target.result; loadInitialData(); };
+
+        const tabs = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(item => item.classList.remove('active'));
+                tab.classList.add('active');
+                const target = document.querySelector(`#${tab.dataset.tab}`);
+                tabContents.forEach(content => content.classList.remove('active'));
+                target.classList.add('active');
+            });
+        });
+
+        let currentBOMId = null;
+        const currencyData = { INR: { symbol: '₹', rate: 1 }, USD: { symbol: '$', rate: 1 / 83.5 }, EUR: { symbol: '€', rate: 1 / 90.0 } };
+        const savedRates = localStorage.getItem('currencyRates_v3');
+        if (savedRates) { const customRates = JSON.parse(savedRates); currencyData.USD.rate = customRates.USD; currencyData.EUR.rate = customRates.EUR; }
+        
+        let selectedCurrency = localStorage.getItem('selectedCurrency_v3') || 'INR';
+        document.getElementById('currencySelector').value = selectedCurrency;
+        
+        const formatCurrency = (amountInINR) => { const currency = currencyData[selectedCurrency]; return `${currency.symbol}${(amountInINR * currency.rate).toFixed(4)}`; };
+        const updateCurrencyDisplays = () => { document.querySelectorAll('.cost-header').forEach(el => el.textContent = `Price (${currencyData[selectedCurrency].symbol})`); loadComponents(); if (currentBOMId) renderBOMTable(); };
+        
+        document.getElementById('currencySelector').addEventListener('change', (e) => { selectedCurrency = e.target.value; localStorage.setItem('selectedCurrency_v3', selectedCurrency); updateCurrencyDisplays(); });
+        document.getElementById('setRatesBtn').addEventListener('click', () => { document.getElementById('usdRate').value = currencyData.USD.rate; document.getElementById('eurRate').value = currencyData.EUR.rate; document.getElementById('currencySettingsModal').style.display = 'block'; });
+        document.getElementById('currencyRatesForm').addEventListener('submit', (e) => { e.preventDefault(); const newUsdRate = parseFloat(document.getElementById('usdRate').value), newEurRate = parseFloat(document.getElementById('eurRate').value); if (!newUsdRate || !newEurRate || newUsdRate <= 0 || newEurRate <= 0) { alert('Please enter valid rates.'); return; } currencyData.USD.rate = newUsdRate; currencyData.EUR.rate = newEurRate; localStorage.setItem('currencyRates_v3', JSON.stringify({ USD: newUsdRate, EUR: newEurRate })); document.getElementById('currencySettingsModal').style.display = 'none'; updateCurrencyDisplays(); alert('Rates updated!'); });
+        
+        async function loadInitialData() { updateCurrencyDisplays(); await loadComponents(); await loadRecipes(); await loadBOMProjectsList(); await populateItemSelector(); }
+        
+        document.getElementById('uploadExcelBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('excelUpload');
+            const statusEl = document.getElementById('uploadStatus');
+            const file = fileInput.files[0];
+            if (!file) { alert('Please select an Excel file.'); return; }
+            statusEl.textContent = 'Processing...';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (json.length === 0) { statusEl.textContent = 'Error: Excel file is empty.'; return; }
+
+                const expectedHeaders = ["Recipe", "TPN", "QTY", "Package/Case", "Manufacturer Name", "Description", "Manufacturer Part Number", "Price (INR)"];
+                const actualHeaders = Object.keys(json[0]);
+                const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h));
+                if (missingHeaders.length > 0) { statusEl.textContent = `Error: Missing headers: ${missingHeaders.join(', ')}`; return; }
+
+                const recipesToCreate = {};
+                for (const row of json) {
+                    const component = { tpn: row["TPN"], description: row["Description"], manufacturerPartNumber: row["Manufacturer Part Number"], manufacturerName: row["Manufacturer Name"], price: parseFloat(row["Price (INR)"]) || 0, packageCase: row["Package/Case"] };
+                    const componentId = await addOrUpdateComponent(component);
+                    const recipeName = row["Recipe"];
+                    if (recipeName && !recipesToCreate[recipeName]) { recipesToCreate[recipeName] = []; }
+                    if (recipeName) recipesToCreate[recipeName].push({ componentId: componentId, quantity: parseInt(row["QTY"]) || 1 });
+                }
+                
+                for (const recipeName in recipesToCreate) { await addOrUpdateRecipe({ name: recipeName, components: recipesToCreate[recipeName] }); }
+                statusEl.textContent = `Success: ${json.length} rows processed!`;
+                fileInput.value = '';
+                await loadInitialData();
+            } catch (error) { console.error("Upload error:", error); statusEl.textContent = 'Error processing file.'; }
+        });
+
+        async function addOrUpdateComponent(compData) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(['components'], 'readwrite');
+                const store = tx.objectStore('components');
+                if (compData.id) { store.put(compData).onsuccess = (e) => resolve(compData.id); } 
+                else {
+                    const index = store.index('tpn');
+                    const request = index.get(compData.tpn);
+                    request.onsuccess = () => {
+                        const existing = request.result;
+                        if (existing) { const updatedComp = { ...existing, ...compData }; store.put(updatedComp).onsuccess = (e) => resolve(existing.id); } 
+                        else { store.add(compData).onsuccess = (e) => resolve(e.target.result); }
+                    };
+                }
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+        
+        async function addOrUpdateRecipe(recipeData) {
+             return new Promise((resolve, reject) => {
+                const tx = db.transaction(['recipes'], 'readwrite');
+                const store = tx.objectStore('recipes');
+                if (recipeData.id) { store.put(recipeData).onsuccess = (e) => resolve(recipeData.id); }
+                else {
+                    const index = store.index('name');
+                    const request = index.get(recipeData.name);
+                    request.onsuccess = () => {
+                        const existing = request.result;
+                        if (existing) { const updatedRecipe = { ...existing, components: recipeData.components }; store.put(updatedRecipe).onsuccess = (e) => resolve(existing.id); } 
+                        else { store.add(recipeData).onsuccess = (e) => resolve(e.target.result); }
+                    };
+                }
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+        
+        async function loadComponents() {
+            const tableBody = document.querySelector("#componentTable tbody");
+            tableBody.innerHTML = ''; if (!db) return;
+            const components = await getAll('components');
+            components.forEach(comp => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td>${comp.tpn || ''}</td><td>${comp.description || ''}</td><td>${comp.manufacturerPartNumber || ''}</td><td>${comp.manufacturerName || ''}</td><td>${formatCurrency(comp.price || 0)}</td><td>${comp.packageCase || ''}</td><td><button class="danger" onclick="deleteComponent(${comp.id})">Delete</button></td>`;
+            });
+        }
+        
+        async function loadRecipes() {
+            const tableBody = document.querySelector("#recipeTable tbody");
+            tableBody.innerHTML = ''; if (!db) return;
+            const recipes = await getAll('recipes');
+            recipes.forEach(recipe => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td>${recipe.name}</td><td>${recipe.components.length}</td><td><button onclick="openRecipeModal(${recipe.id})">Edit</button><button class="danger" onclick="deleteRecipe(${recipe.id})">Delete</button></td>`;
+            });
+        }
+        
+        window.deleteComponent = (id) => { if (!db || !confirm("Delete component? This might affect recipes.")) return; db.transaction(["components"], "readwrite").objectStore("components").delete(id).onsuccess = () => { loadInitialData(); }; };
+        window.deleteRecipe = (id) => { if (!db || !confirm("Delete recipe?")) return; db.transaction(["recipes"], "readwrite").objectStore("recipes").delete(id).onsuccess = () => { loadInitialData(); }; };
+
+        document.getElementById('newBOMProjectBtn').addEventListener('click', handleNewBOMProject);
+        document.getElementById('deleteBOMProjectBtn').addEventListener('click', deleteCurrentBOMProject);
+        document.getElementById('bomProjectSelector').addEventListener('change', loadBOMProject);
+        document.getElementById('addItemToBOMBtn').addEventListener('click', handleAddItemToBOM);
+        function handleNewBOMProject() { const name = prompt("Enter name for the new BOM project:"); if (name) { db.transaction(["boms"], "readwrite").objectStore("boms").add({ name, version: 1, items: [] }).onsuccess = (e) => { currentBOMId = e.target.result; loadBOMProjectsList(currentBOMId).then(displayBOMUI); }; } }
+        function deleteCurrentBOMProject() { if (currentBOMId && confirm("Delete this BOM project?")) { db.transaction(["boms"], "readwrite").objectStore("boms").delete(currentBOMId).onsuccess = () => { currentBOMId = null; document.getElementById('bom-display').style.display = 'none'; loadBOMProjectsList(); }; } }
+        async function loadBOMProjectsList(selectId = null) { const selector = document.getElementById('bomProjectSelector'); selector.innerHTML = '<option value="">Select a BOM Project...</option>'; const boms = await getAll('boms'); boms.forEach(bom => selector.add(new Option(`${bom.name} (v${bom.version})`, bom.id))); if (selectId) selector.value = selectId; }
+        function loadBOMProject() { currentBOMId = parseInt(document.getElementById('bomProjectSelector').value) || null; if (currentBOMId) displayBOMUI(); else document.getElementById('bom-display').style.display = 'none'; }
+        async function displayBOMUI() { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); if(bom){ document.getElementById('current-bom-title').textContent = `${bom.name} (v${bom.version})`; document.getElementById('bom-display').style.display = 'block'; renderBOMTable(); } }
+        async function handleAddItemToBOM() { if (!currentBOMId) return; const selectedItemId = document.getElementById('item-selector').value; const quantity = parseInt(document.getElementById('item-quantity').value); if (!selectedItemId || !quantity > 0) return; const bom = await getById('boms', currentBOMId); bom.items.push({ type: 'recipe', id: parseInt(selectedItemId), quantity }); await update('boms', bom); renderBOMTable(); }
+        
+        async function renderBOMTable() {
+            if (!currentBOMId) return;
+            const bom = await getById('boms', currentBOMId);
+            const tableBody = document.querySelector("#bomTable tbody");
+            tableBody.innerHTML = ''; let totalCostINR = 0;
+            for (const [index, item] of bom.items.entries()) {
+                const recipe = await getById('recipes', item.id);
+                if (recipe) {
+                    let recipeUnitCostINR = 0;
+                    for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if (comp) recipeUnitCostINR += (comp.price || 0) * rc.quantity; }
+                    const itemTotalINR = recipeUnitCostINR * item.quantity;
+                    totalCostINR += itemTotalINR;
+                    const recipeRow = tableBody.insertRow();
+                    recipeRow.className = 'recipe-row';
+                    recipeRow.innerHTML = `<td><span class="toggle-btn" onclick="toggleRecipeDetails(${index})">[+]</span></td><td>${recipe.name}</td><td>${recipe.components.length} components</td><td>${item.quantity}</td><td>${formatCurrency(recipeUnitCostINR)}</td><td>${formatCurrency(itemTotalINR)}</td><td><button class="danger" onclick="removeBOMItem(${index})">X</button></td>`;
+                    for (const rc of recipe.components) {
+                        const comp = await getById('components', rc.componentId);
+                        if (comp) { const componentRow = tableBody.insertRow(); componentRow.className = `component-row child-of-${index}`; componentRow.innerHTML = `<td></td><td>${comp.tpn}</td><td>${comp.description}</td><td>${rc.quantity}</td><td>${formatCurrency(comp.price || 0)}</td><td>${formatCurrency((comp.price || 0) * rc.quantity)}</td><td></td>`; }
+                    }
+                }
+            }
+            document.getElementById('total-cost').innerHTML = `Total BOM Cost: ${formatCurrency(totalCostINR)}`;
+        }
+        
+        window.toggleRecipeDetails = (index) => { const btn = event.target; const rows = document.querySelectorAll(`.child-of-${index}`); if (btn.textContent === '[+]') { rows.forEach(row => row.style.display = 'table-row'); btn.textContent = '[-]'; } else { rows.forEach(row => row.style.display = 'none'); btn.textContent = '[+]'; } };
+        window.removeBOMItem = async (index) => { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); bom.items.splice(index, 1); await update('boms', bom); renderBOMTable(); };
+        
+        async function populateItemSelector() { const selector = document.getElementById('item-selector'); selector.innerHTML = '<option value="">Select a Recipe...</option>'; const recipes = await getAll('recipes'); recipes.forEach(recipe => { selector.add(new Option(recipe.name, recipe.id)); }); }
+        
+        document.getElementById('componentSearchInput').addEventListener('input', async (e) => { const query = e.target.value; if (query.length < 2) { document.getElementById('searchResults').innerHTML = ''; return; } const results = await searchAllComponents(query); renderSearchResults(results); });
+        async function searchAllComponents(query) { query = query.toLowerCase(); const allComponents = await getAll('components'); return allComponents.filter(comp => Object.values(comp).some(value => value && String(value).toLowerCase().includes(query))); }
+        function renderSearchResults(components) {
+            const resultsDiv = document.getElementById('searchResults'); resultsDiv.innerHTML = ''; if (components.length === 0) { resultsDiv.innerHTML = '<div>No components found.</div>'; return; }
+            components.forEach(comp => {
+                const div = document.createElement('div'); const textSpan = document.createElement('span');
+                textSpan.innerHTML = `<strong>${comp.tpn}</strong> - ${comp.description} <i>(${comp.manufacturerPartNumber})</i> | <strong>Price: ₹${(comp.price || 0).toFixed(4)}</strong>`;
+                div.appendChild(textSpan);
+                const buttonGroup = document.createElement('span');
+                const editBtn = document.createElement('button'); editBtn.textContent = 'Edit'; editBtn.onclick = () => openEditModal(comp.id);
+                const dupBtn = document.createElement('button'); dupBtn.textContent = 'Duplicate'; dupBtn.style.backgroundColor = '#5bc0de';
+                dupBtn.onclick = async () => { const newComp = { ...comp }; delete newComp.id; newComp.tpn = `${newComp.tpn}-copy`; await addOrUpdateComponent(newComp); await loadComponents(); alert('Component duplicated. Please update TPN.'); };
+                buttonGroup.appendChild(dupBtn); buttonGroup.appendChild(editBtn); div.appendChild(buttonGroup); resultsDiv.appendChild(div);
+            });
+        }
+        
+        async function openEditModal(id) {
+            const comp = await getById('components', id); if (!comp) return;
+            document.getElementById('editComponentId').value = comp.id; document.getElementById('edit-tpn').value = comp.tpn; document.getElementById('edit-description').value = comp.description; document.getElementById('edit-manufacturerPartNumber').value = comp.manufacturerPartNumber; document.getElementById('edit-manufacturerName').value = comp.manufacturerName; document.getElementById('edit-price').value = comp.price; document.getElementById('edit-packageCase').value = comp.packageCase;
+            document.getElementById('editComponentModal').style.display = 'block';
+        }
+
+        document.getElementById('editComponentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updatedComp = { id: parseInt(document.getElementById('editComponentId').value), tpn: document.getElementById('edit-tpn').value, description: document.getElementById('edit-description').value, manufacturerPartNumber: document.getElementById('edit-manufacturerPartNumber').value, manufacturerName: document.getElementById('edit-manufacturerName').value, price: parseFloat(document.getElementById('edit-price').value), packageCase: document.getElementById('edit-packageCase').value };
+            await addOrUpdateComponent(updatedComp);
+            document.getElementById('editComponentModal').style.display = 'none';
+            await loadComponents();
+        });
+        
+        document.querySelectorAll('.modal .close').forEach(btn => btn.onclick = () => btn.closest('.modal').style.display = 'none');
+
+        // --- MANUAL RECIPE CREATION/EDIT ---
+        document.getElementById('createRecipeBtn').addEventListener('click', () => openRecipeModal());
+        
+        window.openRecipeModal = async (recipeId = null) => {
+            const modal = document.getElementById('recipeModal');
+            const form = document.getElementById('recipeForm');
+            form.reset();
+            document.getElementById('recipe-components-list').innerHTML = '';
+            document.getElementById('recipe-component-search-results').innerHTML = '';
+            
+            if (recipeId) {
+                const recipe = await getById('recipes', recipeId);
+                document.getElementById('recipeModalTitle').textContent = 'Edit Recipe';
+                document.getElementById('recipeId').value = recipe.id;
+                document.getElementById('recipeName').value = recipe.name;
+                for (const comp of recipe.components) {
+                    await addComponentToRecipeForm(comp.componentId, comp.quantity);
+                }
+            } else {
+                document.getElementById('recipeModalTitle').textContent = 'Create New Recipe';
+                document.getElementById('recipeId').value = '';
+            }
+            modal.style.display = 'block';
+        };
+
+        document.getElementById('recipe-component-search').addEventListener('input', async (e) => {
+            const query = e.target.value.toLowerCase();
+            const resultsDiv = document.getElementById('recipe-component-search-results');
+            resultsDiv.innerHTML = '';
+            if (query.length < 2) return;
+            const components = await searchAllComponents(query);
+            components.forEach(comp => {
+                const div = document.createElement('div');
+                div.textContent = `${comp.tpn} - ${comp.description}`;
+                div.onclick = () => {
+                    addComponentToRecipeForm(comp.id, 1);
+                    resultsDiv.innerHTML = '';
+                    e.target.value = '';
+                };
+                resultsDiv.appendChild(div);
+            });
+        });
+
+        async function addComponentToRecipeForm(componentId, quantity = 1) {
+            const container = document.getElementById('recipe-components-list');
+            const comp = await getById('components', componentId);
+            if (!comp) return;
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'recipe-component-line';
+            itemDiv.dataset.componentId = componentId;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `${comp.tpn} - ${comp.description}`;
+            nameSpan.style.flexGrow = 1;
+
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number'; qtyInput.value = quantity; qtyInput.min = 1; qtyInput.style.width = '70px';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button'; removeBtn.textContent = 'X'; removeBtn.className = 'danger';
+            removeBtn.onclick = () => itemDiv.remove();
+            
+            itemDiv.append(nameSpan, qtyInput, removeBtn);
+            container.appendChild(itemDiv);
+        }
+
+        document.getElementById('recipeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const components = [];
+            document.querySelectorAll('#recipe-components-list .recipe-component-line').forEach(line => {
+                components.push({
+                    componentId: parseInt(line.dataset.componentId),
+                    quantity: parseInt(line.querySelector('input').value)
+                });
+            });
+            const recipeData = {
+                id: document.getElementById('recipeId').value ? parseInt(document.getElementById('recipeId').value) : null,
+                name: document.getElementById('recipeName').value,
+                components: components
+            };
+            await addOrUpdateRecipe(recipeData);
+            document.getElementById('recipeModal').style.display = 'none';
+            await loadRecipes();
+        });
+
+        // --- PRINT AND EXPORT ---
+        document.getElementById('printBOMBtn').addEventListener('click', printBOM);
+        document.getElementById('exportCSVBtn').addEventListener('click', exportBOMToCSV);
+        async function printBOM(){ if(!currentBOMId)return; const bom = await getById('boms', currentBOMId); const currency = currencyData[selectedCurrency]; let tableRowsHTML = ''; let totalCostINR = 0; const fullHeaders = ["Recipe Name", "Component TPN", "Component Description", "Final QTY", "Mfr. Name", "Mfr. Part Number", "Package/Case", `Unit Cost (${currency.symbol})`]; for(const item of bom.items){ if(item.type === 'recipe'){ const recipe = await getById('recipes', item.id); if(recipe){ for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if(comp) { const finalQty = item.quantity * rc.quantity; const itemTotalINR = (comp.price || 0) * finalQty; totalCostINR += itemTotalINR; tableRowsHTML += `<tr><td>${recipe.name}</td><td>${comp.tpn||''}</td><td>${comp.description||''}</td><td>${finalQty}</td><td>${comp.manufacturerName||''}</td><td>${comp.manufacturerPartNumber||''}</td><td>${comp.packageCase||''}</td><td>${formatCurrency(comp.price||0)}</td></tr>`; } } } } } const printContent=`<html><head><title>Print BOM: ${bom.name}</title><style>body{font-family:sans-serif}table{width:100%;border-collapse:collapse;font-size:10pt;}th,td{border:1px solid #ccc;padding:5px;text-align:left;vertical-align:top}th{background:#e9ecef}</style></head><body><h1>BOM: ${bom.name}</h1><table><thead><tr><th>${fullHeaders.join('</th><th>')}</th></tr></thead><tbody>${tableRowsHTML}</tbody></table><h2>Total BOM Cost: ${formatCurrency(totalCostINR)}</h2></body></html>`; const printWindow = window.open('', '_blank'); printWindow.document.write(printContent); printWindow.document.close(); printWindow.print(); }
+        async function createCSVContent(){ if(!currentBOMId) return ['', '']; const bom = await getById('boms', currentBOMId); const currency = currencyData[selectedCurrency]; const fullHeaders = ["Recipe Name", "BOM Qty", "Component TPN", "Component Description", "Manufacturer Name", "Manufacturer Part Number", "Package/Case", `Price (${currency.symbol})`]; let csvContent = fullHeaders.join(",") + "\n"; const escapeCSV = (str) => `"${(str || '').replace(/"/g, '""')}"`; for(const item of bom.items){ if(item.type === 'recipe'){ const recipe = await getById('recipes', item.id); if(recipe){ for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if(comp) { const finalQty = item.quantity * rc.quantity; const row = [recipe.name, finalQty, comp.tpn, escapeCSV(comp.description), comp.manufacturerName, comp.manufacturerPartNumber, comp.packageCase, ((comp.price||0)*currency.rate).toFixed(4)]; csvContent += row.join(",") + "\n"; } } } } } return [bom.name, csvContent]; }
+        async function exportBOMToCSV(){const[bomName,csvContent]=await createCSVContent();if(!csvContent)return;const link=document.createElement("a");link.setAttribute("href",encodeURI("data:text/csv;charset=utf-8,"+csvContent));link.setAttribute("download",`${bomName}_BOM.csv`);document.body.appendChild(link);link.click();document.body.removeChild(link)}
+
+        const getById=(s,i)=>new Promise(r=>db.transaction(s).objectStore(s).get(i).onsuccess=e=>r(e.target.result));
+        const getAll=(s)=>new Promise(r=>db.transaction(s).objectStore(s).getAll().onsuccess=e=>r(e.target.result));
+        const update=(s,d)=>new Promise(r=>db.transaction(s,'readwrite').objectStore(s).put(d).onsuccess=e=>r(e.target.result));
+    });
+    </script>
+</body>
+</html>

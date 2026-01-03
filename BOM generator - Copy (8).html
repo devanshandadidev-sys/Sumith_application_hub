@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transight BOM Generator</title>
+    <!-- Using a reliable CDN for SheetJS library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #003B6A;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --font-color: #333;
+            --border-color: #dce3e9;
+            --white: #fff;
+            --danger-color: #d9534f;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--font-color);
+            line-height: 1.6;
+        }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        h1, h2, h3 { color: var(--secondary-color); margin-top: 0; }
+        h1 { text-align: center; flex-grow: 1; }
+        .controls-group { display: flex; gap: 15px; align-items: center; }
+        .card { background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        button { background-color: var(--primary-color); color: var(--white); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: var(--secondary-color); }
+        button.danger { background-color: var(--danger-color); }
+        button.danger:hover { background-color: #c9302c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #f2f2f2; font-weight: 600; white-space: nowrap; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: var(--white); margin: 5% auto; padding: 30px; border: 1px solid var(--border-color); width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content.small { max-width: 500px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; display: inline-block; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        .form-group { margin-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        label { font-weight: 600; display: block; margin-bottom: 3px; }
+        #total-cost { text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 15px; color: var(--primary-color); }
+        .bom-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        /* Tab Styles */
+        .tab-nav {
+            overflow: hidden;
+            border-bottom: 2px solid var(--primary-color);
+            margin-bottom: 20px;
+        }
+        .tab-nav button {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            transition: color 0.3s, border-bottom 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-nav button:hover {
+            color: var(--secondary-color);
+            background-color: transparent;
+        }
+        .tab-nav button.active {
+            color: var(--secondary-color);
+            border-bottom: 3px solid var(--accent-color);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <h1>Transight BOM Generator</h1>
+        <div class="controls-group">
+            <button id="setRatesBtn">Set Currency Rates</button>
+            <div>
+                <label for="currencySelector">Display Currency:</label>
+                <select id="currencySelector">
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-link active" data-tab="components">Component Library</button>
+        <button class="tab-link" data-tab="recipes">Recipe Library</button>
+        <button class="tab-link" data-tab="boms">BOM Projects</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="components" class="tab-content active">
+        <div class="card">
+            <h2>Component & Recipe Upload</h2>
+            <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <label for="excelUpload" style="margin:0;">Upload Excel File:</label>
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv">
+                    <button id="uploadExcelBtn">Upload</button>
+                </div>
+                 <span id="uploadStatus"></span>
+            </div>
+            <p>Upload an Excel file with the headers: <strong>Recipe, TPN, QTY, Package/Case, Manufacturer Name, Description, Manufacturer Part Number, Price (INR)</strong>. The system will automatically create components and recipes.</p>
+            <hr>
+            <h2>Component Library</h2>
+            <div style="overflow-x:auto;">
+                <table id="componentTable">
+                    <thead>
+                        <tr>
+                            <th>TPN</th>
+                            <th>Description</th>
+                            <th>Mfr. Part Number</th>
+                            <th>Mfr. Name</th>
+                            <th class="cost-header">Price</th>
+                            <th>Package/Case</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="recipes" class="tab-content">
+        <div class="card">
+            <h2>Recipe Library</h2>
+            <table id="recipeTable">
+                <thead><tr><th>Recipe Name</th><th>Component Count</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="boms" class="tab-content">
+        <div class="card">
+             <h2>BOM Projects</h2>
+             <button id="newBOMProjectBtn">New BOM Project</button>
+             <select id="bomProjectSelector" style="margin-left: 10px; width: 300px;"></select>
+             <button id="deleteBOMProjectBtn" class="danger" style="margin-left: 10px;">Delete Current Project</button>
+             <div id="bom-display" style="display:none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid var(--primary-color); margin-bottom: 10px;">
+                    <h2 id="current-bom-title"></h2>
+                    <div class="bom-actions">
+                        <button id="printBOMBtn">Print BOM</button>
+                        <button id="exportCSVBtn">Export to CSV</button>
+                    </div>
+                </div>
+                <div class="form-group" style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+                    <select id="item-selector" style="flex-grow: 1;"></select>
+                    <input type="number" id="item-quantity" placeholder="Quantity" value="1" min="1" style="width: 100px;">
+                    <button id="addItemToBOMBtn">Add to BOM</button>
+                </div>
+                <table id="bomTable">
+                    <thead><tr><th>Type</th><th>Part/Recipe</th><th>Description</th><th>Quantity</th><th class="cost-header">Unit Cost</th><th class="cost-header">Total Cost</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div id="total-cost">Total BOM Cost: ₹0.00</div>
+             </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="currencySettingsModal" class="modal"><div class="modal-content small"><span class="close">&times;</span><h3>Set Currency Rates (from 1 INR)</h3><form id="currencyRatesForm"><div class="form-group"><label for="usdRate">USD Rate (e.g., 0.012 for 1 USD = 83 INR)</label><input type="number" id="usdRate" step="any" required></div><div class="form-group"><label for="eurRate">EUR Rate (e.g., 0.011 for 1 EUR = 90 INR)</label><input type="number" id="eurRate" step="any" required></div><button type="submit">Save Rates</button></form></div></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let db;
+        const dbName = "BOMGeneratorDB_v3";
+        const dbVersion = 1;
+        const request = indexedDB.open(dbName, dbVersion);
+
+        request.onerror = (event) => console.error("Database error:", event.target.error);
+        
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('components')) {
+                 const componentStore = db.createObjectStore("components", { keyPath: "id", autoIncrement: true });
+                 componentStore.createIndex("tpn", "tpn", { unique: true });
+            }
+            if (!db.objectStoreNames.contains('recipes')) {
+                const recipeStore = db.createObjectStore("recipes", { keyPath: "id", autoIncrement: true });
+                recipeStore.createIndex("name", "name", { unique: true });
+            }
+            if (!db.objectStoreNames.contains('boms')) {
+                const bomStore = db.createObjectStore("boms", { keyPath: "id", autoIncrement: true });
+                bomStore.createIndex("name", "name", { unique: true });
+            }
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            loadInitialData();
+        };
+
+        // --- TAB NAVIGATION ---
+        const tabs = document.querySelectorAll('.tab-link');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(item => item.classList.remove('active'));
+                tab.classList.add('active');
+                const target = document.querySelector(`#${tab.dataset.tab}`);
+                tabContents.forEach(content => content.classList.remove('active'));
+                target.classList.add('active');
+            });
+        });
+
+        let currentBOMId = null;
+        // --- CURRENCY LOGIC (INR is base) ---
+        const currencyData = { 
+            INR: { symbol: '₹', rate: 1 },
+            USD: { symbol: '$', rate: 1 / 83.5 },
+            EUR: { symbol: '€', rate: 1 / 90.0 }
+        };
+        const savedRates = localStorage.getItem('currencyRates_v3');
+        if (savedRates) { const customRates = JSON.parse(savedRates); currencyData.USD.rate = customRates.USD; currencyData.EUR.rate = customRates.EUR; }
+        
+        let selectedCurrency = localStorage.getItem('selectedCurrency_v3') || 'INR';
+        document.getElementById('currencySelector').value = selectedCurrency;
+        
+        const formatCurrency = (amountInINR) => {
+            const currency = currencyData[selectedCurrency];
+            return `${currency.symbol}${(amountInINR * currency.rate).toFixed(2)}`;
+        };
+        const updateCurrencyDisplays = () => { document.querySelectorAll('.cost-header').forEach(el => el.textContent = `Price (${currencyData[selectedCurrency].symbol})`); loadComponents(); if (currentBOMId) renderBOMTable(); };
+        
+        document.getElementById('currencySelector').addEventListener('change', (e) => { selectedCurrency = e.target.value; localStorage.setItem('selectedCurrency_v3', selectedCurrency); updateCurrencyDisplays(); });
+        document.getElementById('setRatesBtn').addEventListener('click', () => { document.getElementById('usdRate').value = currencyData.USD.rate; document.getElementById('eurRate').value = currencyData.EUR.rate; document.getElementById('currencySettingsModal').style.display = 'block'; });
+        document.getElementById('currencyRatesForm').addEventListener('submit', (e) => { e.preventDefault(); const newUsdRate = parseFloat(document.getElementById('usdRate').value), newEurRate = parseFloat(document.getElementById('eurRate').value); if (!newUsdRate || !newEurRate || newUsdRate <= 0 || newEurRate <= 0) { alert('Please enter valid rates.'); return; } currencyData.USD.rate = newUsdRate; currencyData.EUR.rate = newEurRate; localStorage.setItem('currencyRates_v3', JSON.stringify({ USD: newUsdRate, EUR: newEurRate })); document.getElementById('currencySettingsModal').style.display = 'none'; updateCurrencyDisplays(); alert('Rates updated!'); });
+        
+        async function loadInitialData() { updateCurrencyDisplays(); await loadRecipes(); await loadBOMProjectsList(); await populateItemSelector(); }
+        
+        // --- EXCEL UPLOAD LOGIC ---
+        document.getElementById('uploadExcelBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('excelUpload');
+            const statusEl = document.getElementById('uploadStatus');
+            const file = fileInput.files[0];
+            if (!file) { alert('Please select an Excel file.'); return; }
+            statusEl.textContent = 'Processing...';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (json.length === 0) { statusEl.textContent = 'Error: Excel file is empty.'; return; }
+
+                const expectedHeaders = ["Recipe", "TPN", "QTY", "Package/Case", "Manufacturer Name", "Description", "Manufacturer Part Number", "Price (INR)"];
+                const actualHeaders = Object.keys(json[0]);
+                const missingHeaders = expectedHeaders.filter(h => !actualHeaders.includes(h));
+                if (missingHeaders.length > 0) { statusEl.textContent = `Error: Missing headers: ${missingHeaders.join(', ')}`; return; }
+
+                const recipesToCreate = {};
+
+                for (const row of json) {
+                    const component = {
+                        tpn: row["TPN"],
+                        description: row["Description"],
+                        manufacturerPartNumber: row["Manufacturer Part Number"],
+                        manufacturerName: row["Manufacturer Name"],
+                        price: parseFloat(row["Price (INR)"]) || 0,
+                        packageCase: row["Package/Case"]
+                    };
+                    
+                    const componentId = await addOrUpdateComponent(component);
+
+                    const recipeName = row["Recipe"];
+                    if (!recipesToCreate[recipeName]) {
+                        recipesToCreate[recipeName] = [];
+                    }
+                    recipesToCreate[recipeName].push({
+                        componentId: componentId,
+                        quantity: parseInt(row["QTY"]) || 1
+                    });
+                }
+                
+                for (const recipeName in recipesToCreate) {
+                    await addOrUpdateRecipe(recipeName, recipesToCreate[recipeName]);
+                }
+
+                statusEl.textContent = `Success: ${json.length} rows processed!`;
+                fileInput.value = '';
+                await loadInitialData();
+
+            } catch (error) { console.error("Upload error:", error); statusEl.textContent = 'Error processing file.'; }
+        });
+
+        async function addOrUpdateComponent(compData) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(['components'], 'readwrite');
+                const store = tx.objectStore('components');
+                const index = store.index('tpn');
+                const request = index.get(compData.tpn);
+                
+                request.onsuccess = () => {
+                    const existing = request.result;
+                    if (existing) {
+                        const updatedComp = { ...existing, ...compData };
+                        store.put(updatedComp).onsuccess = (e) => resolve(existing.id);
+                    } else {
+                        store.add(compData).onsuccess = (e) => resolve(e.target.result);
+                    }
+                };
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+        
+        async function addOrUpdateRecipe(recipeName, components) {
+             return new Promise((resolve, reject) => {
+                const tx = db.transaction(['recipes'], 'readwrite');
+                const store = tx.objectStore('recipes');
+                const index = store.index('name');
+                const request = index.get(recipeName);
+                
+                request.onsuccess = () => {
+                    const existing = request.result;
+                    if (existing) {
+                        const updatedRecipe = { ...existing, components: components };
+                        store.put(updatedRecipe).onsuccess = (e) => resolve(existing.id);
+                    } else {
+                        store.add({ name: recipeName, components: components }).onsuccess = (e) => resolve(e.target.result);
+                    }
+                };
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
+        
+        // --- COMPONENT & RECIPE DISPLAY ---
+        async function loadComponents() {
+            const tableBody = document.querySelector("#componentTable tbody");
+            tableBody.innerHTML = ''; if (!db) return;
+            const components = await getAll('components');
+            components.forEach(comp => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td>${comp.tpn || ''}</td><td>${comp.description || ''}</td><td>${comp.manufacturerPartNumber || ''}</td><td>${comp.manufacturerName || ''}</td><td>${formatCurrency(comp.price || 0)}</td><td>${comp.packageCase || ''}</td><td><button class="danger" onclick="deleteComponent(${comp.id})">Delete</button></td>`;
+            });
+        }
+        
+        async function loadRecipes() {
+            const tableBody = document.querySelector("#recipeTable tbody");
+            tableBody.innerHTML = ''; if (!db) return;
+            const recipes = await getAll('recipes');
+            recipes.forEach(recipe => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td>${recipe.name}</td><td>${recipe.components.length}</td><td><button class="danger" onclick="deleteRecipe(${recipe.id})">Delete</button></td>`;
+            });
+        }
+        
+        window.deleteComponent = (id) => { if (!db || !confirm("Delete component? This might affect recipes.")) return; db.transaction(["components"], "readwrite").objectStore("components").delete(id).onsuccess = () => { loadInitialData(); }; };
+        window.deleteRecipe = (id) => { if (!db || !confirm("Delete recipe?")) return; db.transaction(["recipes"], "readwrite").objectStore("recipes").delete(id).onsuccess = () => { loadInitialData(); }; };
+
+        // --- BOM PROJECT MANAGEMENT ---
+        document.getElementById('newBOMProjectBtn').addEventListener('click', handleNewBOMProject);
+        document.getElementById('deleteBOMProjectBtn').addEventListener('click', deleteCurrentBOMProject);
+        document.getElementById('bomProjectSelector').addEventListener('change', loadBOMProject);
+        document.getElementById('addItemToBOMBtn').addEventListener('click', handleAddItemToBOM);
+        function handleNewBOMProject() { const name = prompt("Enter name for the new BOM project:"); if (name) { db.transaction(["boms"], "readwrite").objectStore("boms").add({ name, version: 1, items: [] }).onsuccess = (e) => { currentBOMId = e.target.result; loadBOMProjectsList(currentBOMId).then(displayBOMUI); }; } }
+        function deleteCurrentBOMProject() { if (currentBOMId && confirm("Delete this BOM project?")) { db.transaction(["boms"], "readwrite").objectStore("boms").delete(currentBOMId).onsuccess = () => { currentBOMId = null; document.getElementById('bom-display').style.display = 'none'; loadBOMProjectsList(); }; } }
+        async function loadBOMProjectsList(selectId = null) { const selector = document.getElementById('bomProjectSelector'); selector.innerHTML = '<option value="">Select a BOM Project...</option>'; const boms = await getAll('boms'); boms.forEach(bom => selector.add(new Option(`${bom.name} (v${bom.version})`, bom.id))); if (selectId) selector.value = selectId; }
+        function loadBOMProject() { currentBOMId = parseInt(document.getElementById('bomProjectSelector').value) || null; if (currentBOMId) displayBOMUI(); else document.getElementById('bom-display').style.display = 'none'; }
+        async function displayBOMUI() { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); if(bom){ document.getElementById('current-bom-title').textContent = `${bom.name} (v${bom.version})`; document.getElementById('bom-display').style.display = 'block'; renderBOMTable(); } }
+        async function handleAddItemToBOM() { if (!currentBOMId) return; const [type, id] = document.getElementById('item-selector').value.split('-'); const quantity = parseInt(document.getElementById('item-quantity').value); if (!type || !id || !quantity > 0) return; const bom = await getById('boms', currentBOMId); bom.items.push({ type, id: parseInt(id), quantity }); await update('boms', bom); renderBOMTable(); }
+        async function renderBOMTable() { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); const tableBody = document.querySelector("#bomTable tbody"); tableBody.innerHTML = ''; let totalCostINR = 0; for (const [index, item] of bom.items.entries()) { const row = tableBody.insertRow(); if (item.type === 'component') { const comp = await getById('components', item.id); if (comp) { const itemTotalINR = (comp.price || 0) * item.quantity; totalCostINR += itemTotalINR; row.innerHTML = `<td>Component</td><td>${comp.tpn}</td><td>${comp.description}</td><td>${item.quantity}</td><td>${formatCurrency(comp.price || 0)}</td><td>${formatCurrency(itemTotalINR)}</td><td><button class="danger" onclick="removeBOMItem(${index})">X</button></td>`; } } else if (item.type === 'recipe') { const recipe = await getById('recipes', item.id); if (recipe) { let recipeUnitCostINR = 0; for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if (comp) recipeUnitCostINR += (comp.price || 0) * rc.quantity; } const itemTotalINR = recipeUnitCostINR * item.quantity; totalCostINR += itemTotalINR; row.innerHTML = `<td>Recipe</td><td>${recipe.name}</td><td>${recipe.components.length} components</td><td>${item.quantity}</td><td>${formatCurrency(recipeUnitCostINR)}</td><td>${formatCurrency(itemTotalINR)}</td><td><button class="danger" onclick="removeBOMItem(${index})">X</button></td>`; } } } document.getElementById('total-cost').innerHTML = `Total BOM Cost: ${formatCurrency(totalCostINR)}`; }
+        window.removeBOMItem = async (index) => { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); bom.items.splice(index, 1); await update('boms', bom); renderBOMTable(); };
+        
+        async function populateItemSelector() { const selector = document.getElementById('item-selector'); selector.innerHTML = ''; const addOptions = async (storeName, type, labelField1, labelField2) => { const optgroup = document.createElement('optgroup'); optgroup.label = storeName.charAt(0).toUpperCase() + storeName.slice(1); const items = await getAll(storeName); items.forEach(item => { const desc = item[labelField2] ? ` - ${item[labelField2]}` : ''; optgroup.appendChild(new Option(`${item[labelField1]}${desc}`, `${type}-${item.id}`)); }); selector.appendChild(optgroup); }; await addOptions('components', 'component', 'tpn', 'description'); await addOptions('recipes', 'recipe', 'name', null); }
+        
+        // --- UPDATED EXPORT AND PRINT FUNCTIONS ---
+        document.getElementById('printBOMBtn').addEventListener('click', printBOM);
+        document.getElementById('exportCSVBtn').addEventListener('click', exportBOMToCSV);
+
+        async function printBOM(){
+            if(!currentBOMId)return;
+            const bom = await getById('boms', currentBOMId);
+            const currency = currencyData[selectedCurrency];
+            let tableRowsHTML = '';
+            let totalCostINR = 0;
+            const fullHeaders = ["Item Type", "TPN", "Description", "QTY", "Mfr. Name", "Mfr. Part Number", "Package/Case", `Unit Cost (${currency.symbol})`];
+            
+            for(const item of bom.items){
+                 if(item.type === 'recipe'){
+                    const recipe = await getById('recipes', item.id);
+                    if(recipe){
+                        for (const rc of recipe.components) {
+                            const comp = await getById('components', rc.componentId);
+                            if(comp) {
+                                const finalQty = item.quantity * rc.quantity;
+                                const itemTotalINR = (comp.price || 0) * finalQty;
+                                totalCostINR += itemTotalINR;
+                                tableRowsHTML += `<tr><td>Recipe (${recipe.name})</td><td>${comp.tpn||''}</td><td>${comp.description||''}</td><td>${finalQty}</td><td>${comp.manufacturerName||''}</td><td>${comp.manufacturerPartNumber||''}</td><td>${comp.packageCase||''}</td><td>${formatCurrency(comp.price||0)}</td></tr>`;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            const printContent=`<html><head><title>Print BOM: ${bom.name}</title><style>body{font-family:sans-serif}table{width:100%;border-collapse:collapse;font-size:10pt;}th,td{border:1px solid #ccc;padding:5px;text-align:left;vertical-align:top}th{background:#e9ecef}</style></head><body><h1>BOM: ${bom.name}</h1><table><thead><tr><th>${fullHeaders.join('</th><th>')}</th></tr></thead><tbody>${tableRowsHTML}</tbody></table><h2>Total BOM Cost: ${formatCurrency(totalCostINR)}</h2></body></html>`;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        async function createCSVContent(){
+            if(!currentBOMId) return ['', ''];
+            const bom = await getById('boms', currentBOMId);
+            const currency = currencyData[selectedCurrency];
+            const fullHeaders = ["Item Type", "BOM Qty", "TPN", "Description", "Manufacturer Name", "Manufacturer Part Number", "Package/Case", `Price (${currency.symbol})`];
+            let csvContent = fullHeaders.join(",") + "\n";
+            const escapeCSV = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+            
+            for(const item of bom.items){
+                if(item.type === 'recipe'){
+                    const recipe = await getById('recipes', item.id);
+                    if(recipe){
+                        for (const rc of recipe.components) {
+                            const comp = await getById('components', rc.componentId);
+                            if(comp) {
+                                const finalQty = item.quantity * rc.quantity;
+                                const row = [`Recipe (${recipe.name})`, finalQty, comp.tpn, escapeCSV(comp.description), comp.manufacturerName, comp.manufacturerPartNumber, comp.packageCase, ((comp.price||0)*currency.rate).toFixed(2)];
+                                csvContent += row.join(",") + "\n";
+                            }
+                        }
+                    }
+                }
+            }
+            return [bom.name, csvContent];
+        }
+        
+        async function exportBOMToCSV(){const[bomName,csvContent]=await createCSVContent();if(!csvContent)return;const link=document.createElement("a");link.setAttribute("href",encodeURI("data:text/csv;charset=utf-8,"+csvContent));link.setAttribute("download",`${bomName}_BOM.csv`);document.body.appendChild(link);link.click();document.body.removeChild(link)}
+
+        const getById=(s,i)=>new Promise(r=>db.transaction(s).objectStore(s).get(i).onsuccess=e=>r(e.target.result));
+        const getAll=(s)=>new Promise(r=>db.transaction(s).objectStore(s).getAll().onsuccess=e=>r(e.target.result));
+        const update=(s,d)=>new Promise(r=>db.transaction(s,'readwrite').objectStore(s).put(d).onsuccess=e=>r(e.target.result));
+    });
+    </script>
+</body>
+</html>

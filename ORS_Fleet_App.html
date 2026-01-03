@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transight Fleet Management - Final</title>
+
+    <!-- Leaflet.js for Map Display -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; }
+        #sidebar { width: 350px; background-color: #f4f4f4; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 1000; }
+        #map { flex-grow: 1; }
+        h2, h3 { color: #333; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; }
+        .input-group input { width: 95%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>Transight Fleet Control</h2>
+        <h3>Trip Planner</h3>
+        <div class="input-group"><label for="start">Start Point</label><input type="text" id="start" value="Mumbai, India"></div>
+        <div class="input-group"><label for="end">Destination</label><input type="text" id="end" value="Kochi, India"></div>
+        <h3>Heavy Goods Vehicle (HGV) Dimensions</h3>
+        <div class="input-group"><label for="height">Height (m)</label><input type="number" id="height" value="4.5"></div>
+        <div class="input-group"><label for="width">Width (m)</label><input type="number" id="width" value="2.6"></div>
+        <div class="input-group"><label for="length">Length (m)</label><input type="number" id="length" value="18"></div>
+        <div class="input-group"><label for="weight">Weight (tons)</label><input type="number" id="weight" value="40"></div>
+        <button id="planRouteBtn">Plan HGV Route</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script type="module">
+        import Openrouteservice from 'https://unpkg.com/openrouteservice-js@0.3.2/dist/ors-js-client.js';
+
+        // *** PASTE YOUR TWO API KEYS HERE ***
+        const ors_api_key = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImEzNmQ1NjkzNTU0ZTRiZTQ5Njk0ZDA0MjZjOWM3YzA0IiwiaCI6Im11cm11cjY0In0=';      // For Routing
+        const opencage_api_key = '44a1aec3bfc14772bc65b53c3eb7d62a'; // For Geocoding
+
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let currentRouteLayer;
+
+        // *** FIX: Added a generous timeout for the routing request ***
+        const orsDirections = new Openrouteservice.Directions({ 
+            api_key: ors_api_key,
+            timeout: 20000 // 20 seconds
+        });
+
+        async function geocodeWithOpenCage(query) {
+            const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${opencage_api_key}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('OpenCage API request failed');
+            const data = await response.json();
+            if (!data.results.length) throw new Error('Location not found by OpenCage');
+            const { lng, lat } = data.results[0].geometry;
+            return [lng, lat];
+        }
+        
+        document.getElementById('planRouteBtn').addEventListener('click', planRoute);
+
+        async function planRoute() {
+            try {
+                const [startCoords, endCoords] = await Promise.all([
+                    geocodeWithOpenCage(document.getElementById('start').value),
+                    geocodeWithOpenCage(document.getElementById('end').value)
+                ]);
+                getHGVRoute(startCoords, endCoords);
+            } catch (err) {
+                console.error('Error:', err);
+                alert(err.message);
+            }
+        }
+        
+        async function getHGVRoute(start, end) {
+            try {
+                const route = await orsDirections.calculate({
+                    coordinates: [start, end],
+                    profile: 'driving-hgv',
+                    format: 'geojson',
+                    restrictions: {
+                        height: parseFloat(document.getElementById('height').value),
+                        width: parseFloat(document.getElementById('width').value),
+                        length: parseFloat(document.getElementById('length').value),
+                        weight: parseFloat(document.getElementById('weight').value)
+                    }
+                });
+                
+                if (currentRouteLayer) map.removeLayer(currentRouteLayer);
+                currentRouteLayer = L.geoJSON(route).setStyle({ color: 'blue', weight: 5, opacity: 0.7 }).addTo(map);
+                map.fitBounds(currentRouteLayer.getBounds());
+            } catch (err) {
+                 console.error('Routing Error:', err);
+                 alert(`Routing Error: ${err.message}. The ORS server may be busy or unable to find a route with the given restrictions.`);
+            }
+        }
+    </script>
+</body>
+</html>

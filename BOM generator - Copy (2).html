@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transight BOM Generator</title>
+    <style>
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #003B6A;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --font-color: #333;
+            --border-color: #dce3e9;
+            --white: #fff;
+            --danger-color: #d9534f;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--font-color);
+            line-height: 1.6;
+        }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        h1 { text-align: center; flex-grow: 1; margin: 0; }
+        .controls-group { display: flex; gap: 15px; align-items: center; }
+        .container { max-width: 1400px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .full-width { grid-column: 1 / -1; }
+        button { background-color: var(--primary-color); color: var(--white); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: var(--secondary-color); }
+        button.danger { background-color: var(--danger-color); }
+        button.danger:hover { background-color: #c9302c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #f2f2f2; font-weight: 600; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: var(--white); margin: 10% auto; padding: 30px; border: 1px solid var(--border-color); width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; display: inline-block; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: 600; display: block; margin-bottom: 5px; }
+        #bom-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid var(--primary-color); margin-bottom: 10px; }
+        #bom-header h2 { margin: 0; }
+        .bom-actions { display: flex; gap: 10px; }
+        #total-cost { text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 15px; color: var(--primary-color); }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <h1>Transight BOM Generator</h1>
+        <div class="controls-group">
+            <button id="setRatesBtn">Set Currency Rates</button>
+            <div>
+                <label for="currencySelector">Currency:</label>
+                <select id="currencySelector">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="INR">INR (₹)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Component Management -->
+        <div class="card">
+            <h2>Component Library</h2>
+            <button id="addComponentBtn">Add New Component</button>
+            <table id="componentTable">
+                <thead>
+                    <tr>
+                        <th>Part Number</th>
+                        <th>Description</th>
+                        <th class="cost-header">Cost</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Recipe Management -->
+        <div class="card">
+            <h2>Recipe Library</h2>
+            <button id="addRecipeBtn">Create New Recipe</button>
+            <table id="recipeTable">
+                <thead>
+                    <tr>
+                        <th>Recipe Name</th>
+                        <th>Component Count</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- BOM Projects -->
+        <div class="card full-width">
+             <h2>BOM Projects</h2>
+             <button id="newBOMProjectBtn">New BOM Project</button>
+             <select id="bomProjectSelector" style="margin-left: 10px; width: 300px;"></select>
+             <button id="deleteBOMProjectBtn" class="danger" style="margin-left: 10px;">Delete Current Project</button>
+             <div id="bom-display" style="display:none; margin-top: 20px;">
+                <div id="bom-header">
+                    <h2 id="current-bom-title"></h2>
+                    <div class="bom-actions">
+                        <button id="printBOMBtn">Print BOM</button>
+                        <button id="exportCSVBtn">Export to CSV</button>
+                        <button id="exportExcelBtn">Export to Excel</button>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+                    <select id="item-selector" style="flex-grow: 1;"></select>
+                    <input type="number" id="item-quantity" placeholder="Quantity" value="1" min="1" style="width: 100px;">
+                    <button id="addItemToBOMBtn">Add to BOM</button>
+                </div>
+
+                <table id="bomTable">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Part/Recipe</th>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th class="cost-header">Unit Cost</th>
+                            <th class="cost-header">Total Cost</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="total-cost">Total BOM Cost: $0.00</div>
+             </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="componentModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3 id="componentModalTitle">Add Component</h3><form id="componentForm"><input type="hidden" id="componentId"><div class="form-group"><label for="partNumber">Part Number</label><input type="text" id="partNumber" required></div><div class="form-group"><label for="description">Description</label><input type="text" id="description" required></div><div class="form-group"><label for="cost" class="cost-label">Cost (USD)</label><input type="number" id="cost" step="0.01" min="0" required></div><button type="submit">Save Component</button></form></div></div>
+    <div id="recipeModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3>Create Recipe</h3><form id="recipeForm"><div class="form-group"><label for="recipeName">Recipe Name</label><input type="text" id="recipeName" required></div><div id="recipe-components-list"></div><button type="button" id="addComponentToRecipeBtn">Add Component</button><br><br><button type="submit">Save Recipe</button></form></div></div>
+    <div id="currencySettingsModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3>Set Currency Rates (vs 1 USD)</h3><form id="currencyRatesForm"><div class="form-group"><label for="eurRate">EUR Rate (€)</label><input type="number" id="eurRate" step="any" required></div><div class="form-group"><label for="inrRate">INR Rate (₹)</label><input type="number" id="inrRate" step="any" required></div><button type="submit">Save Rates</button></form></div></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let db;
+        const dbName = "BOMGeneratorDB";
+        const request = indexedDB.open(dbName, 1);
+
+        request.onerror = (event) => console.error("Database error:", event.target.errorCode);
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            db.createObjectStore("components", { keyPath: "id", autoIncrement: true });
+            db.createObjectStore("recipes", { keyPath: "id", autoIncrement: true });
+            const bomStore = db.createObjectStore("boms", { keyPath: "id", autoIncrement: true });
+            bomStore.createIndex("name", "name", { unique: true });
+        };
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            loadInitialData();
+        };
+
+        let currentBOMId = null;
+
+        // --- CURRENCY SETUP ---
+        const currencyData = {
+            USD: { symbol: '$', rate: 1 },
+            EUR: { symbol: '€', rate: 0.93 }, // Default rate
+            INR: { symbol: '₹', rate: 83.5 }  // Default rate
+        };
+
+        const savedRates = localStorage.getItem('currencyRates');
+        if (savedRates) {
+            const customRates = JSON.parse(savedRates);
+            currencyData.EUR.rate = customRates.EUR;
+            currencyData.INR.rate = customRates.INR;
+        }
+
+        let selectedCurrency = localStorage.getItem('selectedCurrency') || 'USD';
+        document.getElementById('currencySelector').value = selectedCurrency;
+        
+        const formatCurrency = (amountInUSD) => {
+            const currency = currencyData[selectedCurrency];
+            const convertedAmount = amountInUSD * currency.rate;
+            return `${currency.symbol}${convertedAmount.toFixed(2)}`;
+        };
+        
+        const updateCurrencyDisplays = () => {
+            const currency = currencyData[selectedCurrency];
+            document.querySelectorAll('.cost-header').forEach(el => el.textContent = `Cost (${currency.symbol})`);
+            document.querySelector('.cost-label').textContent = `Cost (USD)`; // Input is always USD
+            loadComponents();
+            if (currentBOMId) renderBOMTable();
+        };
+
+        document.getElementById('currencySelector').addEventListener('change', (e) => {
+            selectedCurrency = e.target.value;
+            localStorage.setItem('selectedCurrency', selectedCurrency);
+            updateCurrencyDisplays();
+        });
+
+        // UI Elements and Event Listeners
+        const componentModal = document.getElementById('componentModal');
+        const recipeModal = document.getElementById('recipeModal');
+        const currencySettingsModal = document.getElementById('currencySettingsModal');
+        const modals = document.querySelectorAll('.modal');
+        const closeBtns = document.querySelectorAll('.close');
+        
+        document.getElementById('setRatesBtn').addEventListener('click', () => {
+            document.getElementById('eurRate').value = currencyData.EUR.rate;
+            document.getElementById('inrRate').value = currencyData.INR.rate;
+            currencySettingsModal.style.display = 'block';
+        });
+
+        document.getElementById('currencyRatesForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newEurRate = parseFloat(document.getElementById('eurRate').value);
+            const newInrRate = parseFloat(document.getElementById('inrRate').value);
+
+            if (isNaN(newEurRate) || isNaN(newInrRate) || newEurRate <= 0 || newInrRate <= 0) {
+                alert('Please enter valid, positive numbers for rates.');
+                return;
+            }
+
+            currencyData.EUR.rate = newEurRate;
+            currencyData.INR.rate = newInrRate;
+
+            localStorage.setItem('currencyRates', JSON.stringify({ EUR: newEurRate, INR: newInrRate }));
+
+            currencySettingsModal.style.display = 'none';
+            updateCurrencyDisplays(); // Refresh all visible costs
+            alert('Currency rates updated successfully!');
+        });
+
+        document.getElementById('addComponentBtn').addEventListener('click', () => openModal(componentModal));
+        document.getElementById('addRecipeBtn').addEventListener('click', () => openModal(recipeModal, true));
+        closeBtns.forEach(btn => btn.addEventListener('click', () => modals.forEach(m => m.style.display = 'none')));
+        window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) modals.forEach(m => m.style.display = 'none'); });
+        
+        document.getElementById('componentForm').addEventListener('submit', handleComponentSubmit);
+        document.getElementById('recipeForm').addEventListener('submit', handleRecipeSubmit);
+        document.getElementById('addComponentToRecipeBtn').addEventListener('click', addComponentSelectorToRecipe);
+        document.getElementById('newBOMProjectBtn').addEventListener('click', handleNewBOMProject);
+        document.getElementById('bomProjectSelector').addEventListener('change', loadBOMProject);
+        document.getElementById('deleteBOMProjectBtn').addEventListener('click', deleteCurrentBOMProject);
+        document.getElementById('addItemToBOMBtn').addEventListener('click', handleAddItemToBOM);
+        document.getElementById('printBOMBtn').addEventListener('click', printBOM);
+        document.getElementById('exportCSVBtn').addEventListener('click', exportBOMToCSV);
+        document.getElementById('exportExcelBtn').addEventListener('click', exportBOMToExcel);
+
+        function openModal(modal, isRecipe = false) {
+            document.getElementById('componentForm').reset();
+            document.getElementById('componentId').value = '';
+            document.getElementById('componentModalTitle').textContent = "Add Component";
+            document.getElementById('recipeForm').reset();
+            document.getElementById('recipe-components-list').innerHTML = '';
+            if(isRecipe) addComponentSelectorToRecipe();
+            modal.style.display = "block";
+        }
+
+        async function loadInitialData() {
+            updateCurrencyDisplays();
+            await loadRecipes();
+            await loadBOMProjectsList();
+            await populateItemSelector();
+        }
+
+        async function handleComponentSubmit(e) {
+            e.preventDefault();
+            const component = { partNumber: document.getElementById('partNumber').value, description: document.getElementById('description').value, cost: parseFloat(document.getElementById('cost').value) };
+            const id = document.getElementById('componentId').value;
+            const store = db.transaction(["components"], "readwrite").objectStore("components");
+            let request;
+            if (id) { component.id = parseInt(id); request = store.put(component); } else { request = store.add(component); }
+            request.onsuccess = () => { componentModal.style.display = 'none'; loadComponents(); populateItemSelector(); };
+        }
+
+        async function loadComponents() {
+            const tableBody = document.querySelector("#componentTable tbody");
+            tableBody.innerHTML = '';
+            db.transaction("components").objectStore("components").openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    const comp = cursor.value;
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `<td>${comp.partNumber}</td><td>${comp.description}</td><td>${formatCurrency(comp.cost)}</td><td><button onclick="editComponent(${comp.id})">Edit</button> <button class="danger" onclick="deleteComponent(${comp.id})">Delete</button></td>`;
+                    cursor.continue();
+                }
+            };
+        }
+
+        window.editComponent = (id) => {
+            db.transaction("components").objectStore("components").get(id).onsuccess = (e) => {
+                const comp = e.target.result;
+                document.getElementById('componentId').value = comp.id;
+                document.getElementById('partNumber').value = comp.partNumber;
+                document.getElementById('description').value = comp.description;
+                document.getElementById('cost').value = comp.cost;
+                document.getElementById('componentModalTitle').textContent = "Edit Component";
+                openModal(componentModal);
+            };
+        };
+
+        window.deleteComponent = (id) => {
+            if (!confirm("Delete this component?")) return;
+            db.transaction(["components"], "readwrite").objectStore("components").delete(id).onsuccess = () => { loadComponents(); populateItemSelector(); };
+        };
+
+        function addComponentSelectorToRecipe() {
+            const container = document.getElementById('recipe-components-list');
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = 'display:flex; gap:10px; margin-bottom:10px; align-items:center;';
+            const select = document.createElement('select');
+            select.className = 'recipe-component-select'; select.style.flexGrow = '1';
+            db.transaction("components").objectStore("components").getAll().onsuccess = e => { e.target.result.forEach(c => select.add(new Option(`${c.partNumber} - ${c.description}`, c.id))); };
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'number'; quantityInput.value = 1; quantityInput.min = 1; quantityInput.className = 'recipe-component-quantity'; quantityInput.style.width = '70px';
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button'; removeBtn.textContent = 'Remove'; removeBtn.className = 'danger'; removeBtn.onclick = () => itemDiv.remove();
+            itemDiv.append(select, quantityInput, removeBtn);
+            container.appendChild(itemDiv);
+        }
+
+        function handleRecipeSubmit(e) {
+            e.preventDefault();
+            const components = [];
+            document.querySelectorAll('#recipe-components-list > div').forEach(div => { components.push({ componentId: parseInt(div.querySelector('.recipe-component-select').value), quantity: parseInt(div.querySelector('.recipe-component-quantity').value) }); });
+            const recipe = { name: document.getElementById('recipeName').value, components };
+            db.transaction(["recipes"], "readwrite").objectStore("recipes").add(recipe).onsuccess = () => { recipeModal.style.display = 'none'; loadRecipes(); populateItemSelector(); };
+        }
+
+        async function loadRecipes() {
+            const tableBody = document.querySelector("#recipeTable tbody");
+            tableBody.innerHTML = '';
+            db.transaction("recipes").objectStore("recipes").openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    const recipe = cursor.value;
+                    tableBody.insertRow().innerHTML = `<td>${recipe.name}</td><td>${recipe.components.length}</td><td><button class="danger" onclick="deleteRecipe(${cursor.key})">Delete</button></td>`;
+                    cursor.continue();
+                }
+            };
+        }
+
+        window.deleteRecipe = (id) => {
+            if (!confirm("Delete this recipe?")) return;
+            db.transaction(["recipes"], "readwrite").objectStore("recipes").delete(id).onsuccess = () => { loadRecipes(); populateItemSelector(); };
+        };
+        
+        function handleNewBOMProject() {
+            const name = prompt("Enter a name for the new BOM project:");
+            if (name) { db.transaction(["boms"], "readwrite").objectStore("boms").add({ name, version: 1, items: [] }).onsuccess = (e) => { currentBOMId = e.target.result; loadBOMProjectsList(currentBOMId); displayBOMUI(); }; }
+        }
+
+        function deleteCurrentBOMProject() {
+            if (currentBOMId && confirm("Delete this entire BOM project?")) { db.transaction(["boms"], "readwrite").objectStore("boms").delete(currentBOMId).onsuccess = () => { currentBOMId = null; document.getElementById('bom-display').style.display = 'none'; loadBOMProjectsList(); }; }
+        }
+        
+        async function loadBOMProjectsList(selectId = null) {
+            const selector = document.getElementById('bomProjectSelector');
+            selector.innerHTML = '<option value="">Select a BOM Project...</option>';
+            db.transaction("boms").objectStore("boms").openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) { selector.add(new Option(`${cursor.value.name} (v${cursor.value.version})`, cursor.value.id)); cursor.continue(); } else if (selectId) { selector.value = selectId; }
+            };
+        }
+        
+        function loadBOMProject() {
+            currentBOMId = parseInt(document.getElementById('bomProjectSelector').value) || null;
+            if (currentBOMId) displayBOMUI(); else document.getElementById('bom-display').style.display = 'none';
+        }
+
+        async function displayBOMUI() {
+            if (!currentBOMId) return;
+            const bom = await getById('boms', currentBOMId);
+            if(bom){ document.getElementById('current-bom-title').textContent = `${bom.name} (v${bom.version})`; document.getElementById('bom-display').style.display = 'block'; renderBOMTable(); }
+        }
+        
+        async function handleAddItemToBOM() {
+            if (!currentBOMId) return;
+            const [type, id] = document.getElementById('item-selector').value.split('-');
+            const quantity = parseInt(document.getElementById('item-quantity').value);
+            if (!type || !id || !quantity > 0) return;
+            const bom = await getById('boms', currentBOMId);
+            bom.items.push({ type, id: parseInt(id), quantity });
+            await update('boms', bom);
+            renderBOMTable();
+        }
+        
+        async function renderBOMTable() {
+            if (!currentBOMId) return;
+            const bom = await getById('boms', currentBOMId);
+            const tableBody = document.querySelector("#bomTable tbody");
+            tableBody.innerHTML = ''; let totalCostUSD = 0;
+            for (const [index, item] of bom.items.entries()) {
+                const row = tableBody.insertRow();
+                if (item.type === 'component') {
+                    const comp = await getById('components', item.id);
+                    if (comp) { const itemTotalUSD = comp.cost * item.quantity; totalCostUSD += itemTotalUSD; row.innerHTML = `<td>Component</td><td>${comp.partNumber}</td><td>${comp.description}</td><td>${item.quantity}</td><td>${formatCurrency(comp.cost)}</td><td>${formatCurrency(itemTotalUSD)}</td><td><button class="danger" onclick="removeBOMItem(${index})">Remove</button></td>`; }
+                } else if (item.type === 'recipe') {
+                    const recipe = await getById('recipes', item.id);
+                    if (recipe) {
+                        let recipeUnitCostUSD = 0;
+                        for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if (comp) recipeUnitCostUSD += comp.cost * rc.quantity; }
+                        const itemTotalUSD = recipeUnitCostUSD * item.quantity; totalCostUSD += itemTotalUSD;
+                        row.innerHTML = `<td>Recipe</td><td>${recipe.name}</td><td>${recipe.components.length} components</td><td>${item.quantity}</td><td>${formatCurrency(recipeUnitCostUSD)}</td><td>${formatCurrency(itemTotalUSD)}</td><td><button class="danger" onclick="removeBOMItem(${index})">Remove</button></td>`;
+                    }
+                }
+            }
+            document.getElementById('total-cost').innerHTML = `Total BOM Cost: ${formatCurrency(totalCostUSD)}`;
+        }
+        
+        window.removeBOMItem = async (index) => { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); bom.items.splice(index, 1); await update('boms', bom); renderBOMTable(); };
+
+        async function populateItemSelector() {
+            const selector = document.getElementById('item-selector');
+            selector.innerHTML = '';
+            const addOptions = (storeName, type, labelField) => {
+                return new Promise(resolve => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = storeName.charAt(0).toUpperCase() + storeName.slice(1);
+                    db.transaction(storeName).objectStore(storeName).getAll().onsuccess = e => {
+                        e.target.result.forEach(item => {
+                            const desc = item.description ? ` - ${item.description}` : '';
+                            const option = new Option(`${item[labelField]}${desc}`, `${type}-${item.id}`);
+                            optgroup.appendChild(option);
+                        });
+                        selector.appendChild(optgroup);
+                        resolve();
+                    };
+                });
+            };
+            await addOptions('components', 'component', 'partNumber');
+            await addOptions('recipes', 'recipe', 'name');
+        }
+
+        async function printBOM() { /* ... unchanged ... */ }
+        async function createCSVContent() { /* ... unchanged ... */ }
+        async function exportBOMToCSV() { /* ... unchanged ... */ }
+        async function exportBOMToExcel() { /* ... unchanged ... */ }
+        const getById = (storeName, id) => new Promise((resolve, reject) => { const request = db.transaction(storeName).objectStore(storeName).get(id); request.onsuccess = e => resolve(e.target.result); request.onerror = e => reject(e.target.error); });
+        const update = (storeName, data) => new Promise((resolve, reject) => { const request = db.transaction(storeName, 'readwrite').objectStore(storeName).put(data); request.onsuccess = e => resolve(e.target.result); request.onerror = e => reject(e.target.error); });
+        // --- Full functions for brevity ---
+        async function printBOM(){if(!currentBOMId)return;const bom=await getById('boms',currentBOMId);const currency=currencyData[selectedCurrency];let tableRowsHTML='',totalCostUSD=0;for(const item of bom.items){if(item.type==='component'){const comp=await getById('components',item.id);if(comp){const itemTotalUSD=comp.cost*item.quantity;totalCostUSD+=itemTotalUSD;tableRowsHTML+=`<tr><td>Component</td><td>${comp.partNumber}</td><td>${comp.description}</td><td>${item.quantity}</td><td>${formatCurrency(comp.cost)}</td><td>${formatCurrency(itemTotalUSD)}</td></tr>`}}else if(item.type==='recipe'){const recipe=await getById('recipes',item.id);if(recipe){let recipeUnitCostUSD=0;let recipeDetails='<ul>';for(const rc of recipe.components){const comp=await getById('components',rc.componentId);if(comp){recipeUnitCostUSD+=comp.cost*rc.quantity;recipeDetails+=`<li>${rc.quantity}x ${comp.partNumber} (${formatCurrency(comp.cost)} each)</li>`}}
+        recipeDetails+='</ul>';const itemTotalUSD=recipeUnitCostUSD*item.quantity;totalCostUSD+=itemTotalUSD;tableRowsHTML+=`<tr><td>Recipe</td><td><b>${recipe.name}</b></td><td>${recipeDetails}</td><td>${item.quantity}</td><td>${formatCurrency(recipeUnitCostUSD)}</td><td>${formatCurrency(itemTotalUSD)}</td></tr>`}}}
+        const printContent=`<html><head><title>Print BOM</title><style>body{font-family:sans-serif}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left;vertical-align:top}th{background:#f2f2f2}ul{margin:0;padding-left:20px}</style></head>
+        <body><h1>BOM: ${bom.name}</h1><table><thead><tr><th>Type</th><th>Part/Recipe</th><th>Description/Components</th><th>Quantity</th><th>Unit Cost (${currency.symbol})</th><th>Total Cost (${currency.symbol})</th></tr></thead><tbody>${tableRowsHTML}</tbody></table><h2>Total BOM Cost: ${formatCurrency(totalCostUSD)}</h2></body></html>`;const printWindow=window.open('','_blank');printWindow.document.write(printContent);printWindow.document.close();printWindow.print()}
+        async function createCSVContent(){if(!currentBOMId)return'';const bom=await getById('boms',currentBOMId);const currency=currencyData[selectedCurrency];let csvContent=`Type,Part/Recipe,Description,Quantity,Unit Cost (${currency.code}),Total Cost (${currency.code})\n`;for(const item of bom.items){let rowData;if(item.type==='component'){const comp=await getById('components',item.id);if(comp)rowData=['Component',comp.partNumber,`"${comp.description}"`,item.quantity,(comp.cost*currency.rate).toFixed(2),(comp.cost*item.quantity*currency.rate).toFixed(2)]}else if(item.type==='recipe'){const recipe=await getById('recipes',item.id);if(recipe){let recipeUnitCostUSD=0;for(const rc of recipe.components){const comp=await getById('components',rc.componentId);if(comp)recipeUnitCostUSD+=comp.cost*rc.quantity}
+        rowData=['Recipe',recipe.name,`"${recipe.components.length} components"`,item.quantity,(recipeUnitCostUSD*currency.rate).toFixed(2),(recipeUnitCostUSD*item.quantity*currency.rate).toFixed(2)]}}
+        if(rowData)csvContent+=rowData.join(",")+"\n"}return[bom.name,csvContent]}
+        async function exportBOMToCSV(){const[bomName,csvContent]=await createCSVContent();if(!csvContent)return;const encodedUri=encodeURI("data:text/csv;charset=utf-8,"+csvContent);const link=document.createElement("a");link.setAttribute("href",encodedUri);link.setAttribute("download",`${bomName}_BOM.csv`);document.body.appendChild(link);link.click();document.body.removeChild(link)}
+        async function exportBOMToExcel(){const[bomName,csvContent]=await createCSVContent();if(!csvContent)return;const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});const link=document.createElement("a");const url=URL.createObjectURL(blob);link.setAttribute("href",url);link.setAttribute("download",`${bomName}_BOM.xls`);link.style.visibility='hidden';document.body.appendChild(link);link.click();document.body.removeChild(link)}
+    });
+    </script>
+</body>
+</html>

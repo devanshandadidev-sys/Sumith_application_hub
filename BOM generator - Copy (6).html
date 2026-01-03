@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transight BOM Generator</title>
+    <!-- Using a reliable CDN for SheetJS library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #003B6A;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --font-color: #333;
+            --border-color: #dce3e9;
+            --white: #fff;
+            --danger-color: #d9534f;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--font-color);
+            line-height: 1.6;
+        }
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        h1, h2, h3 { color: var(--secondary-color); margin-top: 0; }
+        h1 { text-align: center; flex-grow: 1; }
+        .controls-group { display: flex; gap: 15px; align-items: center; }
+        .container { max-width: 1800px; margin: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 20px; }
+        .card { background: var(--white); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .full-width { grid-column: 1 / -1; }
+        button { background-color: var(--primary-color); color: var(--white); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: var(--secondary-color); }
+        button.danger { background-color: var(--danger-color); }
+        button.danger:hover { background-color: #c9302c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #f2f2f2; font-weight: 600; white-space: nowrap; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: var(--white); margin: 5% auto; padding: 30px; border: 1px solid var(--border-color); width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content.small { max-width: 500px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; display: inline-block; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        .form-group { margin-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        label { font-weight: 600; display: block; margin-bottom: 3px; }
+        #total-cost { text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 15px; color: var(--primary-color); }
+        .bom-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+
+    <div class="header-controls">
+        <h1>Transight BOM Generator</h1>
+        <div class="controls-group">
+            <button id="setRatesBtn">Set Currency Rates</button>
+            <div>
+                <label for="currencySelector">Currency:</label>
+                <select id="currencySelector">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="INR">INR (₹)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Component Management -->
+        <div class="card full-width">
+            <h2>Component Library</h2>
+            <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                <button id="addComponentBtn">Add New Component</button>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label for="excelUpload" style="margin:0;">Upload Excel:</label>
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv">
+                    <button id="uploadExcelBtn">Upload</button>
+                </div>
+                 <span id="uploadStatus"></span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table id="componentTable">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Description</th>
+                            <th>Mfr. Part Number</th>
+                            <th>Mfr. Name</th>
+                            <th class="cost-header">Value (Cost)</th>
+                            <th>Package/Case</th>
+                            <th>QTY</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Recipe Management -->
+        <div class="card">
+            <h2>Recipe Library</h2>
+            <button id="addRecipeBtn">Create New Recipe</button>
+            <table id="recipeTable">
+                <thead><tr><th>Recipe Name</th><th>Component Count</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- BOM Projects -->
+        <div class="card full-width">
+             <h2>BOM Projects</h2>
+             <button id="newBOMProjectBtn">New BOM Project</button>
+             <select id="bomProjectSelector" style="margin-left: 10px; width: 300px;"></select>
+             <button id="deleteBOMProjectBtn" class="danger" style="margin-left: 10px;">Delete Current Project</button>
+             <div id="bom-display" style="display:none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid var(--primary-color); margin-bottom: 10px;">
+                    <h2 id="current-bom-title"></h2>
+                    <div class="bom-actions">
+                        <button id="printBOMBtn">Print BOM</button>
+                        <button id="exportCSVBtn">Export to CSV</button>
+                        <button id="exportExcelBtn">Export to Excel</button>
+                    </div>
+                </div>
+                <div class="form-group" style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+                    <select id="item-selector" style="flex-grow: 1;"></select>
+                    <input type="number" id="item-quantity" placeholder="Quantity" value="1" min="1" style="width: 100px;">
+                    <button id="addItemToBOMBtn">Add to BOM</button>
+                </div>
+                <table id="bomTable">
+                    <thead><tr><th>Type</th><th>Part/Recipe</th><th>Description</th><th>Quantity</th><th class="cost-header">Unit Cost</th><th class="cost-header">Total Cost</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div id="total-cost">Total BOM Cost: $0.00</div>
+             </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="componentModal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3 id="componentModalTitle">Add New Component</h3><form id="componentForm"><input type="hidden" id="componentId"><div class="form-grid"><div class="form-group"><label>Reference</label><input type="text" id="reference"></div><div class="form-group"><label>Value (as Cost in USD)</label><input type="number" step="any" id="value" required></div><div class="form-group"><label>DNP</label><input type="text" id="dnp"></div><div class="form-group"><label>TPN</label><input type="text" id="tpn"></div><div class="form-group"><label>QTY</label><input type="number" id="qty" value="1"></div><div class="form-group"><label>Case code</label><input type="text" id="caseCode"></div><div class="form-group"><label>Package/Case</label><input type="text" id="packageCase"></div><div class="form-group"><label>Manufacturer Name</label><input type="text" id="manufacturerName"></div></div><div class="form-group"><label>Description</label><textarea id="description" rows="2"></textarea></div><div class="form-group"><label>Manufacturer Part Number</label><input type="text" id="manufacturerPartNumber" required></div><button type="submit">Save Component</button></form></div></div>
+    <div id="recipeModal" class="modal"><div class="modal-content small"><span class="close">&times;</span><h3 id="recipeModalTitle">Create Recipe</h3><form id="recipeForm"><input type="hidden" id="recipeId"><div class="form-group"><label for="recipeName">Recipe Name</label><input type="text" id="recipeName" required></div><hr><input type="text" id="recipeComponentSearch" placeholder="Search components..." style="margin-bottom: 10px;"><div id="recipe-components-list"></div><button type="button" id="addComponentToRecipeBtn">Add Component</button><br><br><button type="submit">Save Recipe</button></form></div></div>
+    <div id="currencySettingsModal" class="modal"><div class="modal-content small"><span class="close">&times;</span><h3>Set Currency Rates (vs 1 USD)</h3><form id="currencyRatesForm"><div class="form-group"><label for="eurRate">EUR Rate (€)</label><input type="number" id="eurRate" step="any" required></div><div class="form-group"><label for="inrRate">INR Rate (₹)</label><input type="number" id="inrRate" step="any" required></div><button type="submit">Save Rates</button></form></div></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let db;
+        const dbName = "BOMGeneratorDB";
+        const dbVersion = 2;
+        const request = indexedDB.open(dbName, dbVersion);
+
+        request.onerror = (event) => console.error("Database error:", event.target.error);
+        
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('components')) db.createObjectStore("components", { keyPath: "id", autoIncrement: true });
+            if (!db.objectStoreNames.contains('recipes')) db.createObjectStore("recipes", { keyPath: "id", autoIncrement: true });
+            if (!db.objectStoreNames.contains('boms')) {
+                const bomStore = db.createObjectStore("boms", { keyPath: "id", autoIncrement: true });
+                bomStore.createIndex("name", "name", { unique: true });
+            }
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            loadInitialData();
+        };
+
+        let currentBOMId = null;
+        const currencyData = { USD: { symbol: '$', rate: 1 }, EUR: { symbol: '€', rate: 0.93 }, INR: { symbol: '₹', rate: 83.5 } };
+        const componentHeaders = ["Reference", "Value", "DNP", "TPN", "QTY", "Case code", "Package/Case", "Manufacturer Name", "Description", "Manufacturer Part Number"];
+        
+        document.getElementById('uploadExcelBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('excelUpload');
+            const statusEl = document.getElementById('uploadStatus');
+            const file = fileInput.files[0];
+            if (!file) { alert('Please select an Excel file.'); return; }
+            statusEl.textContent = 'Processing...';
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (json.length === 0) { statusEl.textContent = 'Error: Excel file is empty.'; return; }
+
+                const actualHeaders = Object.keys(json[0]);
+                const missingHeaders = componentHeaders.filter(h => !actualHeaders.includes(h));
+                if (missingHeaders.length > 0) { statusEl.textContent = `Error: Missing headers: ${missingHeaders.join(', ')}`; return; }
+
+                const tx = db.transaction(['components'], 'readwrite');
+                const store = tx.objectStore('components');
+                for (const row of json) {
+                    store.add({ reference: row["Reference"], value: parseFloat(row["Value"]) || 0, dnp: row["DNP"], tpn: row["TPN"], qty: parseInt(row["QTY"]) || 0, caseCode: row["Case code"], packageCase: row["Package/Case"], manufacturerName: row["Manufacturer Name"], description: row["Description"], manufacturerPartNumber: row["Manufacturer Part Number"] });
+                }
+
+                tx.oncomplete = () => {
+                    statusEl.textContent = `Success: ${json.length} components uploaded!`;
+                    fileInput.value = '';
+                    loadComponents();
+                    populateItemSelector();
+                };
+                tx.onerror = (event) => { statusEl.textContent = `Error: ${event.target.error}`; };
+            } catch (error) { console.error("Upload error:", error); statusEl.textContent = 'Error processing file.'; }
+        });
+
+        const savedRates = localStorage.getItem('currencyRates');
+        if (savedRates) { const customRates = JSON.parse(savedRates); currencyData.EUR.rate = customRates.EUR; currencyData.INR.rate = customRates.INR; }
+        let selectedCurrency = localStorage.getItem('selectedCurrency') || 'USD';
+        document.getElementById('currencySelector').value = selectedCurrency;
+        const formatCurrency = (amountInUSD) => { const currency = currencyData[selectedCurrency]; return `${currency.symbol}${(amountInUSD * currency.rate).toFixed(2)}`; };
+        const updateCurrencyDisplays = () => { document.querySelectorAll('.cost-header').forEach(el => el.textContent = `Value (Cost) (${currencyData[selectedCurrency].symbol})`); loadComponents(); if (currentBOMId) renderBOMTable(); };
+        document.getElementById('currencySelector').addEventListener('change', (e) => { selectedCurrency = e.target.value; localStorage.setItem('selectedCurrency', selectedCurrency); updateCurrencyDisplays(); });
+        document.getElementById('setRatesBtn').addEventListener('click', () => { document.getElementById('eurRate').value = currencyData.EUR.rate; document.getElementById('inrRate').value = currencyData.INR.rate; document.getElementById('currencySettingsModal').style.display = 'block'; });
+        document.getElementById('currencyRatesForm').addEventListener('submit', (e) => { e.preventDefault(); const newEurRate = parseFloat(document.getElementById('eurRate').value), newInrRate = parseFloat(document.getElementById('inrRate').value); if (!newEurRate || !newInrRate || newEurRate <= 0 || newInrRate <= 0) { alert('Please enter valid rates.'); return; } currencyData.EUR.rate = newEurRate; currencyData.INR.rate = newInrRate; localStorage.setItem('currencyRates', JSON.stringify({ EUR: newEurRate, INR: newInrRate })); document.getElementById('currencySettingsModal').style.display = 'none'; updateCurrencyDisplays(); alert('Rates updated!'); });
+
+        const modals = document.querySelectorAll('.modal');
+        const closeBtns = document.querySelectorAll('.close');
+        closeBtns.forEach(btn => btn.addEventListener('click', (e) => e.target.closest('.modal').style.display = 'none'));
+        window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) event.target.style.display = 'none'; });
+        function openModal(modal) { modal.querySelectorAll('form').forEach(form => form.reset()); modal.style.display = "block"; }
+        
+        async function loadInitialData() { updateCurrencyDisplays(); await loadRecipes(); await loadBOMProjectsList(); await populateItemSelector(); }
+
+        document.getElementById('addComponentBtn').addEventListener('click', () => { openModal(document.getElementById('componentModal')); document.getElementById('componentId').value = ''; document.getElementById('componentModalTitle').textContent = "Add New Component"; });
+        document.getElementById('componentForm').addEventListener('submit', handleComponentSubmit);
+        async function handleComponentSubmit(e) {
+            e.preventDefault();
+            const component = { reference: document.getElementById('reference').value, value: parseFloat(document.getElementById('value').value) || 0, dnp: document.getElementById('dnp').value, tpn: document.getElementById('tpn').value, qty: parseInt(document.getElementById('qty').value) || 0, caseCode: document.getElementById('caseCode').value, packageCase: document.getElementById('packageCase').value, manufacturerName: document.getElementById('manufacturerName').value, description: document.getElementById('description').value, manufacturerPartNumber: document.getElementById('manufacturerPartNumber').value };
+            const id = document.getElementById('componentId').value;
+            const store = db.transaction(["components"], "readwrite").objectStore("components");
+            let request;
+            if (id) { component.id = parseInt(id); request = store.put(component); } else { request = store.add(component); }
+            request.onsuccess = () => { document.getElementById('componentModal').style.display = 'none'; loadComponents(); populateItemSelector(); };
+        }
+        async function loadComponents() {
+            const tableBody = document.querySelector("#componentTable tbody");
+            tableBody.innerHTML = ''; if (!db) return;
+            const components = await getAll('components');
+            components.forEach(comp => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td>${comp.reference || ''}</td><td>${comp.description || ''}</td><td>${comp.manufacturerPartNumber || ''}</td><td>${comp.manufacturerName || ''}</td><td>${formatCurrency(comp.value || 0)}</td><td>${comp.packageCase || ''}</td><td>${comp.qty || 0}</td><td><button onclick="editComponent(${comp.id})">Edit</button> <button class="danger" onclick="deleteComponent(${comp.id})">Delete</button></td>`;
+            });
+        }
+        
+        // **FIXED FUNCTION**
+        window.editComponent = (id) => {
+            if (!db) return;
+            getById('components', id).then(comp => {
+                if (!comp) return;
+
+                // Helper to safely set input values
+                const setInputValue = (elementId, value) => {
+                    document.getElementById(elementId).value = value || '';
+                };
+
+                setInputValue('componentId', comp.id);
+                setInputValue('reference', comp.reference);
+                setInputValue('value', comp.value);
+                setInputValue('dnp', comp.dnp);
+                setInputValue('tpn', comp.tpn);
+                setInputValue('qty', comp.qty);
+                setInputValue('caseCode', comp.caseCode);
+                setInputValue('packageCase', comp.packageCase);
+                setInputValue('manufacturerName', comp.manufacturerName);
+                setInputValue('description', comp.description);
+                setInputValue('manufacturerPartNumber', comp.manufacturerPartNumber);
+                
+                document.getElementById('componentModalTitle').textContent = "Edit Component";
+                document.getElementById('componentModal').style.display = "block";
+            });
+        };
+        
+        window.deleteComponent = (id) => { if (!db || !confirm("Delete component?")) return; db.transaction(["components"], "readwrite").objectStore("components").delete(id).onsuccess = () => { loadComponents(); populateItemSelector(); }; };
+
+        document.getElementById('addRecipeBtn').addEventListener('click', () => { openModal(document.getElementById('recipeModal')); document.getElementById('recipeId').value = ''; document.getElementById('recipeModalTitle').textContent = "Create Recipe"; document.getElementById('recipe-components-list').innerHTML = ''; addComponentSelectorToRecipe(); });
+        document.getElementById('recipeForm').addEventListener('submit', handleRecipeSubmit);
+        document.getElementById('addComponentToRecipeBtn').addEventListener('click', addComponentSelectorToRecipe);
+        document.getElementById('recipeComponentSearch').addEventListener('input', (e) => {
+            const filter = e.target.value.toLowerCase();
+            document.querySelectorAll('.recipe-component-select').forEach(select => {
+                for (const option of select.options) { option.style.display = option.text.toLowerCase().includes(filter) ? '' : 'none'; }
+            });
+        });
+        async function addComponentSelectorToRecipe() {
+            const container = document.getElementById('recipe-components-list');
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = 'display:flex; gap:10px; margin-bottom:10px; align-items:center;';
+            const select = document.createElement('select');
+            select.className = 'recipe-component-select'; select.style.flexGrow = '1';
+            const allComponents = await getAll('components');
+            allComponents.forEach(c => select.add(new Option(`${c.manufacturerPartNumber} - ${c.description}`, c.id)));
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'number'; quantityInput.value = 1; quantityInput.min = 1; quantityInput.style.width = '70px';
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button'; removeBtn.textContent = 'X'; removeBtn.className = 'danger'; removeBtn.onclick = () => itemDiv.remove();
+            itemDiv.append(select, quantityInput, removeBtn);
+            container.appendChild(itemDiv);
+        }
+        async function handleRecipeSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('recipeId').value;
+            const recipeData = { name: document.getElementById('recipeName').value, components: [] };
+            document.querySelectorAll('#recipe-components-list > div').forEach(div => { recipeData.components.push({ componentId: parseInt(div.querySelector('select').value), quantity: parseInt(div.querySelector('input[type=number]').value) }); });
+            const store = db.transaction(["recipes"], "readwrite").objectStore("recipes");
+            let request;
+            if (id) { recipeData.id = parseInt(id); request = store.put(recipeData); } else { request = store.add(recipeData); }
+            request.onsuccess = () => { document.getElementById('recipeModal').style.display = 'none'; loadRecipes(); populateItemSelector(); };
+        }
+        async function loadRecipes() {
+            const tableBody = document.querySelector("#recipeTable tbody");
+            tableBody.innerHTML = ''; if (!db) return;
+            const recipes = await getAll('recipes');
+            recipes.forEach(recipe => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td>${recipe.name}</td><td>${recipe.components.length}</td><td><button onclick="editRecipe(${recipe.id})">Edit</button> <button class="danger" onclick="deleteRecipe(${recipe.id})">Delete</button></td>`;
+            });
+        }
+        window.editRecipe = async (id) => {
+            const recipe = await getById('recipes', id); if (!recipe) return;
+            openModal(document.getElementById('recipeModal'));
+            document.getElementById('recipeModalTitle').textContent = "Edit Recipe";
+            document.getElementById('recipeId').value = recipe.id;
+            document.getElementById('recipeName').value = recipe.name;
+            const componentListDiv = document.getElementById('recipe-components-list');
+            componentListDiv.innerHTML = '';
+            const allComponents = await getAll('components');
+            for (const comp of recipe.components) {
+                const itemDiv = document.createElement('div');
+                itemDiv.style.cssText = 'display:flex; gap:10px; margin-bottom:10px; align-items:center;';
+                const select = document.createElement('select');
+                select.className = 'recipe-component-select'; select.style.flexGrow = '1';
+                allComponents.forEach(c => select.add(new Option(`${c.manufacturerPartNumber} - ${c.description}`, c.id)));
+                select.value = comp.componentId;
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'number'; quantityInput.value = comp.quantity; quantityInput.min = 1; quantityInput.style.width = '70px';
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button'; removeBtn.textContent = 'X'; removeBtn.className = 'danger'; removeBtn.onclick = () => itemDiv.remove();
+                itemDiv.append(select, quantityInput, removeBtn);
+                componentListDiv.appendChild(itemDiv);
+            }
+        };
+        window.deleteRecipe = (id) => { if (!db || !confirm("Delete recipe?")) return; db.transaction(["recipes"], "readwrite").objectStore("recipes").delete(id).onsuccess = () => { loadRecipes(); populateItemSelector(); }; };
+
+        document.getElementById('newBOMProjectBtn').addEventListener('click', handleNewBOMProject);
+        document.getElementById('deleteBOMProjectBtn').addEventListener('click', deleteCurrentBOMProject);
+        document.getElementById('bomProjectSelector').addEventListener('change', loadBOMProject);
+        document.getElementById('addItemToBOMBtn').addEventListener('click', handleAddItemToBOM);
+        function handleNewBOMProject() { const name = prompt("Enter name for the new BOM project:"); if (name) { db.transaction(["boms"], "readwrite").objectStore("boms").add({ name, version: 1, items: [] }).onsuccess = (e) => { currentBOMId = e.target.result; loadBOMProjectsList(currentBOMId).then(displayBOMUI); }; } }
+        function deleteCurrentBOMProject() { if (currentBOMId && confirm("Delete this BOM project?")) { db.transaction(["boms"], "readwrite").objectStore("boms").delete(currentBOMId).onsuccess = () => { currentBOMId = null; document.getElementById('bom-display').style.display = 'none'; loadBOMProjectsList(); }; } }
+        async function loadBOMProjectsList(selectId = null) { const selector = document.getElementById('bomProjectSelector'); selector.innerHTML = '<option value="">Select a BOM Project...</option>'; const boms = await getAll('boms'); boms.forEach(bom => selector.add(new Option(`${bom.name} (v${bom.version})`, bom.id))); if (selectId) selector.value = selectId; }
+        function loadBOMProject() { currentBOMId = parseInt(document.getElementById('bomProjectSelector').value) || null; if (currentBOMId) displayBOMUI(); else document.getElementById('bom-display').style.display = 'none'; }
+        async function displayBOMUI() { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); if(bom){ document.getElementById('current-bom-title').textContent = `${bom.name} (v${bom.version})`; document.getElementById('bom-display').style.display = 'block'; renderBOMTable(); } }
+        async function handleAddItemToBOM() { if (!currentBOMId) return; const [type, id] = document.getElementById('item-selector').value.split('-'); const quantity = parseInt(document.getElementById('item-quantity').value); if (!type || !id || !quantity > 0) return; const bom = await getById('boms', currentBOMId); bom.items.push({ type, id: parseInt(id), quantity }); await update('boms', bom); renderBOMTable(); }
+        async function renderBOMTable() { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); const tableBody = document.querySelector("#bomTable tbody"); tableBody.innerHTML = ''; let totalCostUSD = 0; for (const [index, item] of bom.items.entries()) { const row = tableBody.insertRow(); if (item.type === 'component') { const comp = await getById('components', item.id); if (comp) { const itemTotalUSD = (comp.value || 0) * item.quantity; totalCostUSD += itemTotalUSD; row.innerHTML = `<td>Component</td><td>${comp.manufacturerPartNumber}</td><td>${comp.description}</td><td>${item.quantity}</td><td>${formatCurrency(comp.value || 0)}</td><td>${formatCurrency(itemTotalUSD)}</td><td><button class="danger" onclick="removeBOMItem(${index})">X</button></td>`; } } else if (item.type === 'recipe') { const recipe = await getById('recipes', item.id); if (recipe) { let recipeUnitCostUSD = 0; for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if (comp) recipeUnitCostUSD += (comp.value || 0) * rc.quantity; } const itemTotalUSD = recipeUnitCostUSD * item.quantity; totalCostUSD += itemTotalUSD; row.innerHTML = `<td>Recipe</td><td>${recipe.name}</td><td>${recipe.components.length} components</td><td>${item.quantity}</td><td>${formatCurrency(recipeUnitCostUSD)}</td><td>${formatCurrency(itemTotalUSD)}</td><td><button class="danger" onclick="removeBOMItem(${index})">X</button></td>`; } } } document.getElementById('total-cost').innerHTML = `Total BOM Cost: ${formatCurrency(totalCostUSD)}`; }
+        window.removeBOMItem = async (index) => { if (!currentBOMId) return; const bom = await getById('boms', currentBOMId); bom.items.splice(index, 1); await update('boms', bom); renderBOMTable(); };
+        
+        async function populateItemSelector() { const selector = document.getElementById('item-selector'); selector.innerHTML = ''; const addOptions = async (storeName, type, labelField1, labelField2) => { const optgroup = document.createElement('optgroup'); optgroup.label = storeName.charAt(0).toUpperCase() + storeName.slice(1); const items = await getAll(storeName); items.forEach(item => { const desc = item[labelField2] ? ` - ${item[labelField2]}` : ''; optgroup.appendChild(new Option(`${item[labelField1]}${desc}`, `${type}-${item.id}`)); }); selector.appendChild(optgroup); }; await addOptions('components', 'component', 'manufacturerPartNumber', 'description'); await addOptions('recipes', 'recipe', 'name', null); }
+        
+        document.getElementById('printBOMBtn').addEventListener('click', printBOM);
+        document.getElementById('exportCSVBtn').addEventListener('click', exportBOMToCSV);
+        document.getElementById('exportExcelBtn').addEventListener('click', exportBOMToExcel);
+
+        async function printBOM(){
+            if(!currentBOMId)return;
+            const bom = await getById('boms', currentBOMId);
+            const currency = currencyData[selectedCurrency];
+            let tableRowsHTML = '';
+            let totalCostUSD = 0;
+            const fullHeaders = ["Reference", "Mfr. Part Number", "Description", "QTY", `Unit Cost (${currency.symbol})`, "DNP", "TPN", "Case code", "Package/Case", "Manufacturer Name"];
+            
+            for(const item of bom.items){
+                if(item.type === 'component'){
+                    const comp = await getById('components', item.id);
+                    if(comp){
+                        const itemTotalUSD = (comp.value || 0) * item.quantity;
+                        totalCostUSD += itemTotalUSD;
+                        tableRowsHTML += `<tr><td>${comp.reference||''}</td><td>${comp.manufacturerPartNumber||''}</td><td>${comp.description||''}</td><td>${item.quantity}</td><td>${formatCurrency(comp.value||0)}</td><td>${comp.dnp||''}</td><td>${comp.tpn||''}</td><td>${comp.caseCode||''}</td><td>${comp.packageCase||''}</td><td>${comp.manufacturerName||''}</td></tr>`;
+                    }
+                } else if(item.type === 'recipe'){
+                    const recipe = await getById('recipes', item.id);
+                    if(recipe){
+                        let recipeUnitCostUSD = 0;
+                        for (const rc of recipe.components) { const comp = await getById('components', rc.componentId); if(comp) { recipeUnitCostUSD += (comp.value || 0) * rc.quantity; } }
+                        const itemTotalUSD = recipeUnitCostUSD * item.quantity;
+                        totalCostUSD += itemTotalUSD;
+                        tableRowsHTML += `<tr style="background-color:#e9ecef;"><td colspan="${fullHeaders.length}"><b>Recipe: ${recipe.name} (BOM Qty: ${item.quantity})</b> | Total Cost: ${formatCurrency(itemTotalUSD)}</td></tr>`;
+                        
+                        for (const rc of recipe.components) {
+                            const comp = await getById('components', rc.componentId);
+                            if(comp) tableRowsHTML += `<tr><td>${comp.reference||''}</td><td>${comp.manufacturerPartNumber||''}</td><td>${comp.description||''}</td><td>${rc.quantity}</td><td>${formatCurrency(comp.value||0)}</td><td>${comp.dnp||''}</td><td>${comp.tpn||''}</td><td>${comp.caseCode||''}</td><td>${comp.packageCase||''}</td><td>${comp.manufacturerName||''}</td></tr>`;
+                        }
+                    }
+                }
+            }
+            
+            const printContent=`<html><head><title>Print BOM: ${bom.name}</title><style>body{font-family:sans-serif}table{width:100%;border-collapse:collapse;font-size:10pt;}th,td{border:1px solid #ccc;padding:5px;text-align:left;vertical-align:top}th{background:#e9ecef}</style></head><body><h1>BOM: ${bom.name}</h1><table><thead><tr><th>${fullHeaders.join('</th><th>')}</th></tr></thead><tbody>${tableRowsHTML}</tbody></table><h2>Total BOM Cost: ${formatCurrency(totalCostUSD)}</h2></body></html>`;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        async function createCSVContent(){
+            if(!currentBOMId) return ['', ''];
+            const bom = await getById('boms', currentBOMId);
+            const currency = currencyData[selectedCurrency];
+            const fullHeaders = ["Item Type", "BOM Qty", "Reference", "Value", "DNP", "TPN", "QTY", "Case code", "Package/Case", "Manufacturer Name", "Description", "Manufacturer Part Number"];
+            let csvContent = fullHeaders.join(",") + "\n";
+
+            const escapeCSV = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+
+            for(const item of bom.items){
+                if(item.type === 'component'){
+                    const comp = await getById('components', item.id);
+                    if(comp) {
+                        const row = ['Component', item.quantity, comp.reference, ((comp.value||0)*currency.rate).toFixed(2), comp.dnp, comp.tpn, comp.qty, comp.caseCode, comp.packageCase, comp.manufacturerName, escapeCSV(comp.description), comp.manufacturerPartNumber];
+                        csvContent += row.join(",") + "\n";
+                    }
+                } else if(item.type === 'recipe'){
+                    const recipe = await getById('recipes', item.id);
+                    if(recipe){
+                        for (const rc of recipe.components) {
+                            const comp = await getById('components', rc.componentId);
+                            if(comp) {
+                                const finalQty = item.quantity * rc.quantity;
+                                const row = [`Recipe (${recipe.name})`, finalQty, comp.reference, ((comp.value||0)*currency.rate).toFixed(2), comp.dnp, comp.tpn, comp.qty, comp.caseCode, comp.packageCase, comp.manufacturerName, escapeCSV(comp.description), comp.manufacturerPartNumber];
+                                csvContent += row.join(",") + "\n";
+                            }
+                        }
+                    }
+                }
+            }
+            return [bom.name, csvContent];
+        }
+        
+        async function exportBOMToCSV(){const[bomName,csvContent]=await createCSVContent();if(!csvContent)return;const link=document.createElement("a");link.setAttribute("href",encodeURI("data:text/csv;charset=utf-8,"+csvContent));link.setAttribute("download",`${bomName}_BOM.csv`);document.body.appendChild(link);link.click();document.body.removeChild(link)}
+        async function exportBOMToExcel(){const[bomName,csvContent]=await createCSVContent();if(!csvContent)return;const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});const link=document.createElement("a");link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${bomName}_BOM.xls`);document.body.appendChild(link);link.click();document.body.removeChild(link)}
+
+        const getById=(s,i)=>new Promise(r=>db.transaction(s).objectStore(s).get(i).onsuccess=e=>r(e.target.result));
+        const getAll=(s)=>new Promise(r=>db.transaction(s).objectStore(s).getAll().onsuccess=e=>r(e.target.result));
+        const update=(s,d)=>new Promise(r=>db.transaction(s,'readwrite').objectStore(s).put(d).onsuccess=e=>r(e.target.result));
+    });
+    </script>
+</body>
+</html>

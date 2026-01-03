@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes App with Import/Export</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .rich-text-content ul { list-style-type: disc; padding-left: 20px; }
+        .rich-text-content ol { list-style-type: decimal; padding-left: 20px; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+
+    <div class="max-w-7xl mx-auto bg-white p-6 rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Notes with Import/Export</h1>
+        
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                <input type="text" id="search-input" placeholder="Search notes..." class="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <select id="label-filter" class="w-full sm:w-48 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <option value="">All Labels</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button id="import-csv-btn" class="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600">Import from CSV</button>
+                <button id="export-csv" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Export to CSV</button>
+                <button id="add-note-btn" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">Add New Note</button>
+            </div>
+        </div>
+        <input type="file" id="csv-file-input" class="hidden" accept=".csv">
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="w-1/5 px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Title</th>
+                        <th class="w-2/5 px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Content</th>
+                        <th class="w-1/5 px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Labels</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Last Modified</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="notes-table-body" class="divide-y divide-gray-200">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="note-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 md:w-2/3 lg:w-1/2">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4">Add Note</h2>
+            <div class="space-y-4">
+                <input type="text" id="modal-note-title" placeholder="Note Title" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                 <input type="text" id="modal-note-labels" placeholder="Labels (comma-separated)" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <div class="border border-gray-300 rounded-lg">
+                    <div class="editor-toolbar bg-gray-100 p-2 border-b border-gray-300 rounded-t-lg">
+                        <button data-command="bold" class="px-3 py-1 font-bold rounded hover:bg-gray-200">B</button>
+                        <button data-command="italic" class="px-3 py-1 italic font-serif rounded hover:bg-gray-200">I</button>
+                        <button data-command="underline" class="px-3 py-1 underline rounded hover:bg-gray-200">U</button>
+                        <button data-command="insertUnorderedList" class="px-3 py-1 rounded hover:bg-gray-200">&bull; List</button>
+                    </div>
+                    <div id="modal-note-content" contenteditable="true" class="p-4 min-h-[150px] focus:outline-none rich-text-content"></div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600">Cancel</button>
+                <button id="modal-save-btn" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let db;
+        const dbName = 'RichTextNotesDB_V4';
+        const storeName = 'notes';
+        let currentEditId = null;
+
+        // Main UI elements
+        const tableBody = document.getElementById('notes-table-body');
+        const searchInput = document.getElementById('search-input');
+        const labelFilter = document.getElementById('label-filter');
+        const addNoteBtn = document.getElementById('add-note-btn');
+        
+        // Import/Export elements
+        const exportBtn = document.getElementById('export-csv');
+        const importBtn = document.getElementById('import-csv-btn');
+        const csvFileInput = document.getElementById('csv-file-input');
+
+        // Modal elements
+        const modal = document.getElementById('note-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalNoteTitle = document.getElementById('modal-note-title');
+        const modalNoteContent = document.getElementById('modal-note-content');
+        const modalNoteLabels = document.getElementById('modal-note-labels');
+        const modalSaveBtn = document.getElementById('modal-save-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+        // --- Database Setup ---
+        const request = indexedDB.open(dbName, 1);
+        request.onerror = (e) => console.error('DB error:', e.target.errorCode);
+        request.onupgradeneeded = (e) => {
+            let db = e.target.result;
+            db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+        };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            loadNotes();
+        };
+
+        // --- Event Listeners ---
+        addNoteBtn.addEventListener('click', openAddModal);
+        modalCancelBtn.addEventListener('click', closeModal);
+        modalSaveBtn.addEventListener('click', saveNote);
+        tableBody.addEventListener('click', handleTableClick);
+        searchInput.addEventListener('input', loadNotes);
+        labelFilter.addEventListener('change', loadNotes);
+        exportBtn.addEventListener('click', exportToCSV);
+        importBtn.addEventListener('click', () => csvFileInput.click());
+        csvFileInput.addEventListener('change', importFromCSV);
+
+        document.querySelector('.editor-toolbar').addEventListener('click', (e) => {
+            const command = e.target.closest('button')?.dataset.command;
+            if (command) {
+                e.preventDefault();
+                document.execCommand(command, false, null);
+                modalNoteContent.focus();
+            }
+        });
+
+        // --- Modal & CRUD Logic ---
+        function openAddModal() {
+            currentEditId = null;
+            modalTitle.textContent = 'Add New Note';
+            modalNoteTitle.value = '';
+            modalNoteContent.innerHTML = '';
+            modalNoteLabels.value = '';
+            modal.classList.remove('hidden');
+            modalNoteTitle.focus();
+        }
+
+        function openEditModal(note) {
+            currentEditId = note.id;
+            modalTitle.textContent = 'Edit Note';
+            modalNoteTitle.value = note.title;
+            modalNoteContent.innerHTML = note.content;
+            modalNoteLabels.value = note.labels ? note.labels.join(', ') : '';
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        function saveNote() {
+            const title = modalNoteTitle.value.trim();
+            const content = modalNoteContent.innerHTML.trim();
+            const labels = modalNoteLabels.value.split(',').map(l => l.trim()).filter(Boolean);
+
+            if (!title || !content) return alert('Title and content are required.');
+
+            const noteData = { title, content, labels, timestamp: new Date().toISOString() };
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+
+            if (currentEditId) {
+                noteData.id = currentEditId;
+                store.put(noteData);
+            } else {
+                store.add(noteData);
+            }
+            tx.oncomplete = () => { closeModal(); loadNotes(); };
+        }
+
+        function loadNotes() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedLabel = labelFilter.value;
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
+            store.getAll().onsuccess = (e) => {
+                const allNotes = e.target.result;
+                updateLabelFilter(allNotes);
+
+                tableBody.innerHTML = '';
+                const filtered = allNotes.filter(note => 
+                    (!selectedLabel || (note.labels && note.labels.includes(selectedLabel))) &&
+                    (note.title.toLowerCase().includes(searchTerm) || stripHtml(note.content).toLowerCase().includes(searchTerm))
+                );
+
+                filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                filtered.forEach(note => {
+                    const row = tableBody.insertRow();
+                    row.dataset.id = note.id;
+                    row.className = 'hover:bg-gray-50';
+                    const labelsHtml = (note.labels || []).map(label => `<span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${label}</span>`).join(' ');
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${note.title}</td>
+                        <td class="px-6 py-4 text-sm text-gray-700 rich-text-content">${note.content}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">${labelsHtml}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(note.timestamp).toLocaleString()}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="edit-btn text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                            <button class="delete-btn text-red-600 hover:text-red-900">Delete</button>
+                        </td>
+                    `;
+                });
+            };
+        }
+
+        function handleTableClick(e) {
+            const id = Number(e.target.closest('tr')?.dataset.id);
+            if (!id) return;
+
+            if (e.target.classList.contains('edit-btn')) {
+                db.transaction(storeName).objectStore(storeName).get(id).onsuccess = (e) => openEditModal(e.target.result);
+            } else if (e.target.classList.contains('delete-btn')) {
+                if (confirm('Are you sure?')) {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    tx.objectStore(storeName).delete(id);
+                    tx.oncomplete = loadNotes;
+                }
+            }
+        }
+
+        function updateLabelFilter(notes) {
+            const allLabels = new Set(notes.flatMap(note => note.labels || []));
+            const currentVal = labelFilter.value;
+            labelFilter.innerHTML = '<option value="">All Labels</option>';
+            allLabels.forEach(label => {
+                const option = document.createElement('option');
+                option.value = label;
+                option.textContent = label;
+                labelFilter.appendChild(option);
+            });
+            if (Array.from(allLabels).includes(currentVal)) {
+                labelFilter.value = currentVal;
+            }
+        }
+        
+        function stripHtml(html) {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            return doc.body.textContent || "";
+        }
+
+        function exportToCSV() {
+            db.transaction(storeName).objectStore(storeName).getAll().onsuccess = (e) => {
+                const notes = e.target.result;
+                if (notes.length === 0) return alert('No notes to export.');
+
+                const headers = ['Title', 'Content', 'Labels', 'Timestamp'];
+                const csvContent = [
+                    headers.join(','),
+                    ...notes.map(note => [
+                        note.title,
+                        stripHtml(note.content),
+                        note.labels ? note.labels.join(';') : '',
+                        note.timestamp
+                    ].map(v => `"${(v || '').replace(/"/g, '""')}"`).join(','))
+                ].join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'notes_with_labels.csv';
+                link.click();
+            };
+        }
+
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                const headers = lines[0].trim().split(',').map(h => h.replace(/"/g, ''));
+                
+                // Simple validation for required headers
+                if (!headers.includes('Title') || !headers.includes('Content')) {
+                    alert('Invalid CSV format. Must include "Title" and "Content" columns.');
+                    return;
+                }
+                
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    // Basic CSV parsing - won't handle complex cases like commas inside quotes
+                    const values = lines[i].split(',');
+                    const note = {};
+
+                    headers.forEach((header, index) => {
+                        let value = values[index] ? values[index].trim().replace(/^"|"$/g, '') : '';
+                        if (header === 'Labels') {
+                            note[header.toLowerCase()] = value.split(';').map(l => l.trim()).filter(Boolean);
+                        } else {
+                            note[header.toLowerCase()] = value;
+                        }
+                    });
+
+                    // Ensure essential fields exist
+                    if (note.title && note.content) {
+                        store.add({
+                            title: note.title,
+                            content: note.content,
+                            labels: note.labels || [],
+                            timestamp: note.timestamp || new Date().toISOString()
+                        });
+                    }
+                }
+                
+                tx.oncomplete = () => {
+                    alert(`${lines.length - 1} notes imported successfully!`);
+                    loadNotes();
+                };
+                tx.onerror = () => alert('An error occurred during the import.');
+            };
+            reader.readAsText(file);
+            csvFileInput.value = ''; // Reset file input
+        }
+    });
+    </script>
+</body>
+</html>

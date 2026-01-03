@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Outlook-Compatible Rich Text RFQ Generator</title>
+<!-- Include Quill's CSS -->
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css" rel="stylesheet" />
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
+  h1, h2, h3 { color: #005a9e; }
+  h1 { text-align: center; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  .section { margin-bottom: 30px; border: 1px solid #ccc; padding: 20px; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  label { display: block; margin-top: 10px; font-weight: bold; }
+  input, select { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ddd; }
+  button { margin-top: 15px; padding: 10px 20px; cursor: pointer; background-color: #0078d4; color: white; border: none; border-radius: 4px; font-size: 16px; }
+  button:hover { background-color: #005a9e; }
+  .button-danger { background-color: #d9534f; }
+  .button-danger:hover { background-color: #c9302c; }
+  .button-secondary { background-color: #6c757d; }
+  .button-secondary:hover { background-color: #5a6268; }
+  .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .flex-item { flex: 1; min-width: 300px; }
+  .button-group { display: flex; gap: 10px; align-items: center; margin-top: 15px; flex-wrap: wrap; }
+  #dynamic-fields-container, #item-list-section, #attachments-section { margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background-color: #f2f2f2; }
+  #templateEditor { height: 250px; margin-top: 5px; }
+  #emailPreview.ql-editor { 
+      border: 1px solid #ccc; 
+      background: #f9f9f9; 
+      min-height: 150px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Outlook-Compatible Rich Text RFQ Generator</h1>
+
+<!-- HTML sections are the same as before -->
+<div class="section" id="templateSection">
+  <h2>1. Manage Templates</h2>
+  <label for="templateName">Template Name</label>
+  <input type="text" id="templateName" placeholder="e.g., Standard Electronics RFQ" />
+  <label for="templateContent">Template Content</label>
+  <div id="templateEditor"></div>
+  <div class="button-group">
+    <button onclick="saveTemplate()">Save/Update Template</button>
+    <button onclick="clearTemplateForm()" class="button-secondary">New Template</button>
+    <select id="templateSelect" onchange="loadSelectedTemplate()">
+      <option value="">-- Load a Template to Edit --</option>
+    </select>
+    <button class="button-danger" onclick="deleteTemplate()">Delete Selected</button>
+  </div>
+</div>
+<div class="section" id="vendorSection">
+  <h2>2. Manage Vendors</h2>
+  <div class="flex-row">
+      <div class="flex-item">
+          <label for="vendorName">Vendor Name</label>
+          <input type="text" id="vendorName" placeholder="e.g., ACME Electronics" />
+      </div>
+      <div class="flex-item">
+          <label for="vendorEmail">Vendor Email (Must be unique)</label>
+          <input type="email" id="vendorEmail" placeholder="e.g., contact@acme.com" />
+      </div>
+  </div>
+  <div class="button-group">
+    <button onclick="saveVendor()">Add/Update Vendor</button>
+    <select id="vendorSelect">
+      <option value="">-- Select a Vendor --</option>
+    </select>
+    <button class="button-danger" onclick="deleteVendor()">Delete Selected</button>
+  </div>
+</div>
+<div class="section" id="rfqSection">
+  <h2>3. Compose RFQ</h2>
+  <label for="emailSubject">Email Subject</label>
+  <input type="text" id="emailSubject" placeholder="RFQ: Your Project Title" />
+  <div id="dynamic-fields-container"><p>Select a template to see dynamic fields.</p></div>
+  <div id="item-list-section">
+      <h3>Quotation Items</h3>
+      <table id="item-table">
+          <thead><tr><th>Description</th><th>Quantity</th><th>Unit</th><th>Action</th></tr></thead>
+          <tbody id="item-list-body"></tbody>
+      </table>
+      <div class="button-group">
+          <input type="text" id="item-description" placeholder="Item Description" class="flex-item">
+          <input type="number" id="item-quantity" placeholder="Qty" style="flex: 0.5;">
+          <input type="text" id="item-unit" placeholder="Unit (e.g., pcs)" style="flex: 0.5;">
+          <button onclick="addItem()">Add Item</button>
+      </div>
+  </div>
+  <div id="attachments-section">
+      <h3>Attachments</h3>
+      <input type="file" id="attachments" multiple onchange="updateAttachmentList()">
+      <ul id="attachment-list"></ul>
+  </div>
+  <div class="button-group">
+      <button onclick="generateEmailPreview()">Generate Email Preview</button>
+      <button class="button-secondary" onclick="resetComposer()">Reset Composer</button>
+  </div>
+</div>
+<div class="section" id="emailPreviewSection">
+  <h2>4. Email Preview</h2>
+  <div class="ql-snow">
+    <div id="emailPreview" class="ql-editor">Preview will appear here.</div>
+  </div>
+  <button onclick="copyEmailContent()" class="button-secondary">Copy Email for Outlook</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.js"></script>
+<script>
+let db;
+let quill;
+const DB_NAME = 'RFQAppDB';
+const DB_VERSION = 1;
+const PREDEFINED_PLACEHOLDERS = ['vendor_name', 'item_list', 'attachment_list'];
+
+function initDB() {
+  const toolbarOptions = [
+    [{ 'header': [1, 2, false] }],
+    ['bold', 'italic', 'underline'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'align': [] }],
+    ['link', 'clean']
+  ];
+  quill = new Quill('#templateEditor', {
+    theme: 'snow',
+    modules: { toolbar: toolbarOptions },
+    placeholder: 'Compose your RFQ template here...'
+  });
+  const request = indexedDB.open(DB_NAME, DB_VERSION);
+  request.onerror = (event) => console.error('Database error:', event.target.errorCode);
+  request.onupgradeneeded = (event) => {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains('templates')) db.createObjectStore('templates', { keyPath: 'id', autoIncrement: true });
+    if (!db.objectStoreNames.contains('vendors')) {
+      const vendorStore = db.createObjectStore('vendors', { keyPath: 'id', autoIncrement: true });
+      vendorStore.createIndex('email', 'email', { unique: true });
+    }
+  };
+  request.onsuccess = (event) => {
+    db = event.target.result;
+    loadTemplates();
+    loadVendors();
+  };
+}
+
+function promisifyRequest(request) {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+function generateDynamicFields(templateContent) {
+    const container = document.getElementById('dynamic-fields-container');
+    container.innerHTML = '';
+    const placeholderRegex = /{{\s*(\w+)\s*}}/g;
+    const placeholders = new Set();
+    let match;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = templateContent;
+    const textContent = tempDiv.textContent || tempDiv.innerText || "";
+    while ((match = placeholderRegex.exec(textContent)) !== null) placeholders.add(match[1]);
+    let hasDynamicFields = false;
+    placeholders.forEach(key => {
+        if (PREDEFINED_PLACEHOLDERS.includes(key)) return;
+        hasDynamicFields = true;
+        const label = document.createElement('label');
+        label.textContent = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `dynamic-field-${key}`;
+        input.dataset.key = key;
+        input.placeholder = `Enter value for ${key}`;
+        container.appendChild(label);
+        container.appendChild(input);
+    });
+    if (!hasDynamicFields) container.innerHTML = '<p>No custom dynamic placeholders found.</p>';
+}
+
+// --- JS functions for Template, Vendor, and Items (using Rich Text) ---
+function clearTemplateForm() {
+    document.getElementById('templateName').value = '';
+    quill.setText('');
+    document.getElementById('templateSelect').value = '';
+}
+async function saveTemplate() {
+  const name = document.getElementById('templateName').value.trim();
+  const content = quill.root.innerHTML; // Save as HTML
+  const selectedId = document.getElementById('templateSelect').value;
+  if (!name || quill.getLength() <= 1) return alert('Template name and content are required.');
+  const tx = db.transaction('templates', 'readwrite');
+  const store = tx.objectStore('templates');
+  const template = { name, content };
+  if (selectedId) template.id = parseInt(selectedId, 10);
+  await promisifyRequest(store.put(template));
+  alert(selectedId ? 'Template updated!' : 'New template saved!');
+  loadTemplates();
+}
+async function loadTemplates() {
+  const store = db.transaction('templates').objectStore('templates');
+  const templates = await promisifyRequest(store.getAll());
+  const select = document.getElementById('templateSelect');
+  select.innerHTML = '<option value="">-- Load a Template to Edit --</option>';
+  templates.forEach(t => {
+    const option = document.createElement('option');
+    option.value = t.id;
+    option.textContent = t.name;
+    select.appendChild(option);
+  });
+}
+async function loadSelectedTemplate() {
+    const id = parseInt(document.getElementById('templateSelect').value, 10);
+    if (!id) {
+        clearTemplateForm();
+        generateDynamicFields('');
+        return;
+    }
+    const store = db.transaction('templates').objectStore('templates');
+    const template = await promisifyRequest(store.get(id));
+    if (template) {
+        document.getElementById('templateName').value = template.name;
+        quill.root.innerHTML = template.content; 
+        generateDynamicFields(template.content);
+    }
+}
+async function deleteTemplate() {
+  const id = parseInt(document.getElementById('templateSelect').value, 10);
+  if (!id) return alert('Please select a template to delete.');
+  if (confirm('Are you sure?')) {
+    await promisifyRequest(db.transaction('templates', 'readwrite').objectStore('templates').delete(id));
+    alert('Template deleted.');
+    clearTemplateForm();
+    loadTemplates();
+    generateDynamicFields('');
+  }
+}
+async function saveVendor() {
+    const name = document.getElementById('vendorName').value.trim();
+    const email = document.getElementById('vendorEmail').value.trim();
+    if (!name || !email) return alert('Vendor name and email are required.');
+    const tx = db.transaction('vendors', 'readwrite');
+    const store = tx.objectStore('vendors');
+    const index = store.index('email');
+    const existing = await promisifyRequest(index.get(email));
+    const vendorData = { name, email };
+    if (existing) vendorData.id = existing.id;
+    try {
+        await promisifyRequest(store.put(vendorData));
+        alert('Vendor saved!');
+        loadVendors();
+        document.getElementById('vendorName').value = '';
+        document.getElementById('vendorEmail').value = '';
+    } catch(e) { alert('Failed to save vendor. Email may already exist.'); }
+}
+async function loadVendors() {
+    const store = db.transaction('vendors').objectStore('vendors');
+    const vendors = await promisifyRequest(store.getAll());
+    const select = document.getElementById('vendorSelect');
+    select.innerHTML = '<option value="">-- Select a Vendor --</option>';
+    vendors.forEach(v => {
+        const option = document.createElement('option');
+        option.value = v.id;
+        option.textContent = `${v.name} (${v.email})`;
+        select.appendChild(option);
+    });
+}
+async function deleteVendor() {
+    const id = parseInt(document.getElementById('vendorSelect').value, 10);
+    if (!id) return alert('Please select a vendor.');
+    if (confirm('Are you sure?')) {
+        await promisifyRequest(db.transaction('vendors', 'readwrite').objectStore('vendors').delete(id));
+        alert('Vendor deleted.');
+        loadVendors();
+    }
+}
+function addItem() {
+    const description = document.getElementById('item-description').value.trim();
+    const quantity = document.getElementById('item-quantity').value;
+    const unit = document.getElementById('item-unit').value.trim();
+    if (!description || !quantity) return alert('Item description and quantity are required.');
+    const tableBody = document.getElementById('item-list-body');
+    const row = tableBody.insertRow();
+    row.innerHTML = `<td>${description}</td><td>${quantity}</td><td>${unit}</td><td><button onclick="this.parentElement.parentElement.remove()" class="button-danger">X</button></td>`;
+    document.getElementById('item-description').value = '';
+    document.getElementById('item-quantity').value = '';
+    document.getElementById('item-unit').value = '';
+}
+function updateAttachmentList() {
+    const list = document.getElementById('attachment-list');
+    list.innerHTML = '';
+    for (const file of document.getElementById('attachments').files) {
+        const li = document.createElement('li');
+        li.textContent = file.name;
+        list.appendChild(li);
+    }
+}
+function generateItemListHTML() {
+    const tableBody = document.getElementById('item-list-body');
+    if (tableBody.rows.length === 0) return '<p>No items specified.</p>';
+    let html = '<table style="width:100%; border-collapse:collapse; font-family: sans-serif;" border="1"><thead><tr><th style="padding:8px; border:1px solid #ddd; background-color:#f2f2f2; text-align:left;">Description</th><th style="padding:8px; border:1px solid #ddd; background-color:#f2f2f2; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ddd; background-color:#f2f2f2; text-align:left;">Unit</th></tr></thead><tbody>';
+    for (const row of tableBody.rows) {
+        html += `<tr><td style="padding:8px; border:1px solid #ddd;">${row.cells[0].textContent}</td><td style="padding:8px; border:1px solid #ddd;">${row.cells[1].textContent}</td><td style="padding:8px; border:1px solid #ddd;">${row.cells[2].textContent}</td></tr>`;
+    }
+    return html + '</tbody></table>';
+}
+function generateAttachmentListHTML() {
+    const fileInput = document.getElementById('attachments');
+    if (fileInput.files.length === 0) return 'No attachments.';
+    let list = '<ul>';
+    for (const file of fileInput.files) list += `<li>${file.name}</li>`;
+    return list + '</ul>';
+}
+
+// --- Preview and Copy Logic ---
+async function generateEmailPreview() {
+    const templateContent = quill.root.innerHTML;
+    const vendorId = parseInt(document.getElementById('vendorSelect').value, 10);
+    if (quill.getLength() <= 1 || !vendorId) return alert('Please provide template content and select a vendor.');
+    const vendor = await promisifyRequest(db.transaction('vendors').objectStore('vendors').get(vendorId));
+    if (!vendor) return alert('Could not find vendor.');
+    const placeholders = {
+        vendor_name: vendor.name,
+        item_list: generateItemListHTML(),
+        attachment_list: generateAttachmentListHTML(),
+    };
+    document.querySelectorAll('#dynamic-fields-container input').forEach(input => {
+        placeholders[input.dataset.key] = input.value;
+    });
+    let emailBody = templateContent;
+    for (const key in placeholders) {
+        emailBody = emailBody.replace(new RegExp(`{{${key}}}`, 'g'), placeholders[key] || '');
+    }
+    document.getElementById('emailPreview').innerHTML = emailBody;
+    const subjectField = document.querySelector('#dynamic-fields-container input[data-key="project_title"]');
+    document.getElementById('emailSubject').value = `RFQ: ${subjectField ? subjectField.value : 'New Request'}`;
+}
+
+async function copyEmailContent() {
+    const preview = document.getElementById('emailPreview');
+    if (preview.textContent.trim() === 'Preview will appear here.') return alert('Generate a preview first.');
+    const emailHtml = preview.innerHTML;
+    const emailText = preview.innerText;
+    try {
+        const blobHtml = new Blob([emailHtml], { type: 'text/html' });
+        const blobText = new Blob([emailText], { type: 'text/plain' });
+        const clipboardItem = new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText });
+        await navigator.clipboard.write([clipboardItem]);
+        alert('Email content (with formatting) copied!');
+    } catch (err) {
+        console.error('Copy failed:', err);
+        alert('Could not copy text. Check browser permissions.');
+    }
+}
+
+function resetComposer() {
+    document.getElementById('emailSubject').value = '';
+    generateDynamicFields(quill.root.innerHTML);
+    document.getElementById('item-list-body').innerHTML = '';
+    document.getElementById('attachments').value = '';
+    document.getElementById('attachment-list').innerHTML = '';
+    document.getElementById('emailPreview').innerHTML = 'Preview will appear here.';
+}
+
+window.onload = initDB;
+</script>
+</body>
+</html>

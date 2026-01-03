@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposal Generation Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 90%;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        h1, h2 {
+            color: #1a202c;
+            font-weight: 700;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="file"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-sizing: border-box; /* Ensure padding doesn't increase width */
+        }
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="file"]:focus,
+        textarea:focus {
+            border-color: #4c51bf;
+            box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.2);
+            outline: none;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn-primary {
+            background-color: #4c51bf;
+            color: #fff;
+            padding: 0.85rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            border: none;
+            display: inline-block;
+        }
+        .btn-primary:hover {
+            background-color: #5a61d3;
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .proposal-output {
+            margin-top: 2rem;
+            padding: 2rem;
+            background: #f0f4f8;
+            border-radius: 12px;
+            border: 1px dashed #a0aec0;
+            white-space: pre-wrap; /* Preserves whitespace and wraps text */
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: #2d3748;
+            overflow-x: auto; /* Allows horizontal scrolling for long lines */
+        }
+        .section-heading {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            color: #2d3748;
+        }
+        .grid-cols-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 1.5rem;
+            }
+        }
+        .price-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .price-table th, .price-table td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .price-table th {
+            background-color: #edf2f7;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .price-table tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+        /* Gantt Chart Styles */
+        .gantt-chart-container {
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .gantt-bars {
+            display: flex;
+            width: 100%;
+            height: 40px;
+            background-color: #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .gantt-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 4px;
+            box-sizing: border-box;
+        }
+        .gantt-legend {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            gap: 0.75rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem;
+            color: #4a5568;
+        }
+        .legend-color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+        .header-logos {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .header-logos img {
+            max-height: 60px; /* Adjust as needed */
+            width: auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="container">
+        <div class="header-logos">
+            <img id="clientLogoPreview" src="https://placehold.co/150x60/E2E8F0/A0AEC0?text=Client%20Logo" alt="Client Logo" class="rounded-lg">
+            <!-- Transight Logo removed from here based on user request -->
+        </div>
+
+        <h1 class="text-3xl mb-6 text-center">Proposal Generation Tool</h1>
+
+        <div class="form-group">
+            <label for="clientLogoUpload">Upload Client Logo:</label>
+            <input type="file" id="clientLogoUpload" accept="image/*" class="rounded-lg">
+        </div>
+        <div class="form-group">
+            <label for="companyName">Company Name:</label>
+            <input type="text" id="companyName" value="ZF" class="rounded-lg">
+        </div>
+        <div class="form-group">
+            <label for="docNumber">Document Number:</label>
+            <input type="text" id="docNumber" value="TR/ZF-STELLA/PC/02/V.000" class="rounded-lg">
+        </div>
+        <div class="form-group">
+            <label for="proposalDate">Date:</label>
+            <input type="text" id="proposalDate" value="22/07/2025" class="rounded-lg">
+        </div>
+        <div class="form-group">
+            <label for="productName">Product Name:</label>
+            <input type="text" id="productName" value="STELLA device" class="rounded-lg">
+        </div>
+        <div class="form-group">
+            <label for="unitQuantity">Unit Quantity (e.g., 30K):</label>
+            <input type="text" id="unitQuantity" value="30K" class="rounded-lg">
+        </div>
+
+        <h2 class="section-heading mt-8 mb-4">Cost Estimation Tools</h2>
+        <div class="grid grid-cols-2">
+            <div class="form-group">
+                <label for="manufacturingHoursPerUnit">Manufacturing Hours per Unit:</label>
+                <input type="number" id="manufacturingHoursPerUnit" value="0.01" step="0.01" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="manufacturingRatePerHour">Manufacturing Rate per Hour (INR):</label>
+                <input type="number" id="manufacturingRatePerHour" value="37310" step="0.01" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="usdToInrExchangeRate">USD to INR Exchange Rate:</label>
+                <input type="number" id="usdToInrExchangeRate" value="85" step="0.01" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="overheadPercentage">Overhead Percentage (% of Direct Costs):</label>
+                <input type="number" id="overheadPercentage" value="2.0" step="0.1" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="transightMarginPercentage">Transight Margin Percentage (%):</label>
+                <input type="number" id="transightMarginPercentage" value="10.0" step="0.1" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="swHours">Software Manpower Hours:</label>
+                <input type="number" id="swHours" value="0" step="1" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="fwHours">Firmware Manpower Hours:</label>
+                <input type="number" id="fwHours" value="0" step="1" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="hwHours">Hardware Manpower Hours:</label>
+                <input type="number" id="hwHours" value="0" step="1" class="rounded-lg">
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <button class="btn-primary" onclick="calculateAllCostsAndSchedule()">Calculate Estimated Costs & Schedule</button>
+        </div>
+
+
+        <h2 class="section-heading mt-8 mb-4">Commercials - Hardware Price Break Up</h2>
+        <div class="grid grid-cols-2">
+            <div class="form-group">
+                <label for="bomCost">BOM Cost (INR):</label>
+                <input type="number" id="bomCost" value="6531.55" step="0.01" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="manufacturingCost">Manufacturing Cost (INR):</label>
+                <input type="number" id="manufacturingCost" value="373.10" step="0.01" class="rounded-lg" readonly>
+            </div>
+            <div class="form-group">
+                <label for="overHeads">Over Heads (INR):</label>
+                <input type="number" id="overHeads" value="141.77" step="0.01" class="rounded-lg" readonly>
+            </div>
+            <div class="form-group">
+                <label for="transightMargin">Transight Margin (INR):</label>
+                <input type="number" id="transightMargin" value="700.13" step="0.01" class="rounded-lg" readonly>
+            </div>
+            <div class="form-group">
+                <label for="logisticsCharges">Logistics Charges (INR):</label>
+                <input type="number" id="logisticsCharges" value="65" step="0.01" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="investment">Investment (INR):</label>
+                <input type="number" id="investment" value="1.13" step="0.01" class="rounded-lg">
+            </div>
+        </div>
+
+        <h2 class="section-heading mt-8 mb-4">Other Project Costs</h2>
+        <div class="grid grid-cols-2">
+            <div class="form-group">
+                <label for="otherSoftwareCosts">Other Software Costs (INR):</label>
+                <input type="number" id="otherSoftwareCosts" value="0.00" step="0.01" class="rounded-lg">
+            </div>
+            <div class="form-group">
+                <label for="manpowerSoftware">Manpower Efforts - Software (INR):</label>
+                <input type="number" id="manpowerSoftware" value="0.00" step="0.01" class="rounded-lg" readonly>
+            </div>
+            <div class="form-group">
+                <label for="manpowerFirmware">Manpower Efforts - Firmware (INR):</label>
+                <input type="number" id="manpowerFirmware" value="0.00" step="0.01" class="rounded-lg" readonly>
+            </div>
+            <div class="form-group">
+                <label for="manpowerHardware">Manpower Efforts - Hardware (INR):</label>
+                <input type="number" id="manpowerHardware" value="0.00" step="0.01" class="rounded-lg" readonly>
+            </div>
+        </div>
+
+        <h2 class="section-heading mt-8 mb-4">Additional Information</h2>
+        <div class="form-group">
+            <label for="clientRequirement">Client Requirement:</label>
+            <textarea id="clientRequirement" class="rounded-lg" placeholder="Enter client's requirements here..."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="clientRequirementDocument">Upload Client Requirement Document:</label>
+            <input type="file" id="clientRequirementDocument" accept=".pdf,.doc,.docx" class="rounded-lg">
+        </div>
+        <div class="form-group">
+            <label for="proposedSolution">Proposed Solution:</label>
+            <textarea id="proposedSolution" class="rounded-lg" placeholder="Describe the proposed solution here..."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="additionalCharges">Additional Charges (one per line):</label>
+            <textarea id="additionalCharges" class="rounded-lg">AIS 140 Certification Charges, if applicable.
+Mechanical Design & Tooling Charges (If New Casing design is Proposed by ZF).</textarea>
+        </div>
+        <div class="form-group">
+            <label for="termsAndConditions">Terms and Conditions (one per line):</label>
+            <textarea id="termsAndConditions" class="rounded-lg">All the components which are quoted is from Global inventory, which can change from time to time. So, at the time of executing the order, there are chances of stock loss.
+USD exchange rate we considered for this Proposal is INR 85 for 1 USD.
+Any alterations or improvements to be made on hardware other than the EBOM & ODB++ file shared on 23rd October 2024, may have additional financial implications on the initial quote or the agreed cost per device. All such change will be made only after mutual agreement.
+The validity of PO issued against the Production slab (30KUnits) may be considered as maximum 1 month and the order has to be completed within this time. Slab rate will be subjected to single shot
+Validity of this quotation is for 30 Days.
+Inco Terms: FCA in India
+Leadtime: Production Batches -TBD.
+Payment Terms: Manufacturing Charges - 45 Days Credit Period.</textarea>
+        </div>
+        <div class="form-group">
+            <label for="deliverySchedule">Delivery Schedule (one phase per line, e.g., "Phase Name: Duration (weeks)"):</label>
+            <textarea id="deliverySchedule" class="rounded-lg">Phase 1: Design (4 weeks)
+Phase 2: Development (8 weeks)
+Phase 3: Testing (3 weeks)
+Phase 4: Deployment (2 weeks)</textarea>
+        </div>
+        <div id="ganttPreviewContainer" class="gantt-chart-container hidden">
+            <!-- Gantt chart preview will be rendered here -->
+        </div>
+
+        <div class="form-group mt-4">
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="hideDetailedBreakdown" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                <span class="ml-2 text-gray-700">Hide Detailed Cost Breakdown in Proposal</span>
+            </label>
+        </div>
+
+        <div class="text-center mt-6 flex justify-center space-x-4">
+            <button class="btn-primary" onclick="generateProposal()">Generate Proposal</button>
+            <button class="btn-primary hidden" id="printProposalButton" onclick="printProposal()">Print Proposal</button>
+            <button class="btn-primary hidden" id="printCalculationButton" onclick="printCalculationReport()">Print Calculation Report</button>
+        </div>
+
+        <div class="proposal-output hidden" id="proposalOutput">
+            <!-- Proposal content will be generated here -->
+        </div>
+    </div>
+
+    <script>
+        // Colors for Gantt chart bars
+        const ganttColors = ['#63b3ed', '#68d391', '#f6e05e', '#fc8181', '#a78bfa', '#fbd38d', '#4fd1c5', '#feb2b2'];
+        const basicManpowerRateUSD = 18; // Basic manpower cost in USD
+        let clientRequirementDocumentName = ''; // To store the name of the uploaded document
+
+        // Function to set today's date in 'DD/MM/YYYY' format
+        function setTodaysDate() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+            const year = today.getFullYear();
+            document.getElementById('proposalDate').value = `${day}/${month}/${year}`;
+        }
+
+        // Call setTodaysDate on page load
+        window.onload = function() {
+            setTodaysDate();
+            generateProposal(); // Also generate initial proposal on load
+        };
+
+        // Function to handle client logo upload
+        document.getElementById('clientLogoUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('clientLogoPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById('clientLogoPreview').src = "https://placehold.co/150x60/E2E8F0/A0AEC0?text=Client%20Logo"; // Fallback placeholder
+            }
+        });
+
+        // Function to handle client requirement document upload
+        document.getElementById('clientRequirementDocument').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                clientRequirementDocumentName = file.name;
+            } else {
+                clientRequirementDocumentName = '';
+            }
+        });
+
+        function calculateAllCostsAndSchedule() {
+            // Get values from calculation input fields
+            const unitQuantityRaw = document.getElementById('unitQuantity').value;
+            const unitQuantity = parseFloat(unitQuantityRaw.replace(/k/i, '')) * (unitQuantityRaw.toLowerCase().includes('k') ? 1000 : 1);
+
+            const manufacturingHoursPerUnit = parseFloat(document.getElementById('manufacturingHoursPerUnit').value);
+            const manufacturingRatePerHour = parseFloat(document.getElementById('manufacturingRatePerHour').value);
+            const usdToInrExchangeRate = parseFloat(document.getElementById('usdToInrExchangeRate').value);
+            const overheadPercentage = parseFloat(document.getElementById('overheadPercentage').value);
+            const transightMarginPercentage = parseFloat(document.getElementById('transightMarginPercentage').value);
+            
+            const swHours = parseFloat(document.getElementById('swHours').value);
+            const fwHours = parseFloat(document.getElementById('fwHours').value);
+            const hwHours = parseFloat(document.getElementById('hwHours').value);
+
+            // Calculate Manpower Rates in INR
+            const swRateINR = (basicManpowerRateUSD * usdToInrExchangeRate);
+            const fwRateINR = (basicManpowerRateUSD * usdToInrExchangeRate);
+            const hwRateINR = (basicManpowerRateUSD * usdToInrExchangeRate);
+
+            // Perform calculations for costs
+            const calculatedManufacturingCost = (manufacturingHoursPerUnit * manufacturingRatePerHour).toFixed(2);
+            const calculatedManpowerSoftware = (swHours * swRateINR).toFixed(2);
+            const calculatedManpowerFirmware = (fwHours * fwRateINR).toFixed(2);
+            const calculatedManpowerHardware = (hwHours * hwRateINR).toFixed(2);
+
+            const bomCost = parseFloat(document.getElementById('bomCost').value);
+            const logisticsCharges = parseFloat(document.getElementById('logisticsCharges').value);
+            const investment = parseFloat(document.getElementById('investment').value);
+
+            // Calculate Direct Costs for Overhead calculation
+            const totalManpowerCosts = parseFloat(calculatedManpowerSoftware) + parseFloat(calculatedManpowerFirmware) + parseFloat(calculatedManpowerHardware);
+            const directCostsForOverhead = bomCost + parseFloat(calculatedManufacturingCost) + totalManpowerCosts;
+            const calculatedOverHeads = (directCostsForOverhead * (overheadPercentage / 100)).toFixed(2);
+
+            // Calculate Transight Margin
+            const totalCostBeforeMargin = bomCost + parseFloat(calculatedManufacturingCost) + parseFloat(calculatedOverHeads) + logisticsCharges + investment + totalManpowerCosts;
+            const calculatedTransightMargin = (totalCostBeforeMargin * (transightMarginPercentage / 100)).toFixed(2);
+
+
+            // Update the main cost input fields
+            document.getElementById('manufacturingCost').value = calculatedManufacturingCost;
+            document.getElementById('manpowerSoftware').value = calculatedManpowerSoftware;
+            document.getElementById('manpowerFirmware').value = calculatedManpowerFirmware;
+            document.getElementById('manpowerHardware').value = calculatedManpowerHardware;
+            document.getElementById('overHeads').value = calculatedOverHeads;
+            document.getElementById('transightMargin').value = calculatedTransightMargin;
+
+            // Scheduling Calculation and Gantt Chart Generation (Existing logic)
+            const deliveryScheduleText = document.getElementById('deliverySchedule').value;
+            const phases = deliveryScheduleText.split('\n').map(line => {
+                const parts = line.split(':');
+                if (parts.length === 2) {
+                    const name = parts[0].trim();
+                    const durationMatch = parts[1].match(/(\d+)\s*weeks/i);
+                    const duration = durationMatch ? parseInt(durationMatch[1]) : 0;
+                    return { name, duration };
+                }
+                return null;
+            }).filter(p => p !== null && p.duration > 0);
+
+            let totalProjectDuration = 0;
+            phases.forEach(phase => {
+                totalProjectDuration += phase.duration;
+            });
+
+            let ganttChartPreviewHtml = '';
+            if (phases.length > 0 && totalProjectDuration > 0) {
+                ganttChartPreviewHtml += '<h4 class="text-lg font-semibold mb-2">Project Timeline Preview</h4>';
+                ganttChartPreviewHtml += '<div class="gantt-bars">';
+                
+                let legendHtml = '<div class="gantt-legend">';
+
+                phases.forEach((phase, index) => {
+                    const widthPercentage = (phase.duration / totalProjectDuration) * 100;
+                    const color = ganttColors[index % ganttColors.length];
+                    ganttChartPreviewHtml += `
+                        <div class="gantt-bar"
+                             style="width: ${widthPercentage}%; background-color: ${color};"
+                             title="${phase.name}: ${phase.duration} weeks">
+                            <span class="truncate px-1">${phase.name} (${phase.duration}w)</span>
+                        </div>
+                    `;
+                    legendHtml += `
+                        <div class="legend-item">
+                            <div class="legend-color-box" style="background-color: ${color};"></div>
+                            <span>${phase.name}</span>
+                        </div>
+                    `;
+                });
+                ganttChartPreviewHtml += '</div>'; // .gantt-bars
+                ganttChartPreviewHtml += legendHtml + '</div>'; // .gantt-legend
+                ganttChartPreviewHtml += `<p class="text-sm text-gray-600 mt-2">Total Estimated Project Duration: <strong>${totalProjectDuration} weeks</strong></p>`;
+            } else {
+                ganttChartPreviewHtml += '<p class="text-sm text-gray-600">Enter delivery schedule phases (e.g., "Phase Name: Duration (weeks)") to see a timeline preview.</p>';
+            }
+
+            const ganttPreviewContainer = document.getElementById('ganttPreviewContainer');
+            ganttPreviewContainer.innerHTML = ganttChartPreviewHtml;
+            ganttPreviewContainer.classList.remove('hidden');
+            ganttPreviewContainer.dataset.ganttChartHtml = ganttChartPreviewHtml;
+        }
+
+        function generateProposal() {
+            // Ensure costs and schedule are calculated before generating the proposal
+            calculateAllCostsAndSchedule();
+
+            // Get values from input fields (now potentially updated by calculateAllCostsAndSchedule)
+            const companyName = document.getElementById('companyName').value;
+            const docNumber = document.getElementById('docNumber').value;
+            const proposalDate = document.getElementById('proposalDate').value;
+            const productName = document.getElementById('productName').value;
+            const unitQuantity = document.getElementById('unitQuantity').value;
+
+            const bomCost = parseFloat(document.getElementById('bomCost').value);
+            const manufacturingCost = parseFloat(document.getElementById('manufacturingCost').value);
+            const overHeads = parseFloat(document.getElementById('overHeads').value);
+            const transightMargin = parseFloat(document.getElementById('transightMargin').value);
+            const logisticsCharges = parseFloat(document.getElementById('logisticsCharges').value);
+            const investment = parseFloat(document.getElementById('investment').value);
+
+            const otherSoftwareCosts = parseFloat(document.getElementById('otherSoftwareCosts').value);
+            const manpowerSoftware = parseFloat(document.getElementById('manpowerSoftware').value);
+            const manpowerFirmware = parseFloat(document.getElementById('manpowerFirmware').value);
+            const manpowerHardware = parseFloat(document.getElementById('manpowerHardware').value);
+
+            const additionalCharges = document.getElementById('additionalCharges').value.split('\n').filter(line => line.trim() !== '');
+            const termsAndConditions = document.getElementById('termsAndConditions').value.split('\n').filter(line => line.trim() !== '');
+            const deliveryScheduleRaw = document.getElementById('deliverySchedule').value.split('\n').filter(line => line.trim() !== '');
+            const clientRequirement = document.getElementById('clientRequirement').value; 
+            const proposedSolution = document.getElementById('proposedSolution').value; 
+
+            const clientLogoSrc = document.getElementById('clientLogoPreview').src;
+            const hideDetailedBreakdown = document.getElementById('hideDetailedBreakdown').checked; // Get checkbox state
+
+            // Determine if a client requirement document was uploaded
+            const clientRequirementDocStatus = clientRequirementDocumentName ? 
+                                              `Client Requirement Document: ${clientRequirementDocumentName} (Attached)` : 
+                                              'No client requirement document attached.';
+
+
+            // Calculate derived values
+            const bomManufacturingCost = (bomCost + manufacturingCost).toFixed(2);
+            const totalUnitPrice = (bomCost + manufacturingCost + overHeads + transightMargin + logisticsCharges + investment).toFixed(2);
+            const totalOtherProjectCosts = (otherSoftwareCosts + manpowerSoftware + manpowerFirmware + manpowerHardware).toFixed(2);
+
+            // Get Gantt chart HTML generated by calculateAllCostsAndSchedule
+            const ganttChartHtml = document.getElementById('ganttPreviewContainer').dataset.ganttChartHtml || '';
+
+
+            // Construct the proposal HTML
+            let proposalHtml = `
+<div class="header-logos" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <img src="${clientLogoSrc}" alt="Client Logo" style="max-height: 60px; width: auto; border-radius: 8px;">
+    <!-- Transight Logo removed from here based on user request -->
+</div>
+<div class="text-center mb-8">
+    <h1 class="text-4xl font-bold text-gray-800">Techno-Commercial Proposal for the Production of ${productName} (${unitQuantity} units)</h1>
+    <p class="text-xl text-gray-600 mt-2">For: ${companyName}</p>
+    <p class="text-md text-gray-500 mt-1">Doc #: ${docNumber}</p>
+    <p class="text-md text-gray-500">Date: ${proposalDate}</p>
+</div>
+
+<h2 class="section-heading">1. INTRODUCTION</h2>
+<p class="text-gray-700 mb-8">This proposal outlines the quotation for the production of the ${productName} for ${companyName}, detailing the costs, proposed solution, and terms and conditions.</p>
+
+<h2 class="section-heading">2. COMPANY OVERVIEW</h2>
+<p class="text-gray-700 mb-8">Transight Systems Pvt. Ltd. is a premium trans-national provider of high-end communication solutions for various industries. We pride ourselves on being a step ahead of our counterparts in terms of standard technology and customizations. To ensure all our products adhere to superior levels of quality and reliability, they are custom-made by tech experts and undergo stringent quality checks.</p>
+
+<h2 class="section-heading">3. CLIENT REQUIREMENT</h2>
+<p class="text-gray-700 mb-2">${clientRequirement || 'No client requirement provided.'}</p>
+<p class="text-gray-700 mb-8">${clientRequirementDocStatus}</p>
+
+<h2 class="section-heading">4. PROPOSED SOLUTION</h2>
+<p class="text-gray-700 mb-8">${proposedSolution || 'No proposed solution provided.'}</p>
+
+<h2 class="section-heading">5. COMMERCIALS</h2>
+<h3 class="text-xl font-semibold mb-4">5.1 Hardware Unit Price for Manufacturing - ${unitQuantity} Units</h3>
+<table class="price-table mb-8">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Unit Price for ${unitQuantity} Units (INR)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>${productName}</td>
+            <td>${totalUnitPrice}</td>
+        </tr>
+    </tbody>
+</table>
+`;
+
+// Conditionally add detailed breakdown
+if (!hideDetailedBreakdown) {
+    proposalHtml += `
+<h3 class="text-xl font-semibold mb-4">5.2 Hardware Price Break Up</h3>
+<table class="price-table mb-8">
+    <thead>
+        <tr>
+            <th>Cost Item</th>
+            <th>Unit Cost for ${unitQuantity} units (INR)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>BOM Cost</td><td>${bomCost.toFixed(2)}</td></tr>
+        <tr><td>Manufacturing Cost</td><td>${manufacturingCost.toFixed(2)}</td></tr>
+        <tr><td>BOM + Manufacturing Cost</td><td>${bomManufacturingCost}</td></tr>
+        <tr><td>Over Heads</td><td>${overHeads.toFixed(2)}</td></tr>
+        <tr><td>Transight Margin</td><td>${transightMargin.toFixed(2)}</td></tr>
+        <tr><td>Logistics Charges</td><td>${logisticsCharges.toFixed(2)}</td></tr>
+        <tr><td>Investment</td><td>${investment.toFixed(2)}</td></tr>
+        <tr><td><strong>Total Price</strong></td><td><strong>${totalUnitPrice}</strong></td></tr>
+    </tbody>
+</table>
+<p class="text-sm text-gray-700 mt-4">With 2 Years Hardware Warranty</p>
+<p class="text-sm text-gray-700">Prices are Excluding GST</p>
+
+<h2 class="section-heading mt-8">5.3 Other Project Costs</h2>
+<table class="price-table mb-8">
+    <thead>
+        <tr>
+            <th>Cost Item</th>
+            <th>Cost (INR)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>Other Software Costs</td><td>${otherSoftwareCosts.toFixed(2)}</td></tr>
+        <tr><td>Manpower Efforts - Software</td><td>${manpowerSoftware.toFixed(2)}</td></tr>
+        <tr><td>Manpower Efforts - Firmware</td><td>${manpowerFirmware.toFixed(2)}</td></tr>
+        <tr><td>Manpower Efforts - Hardware</td><td>${manpowerHardware.toFixed(2)}</td></tr>
+        <tr><td><strong>Total Other Project Costs</strong></td><td><strong>${totalOtherProjectCosts}</strong></td></tr>
+    </tbody>
+</table>
+`;
+} else {
+    proposalHtml += `
+<p class="text-sm text-gray-700 mt-4">With 2 Years Hardware Warranty</p>
+<p class="text-sm text-gray-700">Prices are Excluding GST</p>
+`;
+}
+
+proposalHtml += `
+<h2 class="section-heading mt-8">6. ADDITIONAL CHARGES</h2>
+<ul class="list-disc pl-5 mb-8 text-gray-700">
+    ${additionalCharges.map(charge => `<li>${charge}</li>`).join('')}
+</ul>
+
+<h2 class="section-heading mt-8">7. DELIVERY SCHEDULE</h2>
+${ganttChartHtml}
+<ul class="list-disc pl-5 mb-8 text-gray-700">
+    ${deliveryScheduleRaw.map(phase => `<li>${phase}</li>`).join('')}
+</ul>
+
+<h2 class="section-heading mt-8">8. TERMS AND CONDITIONS</h2>
+<ol class="list-decimal pl-5 text-gray-700">
+    ${termsAndConditions.map(term => `<li>${term}</li>`).join('')}
+</ol>
+<div class="footer">
+    <p>www.transight.com</p>
+</div>
+            `;
+
+            // Display the generated proposal
+            const proposalOutput = document.getElementById('proposalOutput');
+            proposalOutput.innerHTML = proposalHtml;
+            proposalOutput.classList.remove('hidden');
+
+            // Show the print buttons
+            document.getElementById('printProposalButton').classList.remove('hidden');
+            document.getElementById('printCalculationButton').classList.remove('hidden');
+        }
+
+        function printProposal() {
+            const proposalContent = document.getElementById('proposalOutput').innerHTML;
+            const printWindow = window.open('', '_blank');
+
+            // Construct the HTML for the print window
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Print Proposal</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        body {
+                            font-family: 'Inter', sans-serif;
+                            line-height: 1.6;
+                            color: #000; /* Ensure black text for printing */
+                            margin: 20mm; /* Add some margin for print */
+                        }
+                        h1, h2, h3 {
+                            color: #000;
+                            font-weight: 700;
+                        }
+                        .text-center { text-align: center; }
+                        .mb-8 { margin-bottom: 2rem; }
+                        .mt-2 { margin-top: 0.5rem; }
+                        .mt-1 { margin-top: 0.25rem; }
+                        .text-4xl { font-size: 2.25rem; }
+                        .text-xl { font-size: 1.25rem; }
+                        .text-md { font-size: 1rem; }
+                        .text-sm { font-size: 0.875rem; }
+                        .font-bold { font-weight: 700; }
+                        .font-semibold { font-weight: 600; }
+                        .section-heading {
+                            border-bottom: 2px solid #e2e8f0;
+                            padding-bottom: 0.5rem;
+                            margin-bottom: 1.5rem;
+                            font-size: 1.5rem;
+                            color: #000;
+                        }
+                        .price-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-top: 1rem;
+                        }
+                        .price-table th, .price-table td {
+                            border: 1px solid #ccc; /* Lighter border for print */
+                            padding: 0.75rem;
+                            text-align: left;
+                        }
+                        .price-table th {
+                            background-color: #f0f0f0; /* Light background for header */
+                            font-weight: 600;
+                        }
+                        .list-disc, .list-decimal {
+                            padding-left: 20px;
+                        }
+                        /* Gantt Chart Styles for Print */
+                        .gantt-chart-container {
+                            margin-top: 1.5rem;
+                            margin-bottom: 1.5rem;
+                            padding: 1rem;
+                            background-color: #f7fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                        }
+                        .gantt-bars {
+                            display: flex;
+                            width: 100%;
+                            height: 40px;
+                            background-color: #e2e8f0;
+                            border-radius: 6px;
+                            overflow: hidden;
+                        }
+                        .gantt-bar {
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 0.75rem;
+                            color: white;
+                            font-weight: 600;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            padding: 0 4px;
+                            box-sizing: border-box;
+                        }
+                        .gantt-legend {
+                            display: flex;
+                            flex-wrap: wrap;
+                            margin-top: 1rem;
+                            gap: 0.75rem;
+                        }
+                        .legend-item {
+                            display: flex;
+                            align-items: center;
+                            font-size: 0.875rem;
+                            color: #4a5568;
+                        }
+                        .legend-color-box {
+                            width: 16px;
+                            height: 16px;
+                            border-radius: 4px;
+                            margin-right: 0.5rem;
+                        }
+                        .header-logos {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 2rem;
+                        }
+                        .header-logos img {
+                            max-height: 60px; /* Adjust as needed */
+                            width: auto;
+                        }
+                        .footer {
+                            text-align: center;
+                            margin-top: 3rem;
+                            padding-top: 1rem;
+                            border-top: 1px solid #e2e8f0;
+                            color: #718096;
+                            font-size: 0.9rem;
+                        }
+                        /* Hide elements that shouldn't be printed */
+                        @media print {
+                            body {
+                                -webkit-print-color-adjust: exact; /* For background colors */
+                                print-color-adjust: exact;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${proposalContent}
+                </body>
+                </html>
+            `);
+            printWindow.document.close(); // Close the document to ensure content is loaded
+
+            // Wait for content to load before printing
+            printWindow.onload = function() {
+                printWindow.print();
+            };
+        }
+
+        function printCalculationReport() {
+            // Re-calculate to ensure latest values are used
+            calculateAllCostsAndSchedule();
+
+            const bomCost = parseFloat(document.getElementById('bomCost').value);
+            const manufacturingHoursPerUnit = parseFloat(document.getElementById('manufacturingHoursPerUnit').value);
+            const manufacturingRatePerHour = parseFloat(document.getElementById('manufacturingRatePerHour').value);
+            const calculatedManufacturingCost = parseFloat(document.getElementById('manufacturingCost').value);
+            
+            const usdToInrExchangeRate = parseFloat(document.getElementById('usdToInrExchangeRate').value);
+            const overheadPercentage = parseFloat(document.getElementById('overheadPercentage').value);
+            const transightMarginPercentage = parseFloat(document.getElementById('transightMarginPercentage').value);
+
+            const swHours = parseFloat(document.getElementById('swHours').value);
+            const fwHours = parseFloat(document.getElementById('fwHours').value);
+            const hwHours = parseFloat(document.getElementById('hwHours').value);
+            const calculatedManpowerSoftware = parseFloat(document.getElementById('manpowerSoftware').value);
+            const calculatedManpowerFirmware = parseFloat(document.getElementById('manpowerFirmware').value);
+            const calculatedManpowerHardware = parseFloat(document.getElementById('manpowerHardware').value);
+
+            const logisticsCharges = parseFloat(document.getElementById('logisticsCharges').value);
+            const investment = parseFloat(document.getElementById('investment').value);
+            const calculatedOverHeads = parseFloat(document.getElementById('overHeads').value);
+            const calculatedTransightMargin = parseFloat(document.getElementById('transightMargin').value);
+
+            const totalManpowerCosts = calculatedManpowerSoftware + calculatedManpowerFirmware + calculatedManpowerHardware;
+            const directCostsForOverhead = bomCost + calculatedManufacturingCost + totalManpowerCosts;
+            const totalCostBeforeMargin = bomCost + calculatedManufacturingCost + calculatedOverHeads + logisticsCharges + investment + totalManpowerCosts;
+            const totalUnitPrice = (bomCost + calculatedManufacturingCost + calculatedOverHeads + calculatedTransightMargin + logisticsCharges + investment).toFixed(2);
+
+
+            let reportHtml = `
+                <div style="font-family: 'Inter', sans-serif; margin: 20mm; color: #000;">
+                    <h1 style="text-align: center; font-size: 2.25rem; font-weight: 700; margin-bottom: 2rem;">Cost Calculation Report</h1>
+                    
+                    <h2 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700;">Input Parameters</h2>
+                    <table class="price-table" style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                        <tr><th style="border: 1px solid #ccc; padding: 0.75rem; text-align: left; background-color: #f0f0f0;">Parameter</th><th style="border: 1px solid #ccc; padding: 0.75rem; text-align: left; background-color: #f0f0f0;">Value</th></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">BOM Cost</td><td style="border: 1px solid #ccc; padding: 0.75rem;">INR ${bomCost.toFixed(2)}</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Manufacturing Hours per Unit</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${manufacturingHoursPerUnit} hours</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Manufacturing Rate per Hour</td><td style="border: 1px solid #ccc; padding: 0.75rem;">INR ${manufacturingRatePerHour.toFixed(2)}</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">USD to INR Exchange Rate</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${usdToInrExchangeRate.toFixed(2)}</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Overhead Percentage</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${overheadPercentage.toFixed(2)}%</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Transight Margin Percentage</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${transightMarginPercentage.toFixed(2)}%</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Software Manpower Hours</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${swHours} hours</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Firmware Manpower Hours</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${fwHours} hours</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Hardware Manpower Hours</td><td style="border: 1px solid #ccc; padding: 0.75rem;">${hwHours} hours</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Logistics Charges</td><td style="border: 1px solid #ccc; padding: 0.75rem;">INR ${logisticsCharges.toFixed(2)}</td></tr>
+                        <tr><td style="border: 1px solid #ccc; padding: 0.75rem;">Investment</td><td style="border: 1px solid #ccc; padding: 0.75rem;">INR ${investment.toFixed(2)}</td></tr>
+                    </table>
+
+                    <h2 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700;">Calculated Costs</h2>
+                    <table class="price-table" style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                        <tr><th style="border: 1px solid #ccc; padding: 0.75rem; text-align: left; background-color: #f0f0f0;">Cost Item</th><th style="border: 1px solid #ccc; padding: 0.75rem; text-align: left; background-color: #f0f0f0;">Calculation</th><th style="border: 1px solid #ccc; padding: 0.75rem; text-align: left; background-color: #f0f0f0;">Result (INR)</th></tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Manufacturing Cost</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${manufacturingHoursPerUnit} hours * ${manufacturingRatePerHour.toFixed(2)} INR/hour</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${calculatedManufacturingCost}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Manpower Efforts - Software</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${swHours} hours * ${basicManpowerRateUSD} USD/hour * ${usdToInrExchangeRate.toFixed(2)} INR/USD</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${calculatedManpowerSoftware}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Manpower Efforts - Firmware</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${fwHours} hours * ${basicManpowerRateUSD} USD/hour * ${usdToInrExchangeRate.toFixed(2)} INR/USD</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${calculatedManpowerFirmware}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Manpower Efforts - Hardware</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${hwHours} hours * ${basicManpowerRateUSD} USD/hour * ${usdToInrExchangeRate.toFixed(2)} INR/USD</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${calculatedManpowerHardware}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Total Manpower Costs</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Software + Firmware + Hardware Manpower Costs</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${totalManpowerCosts.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Over Heads</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">(BOM Cost + Manufacturing Cost + Total Manpower Costs) * (${overheadPercentage}%)</td>
+                            <td style="1px solid #ccc; padding: 0.75rem;">${calculatedOverHeads}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">Transight Margin</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">(BOM Cost + Manufacturing Cost + Over Heads + Logistics Charges + Investment + Total Manpower Costs) * (${transightMarginPercentage}%)</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">${calculatedTransightMargin}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;"><strong>Total Unit Price</strong></td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;">BOM Cost + Manufacturing Cost + Over Heads + Transight Margin + Logistics Charges + Investment</td>
+                            <td style="border: 1px solid #ccc; padding: 0.75rem;"><strong>${totalUnitPrice}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Cost Calculation Report</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        body {
+                            font-family: 'Inter', sans-serif;
+                            line-height: 1.6;
+                            color: #000;
+                            margin: 20mm;
+                        }
+                        h1, h2, h3 {
+                            color: #000;
+                            font-weight: 700;
+                        }
+                        .price-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-top: 1rem;
+                        }
+                        .price-table th, .price-table td {
+                            border: 1px solid #ccc;
+                            padding: 0.75rem;
+                            text-align: left;
+                        }
+                        .price-table th {
+                            background-color: #f0f0f0;
+                            font-weight: 600;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${reportHtml}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.onload = function() {
+                printWindow.print();
+            };
+        }
+
+        // Initial generation on load with default values
+        // window.onload = generateProposal; // This is now handled by the new window.onload that calls setTodaysDate first.
+    </script>
+</body>
+</html>

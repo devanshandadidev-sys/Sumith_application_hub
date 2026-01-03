@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent JSON Validator & Fixer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 15px;
+            margin-top: 0;
+        }
+        p.instructions {
+            text-align: center;
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .json-inputs { display: flex; gap: 30px; margin-bottom: 20px; }
+        .json-panel { flex: 1; display: flex; flex-direction: column; }
+        h2 { margin-top: 0; margin-bottom: 10px; color: #34495e; font-size: 1.2em; }
+        textarea {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .controls { text-align: center; margin-bottom: 20px; }
+        button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            transition: background-color 0.3s ease;
+            margin: 5px;
+        }
+        #checkButton { background-color: #3498db; }
+        #checkButton:hover { background-color: #2980b9; }
+        #fixButton { background-color: #27ae60; }
+        #fixButton:hover { background-color: #229954; }
+        #clearButton { background-color: #95a5a6; }
+        #clearButton:hover { background-color: #7f8c8d; }
+        #result {
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .error { background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        ul { padding-left: 20px; margin: 10px 0 0 0; }
+        li { margin-bottom: 8px; line-height: 1.5; }
+        code { background-color: #ecf0f1; padding: 2px 5px; border-radius: 3px; color: #c0392b; }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .footer a { color: #3498db; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Intelligent JSON Validator & Fixer</h1>
+        <p class="instructions">
+            Now validates integer digit length. For example, if the template has <code>"id": 12345</code>, the checked value must also have 5 digits.
+        </p>
+        <div class="json-inputs">
+            <div class="json-panel">
+                <h2>Standard / Template JSON</h2>
+                <textarea id="standardJsonInput" placeholder="Paste your template JSON here..."></textarea>
+            </div>
+            <div class="json-panel">
+                <h2>JSON to Check / Fix</h2>
+                <textarea id="jsonToCheckInput" placeholder="Paste the JSON you want to validate or fix here..."></textarea>
+            </div>
+        </div>
+        <div class="controls">
+            <button id="fixButton">Fix & Format JSON</button>
+            <button id="checkButton">Check for Errors</button>
+            <button id="clearButton">Clear All</button>
+        </div>
+        <div id="result"></div>
+        <div class="footer">
+            <p>Created by: Sumith C Mohan | <a href="mailto:Itsmesumithcmohan@gmail.com">Itsmesumithcmohan@gmail.com</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const standardInput = document.getElementById('standardJsonInput');
+            const toCheckInput = document.getElementById('jsonToCheckInput');
+            const checkButton = document.getElementById('checkButton');
+            const fixButton = document.getElementById('fixButton');
+            const clearButton = document.getElementById('clearButton');
+            const resultDiv = document.getElementById('result');
+
+            const standardExample = {
+              "cellid": 32456,
+              "lac": 5123
+            };
+            const toCheckExample = {
+                "cellid": 4197,  // Should fail (4 digits vs 5)
+                "lac": "05123" // Should fail (string vs integer) but fix will convert it
+            };
+            standardInput.value = JSON.stringify(standardExample, null, 2);
+            toCheckInput.value = JSON.stringify(toCheckExample, null, 2);
+
+            clearButton.addEventListener('click', () => {
+                standardInput.value = ''; toCheckInput.value = '';
+                resultDiv.innerHTML = ''; resultDiv.className = '';
+            });
+
+            fixButton.addEventListener('click', () => {
+                const standardJson = parseJson(standardInput, 'Standard');
+                if (!standardJson) return;
+                const toCheckJson = parseJson(toCheckInput, 'to Check');
+                if (!toCheckJson) return;
+
+                const fixes = [];
+                const fixedJson = runFix(standardJson, toCheckJson, "root", fixes);
+                toCheckInput.value = JSON.stringify(fixedJson, null, 2);
+                
+                displayReport(
+                    fixes.length > 0 ? 'JSON has been fixed. The following changes were made:' : '✅ JSON is valid and has been formatted.',
+                    fixes
+                );
+            });
+
+            checkButton.addEventListener('click', () => {
+                const standardJson = parseJson(standardInput, 'Standard');
+                if (!standardJson) return;
+                const toCheckJson = parseJson(toCheckInput, 'to Check');
+                if (!toCheckJson) return;
+
+                const errors = [];
+                runValidation(standardJson, toCheckJson, "root", errors, standardInput.value, toCheckInput.value);
+                if (errors.length === 0) {
+                    displayReport('✅ No validation errors found!');
+                } else {
+                    displayError('Found the following validation errors:', errors);
+                }
+            });
+
+            function parseJson(textarea, sourceName) {
+                resultDiv.innerHTML = ''; resultDiv.className = '';
+                try {
+                    return JSON.parse(textarea.value);
+                } catch (e) {
+                    const positionMatch = e.message.match(/position (\d+)/);
+                    let errorMessage = `Invalid JSON in "${sourceName}" box.`;
+                    if (positionMatch) {
+                        const position = parseInt(positionMatch[1], 10);
+                        textarea.focus();
+                        textarea.setSelectionRange(position, position + 1);
+                        errorMessage += ' The error location is highlighted.';
+                    }
+                    displayError(`${errorMessage}<br><br><b>Details:</b> ${e.message}`);
+                    return null;
+                }
+            }
+            
+            function displayReport(mainMessage, reportList = []) {
+                resultDiv.className = 'success';
+                let html = `<strong>${mainMessage}</strong>`;
+                if (reportList.length > 0) {
+                    html += '<ul>' + reportList.map(item => `<li>${item}</li>`).join('') + '</ul>';
+                }
+                resultDiv.innerHTML = html;
+            }
+
+            function displayError(mainMessage, errorList = []) {
+                resultDiv.className = 'error';
+                let html = `<strong>❌ ${mainMessage}</strong>`;
+                if (errorList.length > 0) {
+                    html += '<ul>' + errorList.map(item => `<li>${item}</li>`).join('') + '</ul>';
+                }
+                resultDiv.innerHTML = html;
+            }
+            
+            function getDataTypeAndPlaces(value, rawValueStr) {
+                if (value === null) return { type: 'null' };
+                if (Array.isArray(value)) return { type: 'array' };
+                
+                const type = typeof value;
+                const strValue = rawValueStr || String(value);
+
+                if (type === 'number') {
+                    if (strValue.includes('.')) {
+                        return { type: 'float', places: (strValue.split('.')[1] || '').length };
+                    }
+                    return { type: 'integer', digits: strValue.length };
+                }
+                return { type };
+            }
+
+            function findRawValue(key, jsonString) {
+                const regex = new RegExp(`"${key}"\\s*:\\s*"?(-?[\\d\\.]+)`);
+                const match = jsonString.match(regex);
+                return match ? match[1] : null;
+            }
+
+            function runValidation(template, target, path, errors, templateString, targetString) {
+                if (typeof template === 'object' && template !== null && !Array.isArray(template)) {
+                    Object.keys(template).forEach(key => {
+                        const newPath = path === 'root' ? key : `${path}.${key}`;
+                        if (target && target.hasOwnProperty(key)) {
+                            runValidation(template[key], target[key], newPath, errors, templateString, targetString);
+                        } else {
+                            errors.push(`<b>Missing Key</b>: <code>${newPath}</code> is missing.`);
+                        }
+                    });
+                     if (target) {
+                        Object.keys(target).forEach(key => {
+                            if (!template.hasOwnProperty(key)) {
+                                errors.push(`<b>Extra Key</b>: <code>${path === 'root' ? key : `${path}.${key}`}</code> was found.`);
+                            }
+                        });
+                    }
+                    return;
+                }
+                
+                const key = path.split('.').pop();
+                const templateRaw = findRawValue(key, templateString) || String(template);
+                const targetRaw = findRawValue(key, targetString) || String(target);
+
+                const templateRule = getDataTypeAndPlaces(template, templateRaw);
+                
+                let convertedTarget = target;
+                if ((templateRule.type === 'float' || templateRule.type === 'integer') && typeof target === 'string' && !isNaN(Number(target))) {
+                    if (String(target).trim() !== "") convertedTarget = Number(target);
+                }
+                const targetRule = getDataTypeAndPlaces(convertedTarget, targetRaw);
+
+                if (templateRule.type !== targetRule.type) {
+                    errors.push(`<b>Type Error at <code>${path}</code></b>: Expected type <code>${templateRule.type}</code> but found <code>${targetRule.type}</code>.`);
+                } else if (templateRule.type === 'integer') {
+                     if (templateRule.digits !== targetRule.digits) {
+                        errors.push(`<b>Integer Length Error at <code>${path}</code></b>: Expected ${templateRule.digits} digits, but value <code>${targetRaw}</code> has ${targetRule.digits} digits.`);
+                    }
+                } else if (templateRule.type === 'float') {
+                    if (targetRule.places > templateRule.places) {
+                        errors.push(`<b>Float Precision Error at <code>${path}</code></b>: Expected ${templateRule.places} decimal places, but found ${targetRule.places} in value <code>${targetRaw}</code>.`);
+                    }
+                }
+            }
+
+            function runFix(template, target, path, fixes) {
+                if (target === undefined) {
+                    return template;
+                }
+
+                if (typeof template === 'object' && template !== null && !Array.isArray(template)) {
+                    const correctedObj = {};
+                    Object.keys(template).forEach(key => {
+                        const newPath = path === 'root' ? key : `${path}.${key}`;
+                        if (target && target.hasOwnProperty(key)) {
+                            correctedObj[key] = runFix(template[key], target[key], newPath, fixes);
+                        } else {
+                            fixes.push(`<b>Added Missing Key</b>: <code>${newPath}</code>.`);
+                            correctedObj[key] = template[key];
+                        }
+                    });
+                     if (target) {
+                        Object.keys(target).forEach(key => {
+                            if (!template.hasOwnProperty(key)) {
+                                fixes.push(`<b>Removed Extra Key</b>: <code>${path === 'root' ? key : `${path}.${key}`}</code>.`);
+                            }
+                        });
+                    }
+                    return correctedObj;
+                }
+
+                const templateRule = getDataTypeAndPlaces(template);
+                let correctedValue = target;
+                
+                if ((templateRule.type === 'float' || templateRule.type === 'integer') && typeof target === 'string') {
+                    if (String(target).trim() === "" || isNaN(Number(target))) {
+                        correctedValue = template;
+                        fixes.push(`<b>Type Correction at <code>${path}</code></b>: Replaced invalid string <code>"${target}"</code> with default <code>${template}</code>.`);
+                    } else {
+                         correctedValue = Number(target);
+                         fixes.push(`<b>Type Conversion at <code>${path}</code></b>: Converted string <code>"${target}"</code> to number <code>${correctedValue}</code>.`);
+                    }
+                }
+                
+                const correctedRule = getDataTypeAndPlaces(correctedValue);
+
+                if (templateRule.type !== correctedRule.type) {
+                    fixes.push(`<b>Type Correction at <code>${path}</code></b>: Replaced <code>${JSON.stringify(target)}</code> with default: <code>${JSON.stringify(template)}</code>.`);
+                    return template;
+                }
+                
+                if (templateRule.type === 'integer' && correctedRule.type !== 'integer') {
+                    const rounded = Math.round(correctedValue);
+                    fixes.push(`<b>Integer Correction at <code>${path}</code></b>: Rounded <code>${correctedValue}</code> to <code>${rounded}</code>.`);
+                    return rounded;
+                }
+                
+                if (templateRule.type === 'float' && correctedRule.places > templateRule.places) {
+                     const rounded = parseFloat(correctedValue.toFixed(templateRule.places));
+                     fixes.push(`<b>Float Precision Correction at <code>${path}</code></b>: Rounded <code>${correctedValue}</code> to <code>${rounded}</code>.`);
+                     return rounded;
+                }
+
+                return correctedValue;
+            }
+        });
+    </script>
+</body>
+</html>

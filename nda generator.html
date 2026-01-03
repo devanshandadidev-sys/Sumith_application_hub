@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NDA Generator – Transight Systems Pvt Ltd</title>
+<style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:30px;max-width:960px}
+    h1{margin-top:0}
+    label{display:block;margin:18px 0 6px}
+    input{width:100%;padding:6px}
+    button{margin:20px 10px 0 0;padding:10px 18px;cursor:pointer}
+    #output{white-space:pre-wrap;border:1px solid #ccc;padding:14px;margin-top:26px}
+    .hidden{display:none}
+</style>
+</head>
+<body>
+
+<h1>NDA Document Generator</h1>
+
+<form id="ndaForm">
+    <label>Effective Date (e.g. 15 July 2025)</label>
+    <input id="effectiveDate" required>
+
+    <label>Second Party Legal Name</label>
+    <input id="secondParty" required>
+
+    <label>Second Party Address</label>
+    <input id="secondAddress" required>
+
+    <label>Second Party — Authorised Signatory Name</label>
+    <input id="secondSignatory" required>
+
+    <label>Second Party — Authorised Signatory Title</label>
+    <input id="secondTitle" required>
+
+    <button type="button" onclick="generate()">Generate NDA</button>
+    <button type="button" class="hidden" id="copyBtn" onclick="copyText()">Copy to Clipboard</button>
+    <button type="button" class="hidden" id="downloadBtn" onclick="downloadDoc()">Download .doc</button>
+</form>
+
+<h2 id="docHeader" class="hidden">Generated Document</h2>
+<div id="output" class="hidden"></div>
+
+<script>
+/* -------- main generator -------- */
+function generate(){
+    const d      = _v('effectiveDate');
+    const p      = _v('secondParty');
+    const addr   = _v('secondAddress');
+    const sign   = _v('secondSignatory');
+    const title  = _v('secondTitle');
+
+    const nda = `
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Mutual Nondisclosure Agreement (“Agreement”) is entered into on ${d} (“Effective Date”) by and between:
+
+Transight Systems Private Limited, a company duly incorporated under the provisions of the Companies Act 2013, having its registered office at Indian Telecom Innovation Hub, Kinfra Hi-Tech Park, HMT Colony P.O., Kalamassery, Cochin, Ernakulam, Kerala – 683503 and corporate office at ISC Building, Kerala Technology Innovation Zone, Kinfra Hi-Tech Park, HMT Colony P.O., Kalamassery, Cochin, Ernakulam, Kerala – 683503, hereinafter referred to as “TSPL” or the “First Party” (which expression shall, unless repugnant to the context or meaning thereof, include its successors, administrators, nominees and assigns), duly represented through its authorised signatory, Mr. Feroz Rahman, of the FIRST PART; and
+
+${p}, a company having its office at ${addr}, hereinafter referred to as the “Second Party” (which expression shall, unless repugnant to the context or meaning thereof, include its successors, administrators, nominees and assigns), duly represented through its authorised signatory, Mr. ${sign}, of the OTHER PART.
+
+(Transight Systems Private Limited and the Second Party are hereinafter individually referred to as a “party” and jointly as the “parties”.)
+
+WHEREAS, the parties desire to evaluate, negotiate and discuss the feasibility of a mutually beneficial business opportunity (the “Purpose”).
+
+NOW, THEREFORE, in consideration of any disclosure and negotiations concerning the contemplated business opportunity, the parties agree as follows:
+
+1. For the purposes of this Agreement, “affiliate” means an entity that, directly or indirectly, controls, is controlled by, or is under common control with a party to this Agreement, but only so long as such control exists, and where “control” means ownership of more than 50% of the stock or other equity interests entitled to vote for the election of directors or an equivalent governing body.
+
+2. Each party, as Recipient, agrees to hold Confidential Information in confidence and protect it against unauthorised use or disclosure using at least the same degree of care it accords its own confidential information of like importance, but never less than reasonable care. Without limiting the foregoing, each Recipient further agrees:
+   • not to use any Confidential Information except in furtherance of the Purpose; and  
+   • that the existence of negotiations, discussions or agreements in progress between the parties shall be kept confidential and not disclosed without written approval of all parties.
+
+3. Each party shall be liable for any failure of its affiliates to abide by this Agreement as if such failure were its own act or omission.
+
+4. A disclosure in response to a valid court or governmental order, or as otherwise required by law, shall not constitute a breach, provided the Recipient gives prompt prior written notice to the Discloser and permits the Discloser to seek protective measures.
+
+5. Confidential Information remains the property of the Discloser, and no licence or other rights are granted or implied. Upon termination of this Agreement or upon written request of the Discloser (whichever is earlier), the Recipient shall, within ten (10) days, return or destroy (at the Discloser’s option) all Confidential Information and certify compliance.
+
+6. Non-Solicitation. This clause continues for one (1) year after any termination of this Agreement or the parties’ business relationship. The confidentiality obligations survive in perpetuity.
+
+7. Governing Law & Jurisdiction. This Agreement is governed by the laws of the Republic of India. Any action arising out of or relating to this Agreement shall be exclusively brought in the State courts in Ernakulam, Kerala, India.
+
+8. Assignment. Neither party may assign this Agreement without the prior written consent of the other; any permitted assignment binds successors and assigns.
+
+9. Waiver & Severability. A waiver or failure of either party to exercise any right is not a waiver of any other right. If any provision is held unenforceable, it shall be enforced to the extent permissible to reflect the parties’ intent, and the remaining provisions remain in force.
+
+10. Counterparts & Entire Agreement. This Agreement may be executed in counterparts, which together form one document. It constitutes the entire understanding of the parties and may be amended only by a writing signed by authorised representatives of both parties.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.
+
+| For and on behalf of Transight Systems Private Limited | For and on behalf of ${p} |
+|-------------------------------------------------------|---------------------------|
+| Signature: __________________________________________ | Signature: ___________________________________ |
+| Name: Mr. Feroz Rahman                                | Name: ${sign} |
+| Title: Authorised Signatory                            | Title: ${title} |
+`.trim();
+
+    /* show results */
+    show('docHeader','output','copyBtn','downloadBtn');
+    document.getElementById('output').textContent = nda;
+}
+
+/* -------- helpers -------- */
+function _v(id){return document.getElementById(id).value.trim();}
+function show(...ids){ids.forEach(i=>document.getElementById(i).classList.remove('hidden'));}
+
+/* -------- clipboard -------- */
+function copyText(){
+    navigator.clipboard.writeText(document.getElementById('output').textContent)
+        .then(()=>alert('Copied to clipboard'));
+}
+
+/* -------- download as true Word-readable .doc -------- */
+function downloadDoc(){
+    const htmlBody = document.getElementById('output').textContent
+                     .replace(/&/g, '&amp;')
+                     .replace(/</g, '&lt;')
+                     .replace(/>/g, '&gt;')
+                     .replace(/\n/g, '<br/>')
+                     .replace(/  /g,'&nbsp;&nbsp;');
+
+    const docFile = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"></head>
+<body style="font-family:Calibri,Arial,sans-serif;">${htmlBody}</body>
+</html>`;
+
+    const blob = new Blob(['\uFEFF'+docFile],
+        {type:'application/msword'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Mutual-NDA.doc';
+    document.body.appendChild(link);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    link.remove();
+}
+</script>
+</body>
+</html>

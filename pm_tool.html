@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fully Functional PM Tool</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.css">
+<style>
+    :root {
+        --color-primary: #007bff; --color-bg: #f4f5f7; --color-surface: #ffffff;
+        --color-text: #172b4d; --color-border: #dfe1e6; --font-family: sans-serif;
+    }
+    body { font-family: var(--font-family); margin: 0; background-color: var(--color-bg); font-size: 14px; overflow: hidden; }
+    .app-container { display: flex; flex-direction: column; height: 100vh; }
+    .app-header { display: flex; align-items: center; justify-content: space-between; background-color: var(--color-surface); padding: 10px 20px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .app-header .project-title { font-size: 1.2rem; font-weight: 600; }
+    .app-main { display: flex; flex-grow: 1; overflow: hidden; }
+    .app-sidebar { width: 250px; background-color: var(--color-surface); border-right: 1px solid var(--color-border); padding: 15px; display: flex; flex-direction: column; flex-shrink: 0; }
+    .sidebar-section { margin-bottom: 20px; }
+    .sidebar-button { background-color: var(--color-primary); color: white; border: none; padding: 10px; border-radius: 3px; cursor: pointer; text-align: center; width:100%; margin-bottom: 15px;}
+    .app-sidebar nav a { display: block; padding: 10px; text-decoration: none; color: var(--color-text); border-radius: 3px; margin-bottom: 5px; }
+    .app-sidebar nav a.active { background-color: #e6f0ff; color: var(--color-primary); font-weight: 500; }
+    .app-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .content-header { padding: 15px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; background-color: var(--color-surface); }
+    .view-tabs button { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 14px; }
+    .view-tabs button.active { border-bottom: 2px solid var(--color-primary); font-weight: 600; color: var(--color-primary); }
+    .content-body { flex-grow: 1; overflow: auto; }
+    .gantt-grid-container { display: flex; height: 100%; }
+    .task-grid { width: 600px; overflow-y: auto; border-right: 1px solid var(--color-border); flex-shrink: 0; }
+    .grid-header, .grid-row { display: flex; border-bottom: 1px solid var(--color-border); padding: 12px 10px; font-weight: 600; align-items: center; background-color: #fafbfc; }
+    .grid-row { font-weight: 400; background-color: var(--color-surface); cursor: pointer; }
+    .grid-row:hover { background-color: #f0f8ff; }
+    .grid-cell { padding: 0 8px; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cell-id{width:40px;} .cell-name{flex:1;} .cell-assigned{width:100px;} .cell-duration{width:80px;} .cell-preds{width:120px;}
+    .gantt-chart-area { flex-grow: 1; overflow-x: auto; }
+    #gantt-chart .bar-label { font-size: 12px !important; fill: #333; }
+    .gantt-critical-path .bar { fill: #ff4d4f !important; }
+    .bar-baseline { fill: #bfbfbf; opacity: 0.6; }
+    /* Kanban View */
+    .kanban-board { display: flex; gap: 15px; padding: 15px; overflow-x: auto; }
+    .kanban-column { flex: 1; min-width: 280px; background-color: #f4f5f7; border-radius: 3px; padding: 10px; }
+    .kanban-column h4 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid var(--color-border); }
+    .kanban-card { background-color: #fff; border-radius: 3px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 0 rgba(9,30,66,.25); cursor: pointer; }
+    /* Modal */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 5px; }
+    input, select, button { padding: 8px; margin-top: 5px; border-radius: 3px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+    button { cursor: pointer; background-color: var(--color-primary); color: white; border: none; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+</style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div id="project-title-header" class="project-title">No Project Selected</div>
+            <div><button>Project Owner</button></div>
+        </header>
+
+        <main class="app-main">
+            <aside class="app-sidebar">
+                <div class="sidebar-section">
+                    <button class="sidebar-button" onclick="UI.openProjectModal()">+ Create new project</button>
+                    <select id="projectSelect" onchange="App.switchProject(this.value)"></select>
+                </div>
+                <div class="sidebar-section">
+                    <button class="sidebar-button" onclick="UI.openTaskModal()">Add Task</button>
+                    <button onclick="App.setBaseline()">Set Baseline</button>
+                    <button onclick="App.toggleCriticalPath()">Toggle Critical Path</button>
+                </div>
+                <nav>
+                    <a href="#" class="active">All projects</a>
+                    <a href="#">Portfolios</a>
+                </nav>
+            </aside>
+
+            <div class="app-content">
+                <div class="content-header">
+                    <div class="view-tabs" id="view-tabs">
+                        <button class="active" onclick="UI.switchView('gantt')">Gantt chart</button>
+                        <button onclick="UI.switchView('board')">Board</button>
+                    </div>
+                </div>
+                <div class="content-body">
+                    <div id="gantt-view" class="view">
+                        <div class="gantt-grid-container">
+                            <div class="task-grid" id="task-grid"></div>
+                            <div class="gantt-chart-area" id="gantt-chart-area"><svg id="gantt-chart"></svg></div>
+                        </div>
+                    </div>
+                    <div id="board-view" class="view" style="display:none;">
+                        <div class="kanban-board" id="kanban-board"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="projectModal" class="modal"><div class="modal-content"><h3>Create Project</h3><label>Project Name</label><input id="newProjectName"><button onclick="App.addProject()">Save</button></div></div>
+    <div id="taskModal" class="modal"><div class="modal-content"><h3 id="modal-title">Add Task</h3><input type="hidden" id="taskId"><label>Task Name</label><input id="taskName"><label>Duration (days)</label><input type="number" id="taskDuration"><label>Dependencies (IDs)</label><input id="taskDependencies"><label>Status</label><select id="taskStatus"><option>To Do</option><option>In Progress</option><option>Done</option></select><button onclick="App.saveTask()">Save</button><button id="deleteTaskBtn" onclick="App.deleteTask()">Delete</button></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.umd.js"></script>
+<script>
+const App = (() => {
+    let state = {
+        projects: [],
+        activeProjectId: null,
+        showCriticalPath: false,
+    };
+    let gantt;
+
+    const load = () => {
+        const data = localStorage.getItem('pmAppData');
+        if (data) {
+            state = JSON.parse(data);
+            state.projects.forEach(p => p.tasks.forEach(t => {
+                if (t.start) t.start = new Date(t.start);
+                if (t.end) t.end = new Date(t.end);
+            }));
+        } else {
+            const defaultProject = { id: Date.now(), name: "Vision Series Base Plan", tasks: [
+                { id: '1', name: 'Bootloader Setup', duration:1, dependencies: [], status: 'Done', start: new Date('2025-09-15'), end: new Date('2025-09-15') },
+                { id: '2', name: 'Kernel Configuration', duration:1, dependencies: ['1'], status: 'Done', start: new Date('2025-09-16'), end: new Date('2025-09-16') },
+                { id: '3', name: 'Device Tree Setup', duration:1, dependencies: ['2'], status: 'In Progress', start: new Date('2025-09-17'), end: new Date('2025-09-17') },
+            ] };
+            state.projects.push(defaultProject);
+            state.activeProjectId = defaultProject.id;
+        }
+        UI.render();
+    };
+    const save = () => {
+        try {
+            localStorage.setItem('pmAppData', JSON.stringify(state));
+        } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                alert('Error: Local storage is full. Please clear your browser storage for this page to save new data.');
+            } else {
+                console.error("Failed to save state:", e);
+            }
+        }
+    };
+    const getCurrentProject = () => state.projects.find(p => p.id == state.activeProjectId);
+
+    const addProject = () => {
+        const name = document.getElementById('newProjectName').value.trim();
+        if (!name) return;
+        const newProject = { id: Date.now(), name, tasks: [] };
+        state.projects.push(newProject);
+        state.activeProjectId = newProject.id;
+        save();
+        UI.closeModal('projectModal');
+        UI.render();
+    };
+
+    const switchProject = (id) => {
+        state.activeProjectId = id;
+        save();
+        UI.render();
+    };
+
+    const saveTask = () => {
+        const project = getCurrentProject();
+        const taskId = document.getElementById('taskId').value;
+        const taskData = {
+            id: taskId || `T${Date.now()}`,
+            name: document.getElementById('taskName').value,
+            duration: parseInt(document.getElementById('taskDuration').value) || 1,
+            dependencies: document.getElementById('taskDependencies').value.split(',').map(d => d.trim()).filter(Boolean),
+            status: document.getElementById('taskStatus').value,
+        };
+        if (taskId) {
+            const index = project.tasks.findIndex(t => t.id == taskId);
+            project.tasks[index] = { ...project.tasks[index], ...taskData };
+        } else {
+            project.tasks.push(taskData);
+        }
+        schedule();
+        UI.closeModal('taskModal');
+    };
+    
+    const deleteTask = () => {
+        const project = getCurrentProject();
+        const taskId = document.getElementById('taskId').value;
+        project.tasks = project.tasks.filter(t => t.id != taskId);
+        schedule();
+        UI.closeModal('taskModal');
+    }
+
+    const schedule = () => {
+        const project = getCurrentProject();
+        let tasks = project.tasks;
+        tasks.forEach(t => { delete t.start; delete t.end; });
+        let changed = true, iterations = 0;
+        while (changed && iterations < tasks.length * 2) {
+            changed = false;
+            iterations++;
+            tasks.forEach(task => {
+                if (task.start) return;
+                let maxPredEnd = new Date(0);
+                let canSchedule = true;
+                task.dependencies.forEach(depId => {
+                    const pred = tasks.find(t => t.id === depId);
+                    if (!pred || !pred.end) { canSchedule = false; }
+                    else if (pred.end > maxPredEnd) { maxPredEnd = pred.end; }
+                });
+                if (canSchedule) {
+                    task.start = new Date(maxPredEnd.getTime() + (maxPredEnd.getTime() === 0 ? 0 : 86400000));
+                    task.end = new Date(task.start.getTime() + (task.duration - 1) * 86400000);
+                    changed = true;
+                }
+            });
+        }
+        save();
+        UI.render();
+    };
+    
+    const setBaseline = () => {
+        const project = getCurrentProject();
+        project.tasks.forEach(t => { t.baseline_start = t.start; t.baseline_end = t.end; });
+        save();
+        UI.render();
+    };
+
+    const toggleCriticalPath = () => {
+        state.showCriticalPath = !state.showCriticalPath;
+        UI.render();
+    };
+
+    const getCriticalPath = () => {
+        const project = getCurrentProject();
+        if (!project || !project.tasks.length) return new Set();
+        const tasks = project.tasks;
+        const endNodes = tasks.filter(t => !tasks.some(other => other.dependencies.includes(t.id)));
+        const latestEndDate = Math.max(...endNodes.map(t => t.end ? t.end.getTime() : 0));
+        let criticalPath = new Set();
+        let queue = endNodes.filter(t => t.end && t.end.getTime() === latestEndDate);
+        queue.forEach(node => criticalPath.add(node.id));
+        while(queue.length > 0) {
+            const current = queue.shift();
+            current.dependencies.forEach(depId => {
+                const pred = tasks.find(t => t.id === depId);
+                if (pred && pred.end && new Date(pred.end.getTime() + 86400000).getTime() === current.start.getTime()) {
+                    if (!criticalPath.has(pred.id)) {
+                        criticalPath.add(pred.id);
+                        queue.push(pred);
+                    }
+                }
+            });
+        }
+        return criticalPath;
+    };
+
+    return {
+        load, addProject, switchProject, saveTask, deleteTask, setBaseline, toggleCriticalPath,
+        getState: () => state,
+        getCurrentProject,
+        getCriticalPath,
+    };
+})();
+
+const UI = (() => {
+    let gantt;
+
+    const render = () => {
+        const project = App.getCurrentProject();
+        renderProjectSelector(App.getState().projects, App.getState().activeProjectId);
+        document.getElementById('project-title-header').textContent = project ? project.name : "No Project";
+        renderTaskGrid(project ? project.tasks : []);
+        renderGantt(project ? project.tasks : []);
+        renderKanban(project ? project.tasks : []);
+    };
+
+    const switchView = (view) => {
+        document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+        document.getElementById(`${view}-view`).style.display = 'block';
+        document.querySelectorAll('#view-tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelector(`#view-tabs button[onclick="UI.switchView('${view}')"]`).classList.add('active');
+    };
+    
+    const renderProjectSelector = (projects, activeId) => {
+        const select = document.getElementById('projectSelect');
+        select.innerHTML = '';
+        projects.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.id;
+            option.textContent = p.name;
+            if (p.id == activeId) option.selected = true;
+            select.appendChild(option);
+        });
+    };
+    
+    const renderTaskGrid = (tasks) => {
+        const container = document.getElementById('task-grid');
+        container.innerHTML = `<div class="grid-header"><div class="grid-cell cell-id">#</div><div class="grid-cell cell-name">Task Name</div><div class="grid-cell cell-duration">Duration</div><div class="grid-cell cell-preds">Deps</div></div>`;
+        tasks.forEach(task => {
+            const row = document.createElement('div');
+            row.className = 'grid-row';
+            row.onclick = () => openTaskModal(task.id);
+            row.innerHTML = `<div class="grid-cell cell-id">${task.id}</div><div class="grid-cell cell-name">${task.name}</div><div class="grid-cell cell-duration">${task.duration}d</div><div class="grid-cell cell-preds">${task.dependencies.join(', ')}</div>`;
+            container.appendChild(row);
+        });
+    };
+    
+    const renderGantt = (tasks) => {
+        const ganttContainer = document.getElementById('gantt-chart-area');
+        ganttContainer.innerHTML = '<svg id="gantt-chart"></svg>';
+        if (!tasks.length || tasks.some(t => !t.start)) return;
+        
+        const cp = App.getState().showCriticalPath ? App.getCriticalPath() : new Set();
+        const ganttTasks = tasks.map(t => ({
+            id: t.id, name: t.name, start: t.start, end: t.end, progress: t.status === 'Done' ? 100 : (t.status === 'In Progress' ? 50 : 0),
+            dependencies: t.dependencies,
+            custom_class: cp.has(t.id) ? 'gantt-critical-path' : ''
+        }));
+        
+        gantt = new Gantt("#gantt-chart", ganttTasks, {
+            on_click: task => openTaskModal(task.id),
+        });
+    };
+    
+    const renderKanban = (tasks) => {
+        const board = document.getElementById('kanban-board');
+        board.innerHTML = '';
+        const statuses = ['To Do', 'In Progress', 'Done'];
+        statuses.forEach(status => {
+            const column = document.createElement('div');
+            column.className = 'kanban-column';
+            column.innerHTML = `<h4>${status}</h4>`;
+            tasks.filter(t => t.status === status).forEach(task => {
+                const card = document.createElement('div');
+                card.className = 'kanban-card';
+                card.textContent = task.name;
+                card.onclick = () => openTaskModal(task.id);
+                column.appendChild(card);
+            });
+            board.appendChild(column);
+        });
+    };
+
+    const openModal = (id) => document.getElementById(id).style.display = 'block';
+    const closeModal = (id) => document.getElementById(id).style.display = 'none';
+    
+    const openTaskModal = (taskId = null) => {
+        const project = App.getCurrentProject();
+        if (!project) return alert("Select a project first!");
+        document.getElementById('modal-title').textContent = taskId ? 'Edit Task' : 'Add Task';
+        if(taskId) {
+            const task = project.tasks.find(t => t.id == taskId);
+            document.getElementById('taskId').value = task.id;
+            document.getElementById('taskName').value = task.name;
+            document.getElementById('taskDuration').value = task.duration;
+            document.getElementById('taskDependencies').value = task.dependencies.join(', ');
+            document.getElementById('taskStatus').value = task.status;
+            document.getElementById('deleteTaskBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('taskId').value = '';
+            document.getElementById('taskName').value = '';
+            document.getElementById('taskDuration').value = 1;
+            document.getElementById('taskDependencies').value = '';
+            document.getElementById('taskStatus').value = 'To Do';
+            document.getElementById('deleteTaskBtn').style.display = 'none';
+        }
+        openModal('taskModal');
+    };
+
+    return { render, switchView, openProjectModal: () => openModal('projectModal'), openTaskModal, closeModal };
+})();
+
+document.addEventListener("DOMContentLoaded", App.load);
+</script>
+</body>
+</html>

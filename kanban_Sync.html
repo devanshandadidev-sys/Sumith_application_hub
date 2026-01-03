@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Kanban Board with Frozen Panes</title>
+    <style>
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            background-color: #f7f8fa;
+            color: #172b4d;
+            height: 100%;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        .app-container { display: flex; flex-direction: column; height: 100%; }
+        .app-header { background-color: #026aa7; color: white; padding: 10px 20px; font-weight: bold; flex-shrink: 0; }
+        .app-main { display: flex; flex-grow: 1; overflow: hidden; }
+        .kanban-board-wrapper { flex-grow: 1; overflow: auto; /* Enable scrolling on the wrapper */ }
+        .kanban-board { display: grid; gap: 10px; min-width: max-content; position: relative; padding: 10px; }
+        .stage-header, .team-header {
+            padding: 10px;
+            font-weight: bold;
+            text-align: center;
+            background-color: #ebecf0;
+            cursor: grab;
+            user-select: none;
+            position: sticky; /* Make headers sticky */
+            z-index: 2;
+        }
+        .stage-header { top: 0; }
+        .team-header {
+            left: 0;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            z-index: 3; /* Team headers on top of stage headers */
+        }
+        .kanban-cell { min-height: 120px; background-color: #f4f5f7; border: 1px dashed #dfe1e6; padding: 8px; }
+        .task {
+            padding: 10px; margin-bottom: 8px; border-radius: 3px;
+            box-shadow: 0 1px 0 rgba(9,30,66,.25); cursor: grab;
+            font-size: 14px; color: white; display: flex; justify-content: space-between; align-items: center;
+        }
+        .task-controls button {
+            background: none; border: none; color: white; cursor: pointer;
+            font-size: 16px; margin-left: 5px;
+        }
+        .task-blue { background-color: #0079bf; }
+        .task-red { background-color: #eb5a46; }
+        .task-orange { background-color: #ff9f1a; }
+        .sidebar { width: 280px; min-width: 280px; background-color: #ebecf0; padding: 20px; overflow-y: auto; flex-shrink: 0; }
+        .form-section { background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .form-section input, .form-section select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box; }
+        .form-section button { background-color: #5aac44; color: white; border: none; padding: 10px 15px; border-radius: 3px; cursor: pointer; width: 100%; margin-bottom: 10px; }
+        .form-section button:last-child { margin-bottom: 0; }
+        .action-btn-secondary { background-color: #6c757d; }
+        .action-btn-secondary:hover { background-color: #5a6268; }
+        .action-btn-danger { background-color: #dc3545; }
+        .action-btn-danger:hover { background-color: #c82333; }
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+            justify-content: center; align-items: center;
+        }
+        .modal-content { background-color: #fefefe; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 5px; }
+        .modal-content h3 { margin-top: 0; }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header class="app-header">Advanced Product Roadmap</header>
+    <main class="app-main">
+        <div class="kanban-board-wrapper">
+            <div id="kanban-board" class="kanban-board"></div>
+        </div>
+        <aside class="sidebar">
+            <div class="form-section">
+                <h3>Upload Database</h3>
+                <input type="file" id="jsonUpload" accept=".json">
+            </div>
+            <div class="form-section">
+                <h3>Add Task</h3>
+                <form id="addTaskForm">
+                    <input type="text" id="taskName" placeholder="Task Name" required>
+                    <input type="text" id="taskActioner" placeholder="Actioner" required>
+                    <select id="taskTeam" required></select>
+                    <select id="taskStage" required></select>
+                    <select id="taskColor" required>
+                        <option value="blue">Enhance Performance</option>
+                        <option value="red">Internal Optimization</option>
+                        <option value="orange">Security Improvements</option>
+                    </select>
+                    <button type="submit">Add Task</button>
+                </form>
+            </div>
+            <!-- "Add Team" and "Add Stage" forms restored -->
+            <div class="form-section">
+                <h3>Add Team</h3>
+                <form id="addTeamForm">
+                    <input type="text" id="teamName" placeholder="Team Name" required>
+                    <button type="submit">Add Team</button>
+                </form>
+            </div>
+            <div class="form-section">
+                <h3>Add Stage</h3>
+                <form id="addStageForm">
+                    <input type="text" id="stageName" placeholder="Stage Name" required>
+                    <button type="submit">Add Stage</button>
+                </form>
+            </div>
+            <div class="form-section">
+                <h3>Actions</h3>
+                <button id="printReportBtn">Print Report</button>
+                <button id="clearTasksBtn" class="action-btn-secondary">Clear All Tasks</button>
+                <button id="clearBoardBtn" class="action-btn-danger">Clear Entire Board</button>
+            </div>
+        </aside>
+    </main>
+</div>
+
+<!-- Edit Task Modal -->
+<div id="editTaskModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h3>Edit Task</h3>
+        <form id="editTaskForm">
+            <input type="hidden" id="editTaskId">
+            <input type="text" id="editTaskName" required>
+            <input type="text" id="editTaskActioner" required>
+            <select id="editTaskTeam" required></select>
+            <select id="editTaskStage" required></select>
+            <select id="editTaskColor" required>
+                <option value="blue">Enhance Performance</option>
+                <option value="red">Internal Optimization</option>
+                <option value="orange">Security Improvements</option>
+            </select>
+            <button type="submit">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let teams = JSON.parse(localStorage.getItem('kanbanTeams')) || [];
+    let stages = JSON.parse(localStorage.getItem('kanbanStages')) || [];
+    let tasks = JSON.parse(localStorage.getItem('kanbanTasks')) || [];
+    let taskIdCounter = localStorage.getItem('kanbanTaskIdCounter') || 0;
+
+    function saveData() {
+        localStorage.setItem('kanbanTeams', JSON.stringify(teams));
+        localStorage.setItem('kanbanStages', JSON.stringify(stages));
+        localStorage.setItem('kanbanTasks', JSON.stringify(tasks));
+        localStorage.setItem('kanbanTaskIdCounter', taskIdCounter);
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('kanban-board');
+        board.innerHTML = '';
+        if (stages.length === 0 && teams.length === 0) return;
+        board.style.gridTemplateColumns = `120px repeat(${stages.length}, 1fr)`;
+        
+        const cornerCell = document.createElement('div');
+        cornerCell.style.position = 'sticky';
+        cornerCell.style.top = '0';
+        cornerCell.style.left = '0';
+        cornerCell.style.zIndex = '4';
+        cornerCell.style.backgroundColor = '#f7f8fa';
+        board.appendChild(cornerCell);
+
+        stages.forEach(stage => board.insertAdjacentHTML('beforeend', `<div class="stage-header" draggable="true" data-stage-name="${stage}">${stage}</div>`));
+        
+        teams.forEach(team => {
+            board.insertAdjacentHTML('beforeend', `<div class="team-header" draggable="true" data-team-name="${team}">${team}</div>`);
+            stages.forEach(stage => {
+                const cellId = `${team.replace(/\s+/g, '-')}-${stage.replace(/\s+/g, '-')}`;
+                board.insertAdjacentHTML('beforeend', `<div class="kanban-cell" id="${cellId}" data-team="${team}" data-stage="${stage}"></div>`);
+            });
+        });
+        
+        renderTasks();
+        addDragAndDropListeners();
+        updateSelectOptions();
+    }
+    
+    function renderTasks() {
+        document.querySelectorAll('.task').forEach(t => t.remove());
+        tasks.forEach(task => {
+            if (task.team && task.stage) {
+                const cellId = `${task.team.replace(/\s+/g, '-')}-${task.stage.replace(/\s+/g, '-')}`;
+                const cell = document.getElementById(cellId);
+                if (cell) {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.id = `task-${task.id}`;
+                    taskDiv.className = `task task-${task.color || 'blue'}`;
+                    taskDiv.draggable = true;
+                    
+                    const taskNameSpan = document.createElement('span');
+                    taskNameSpan.textContent = task.name;
+                    taskDiv.appendChild(taskNameSpan);
+
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.className = 'task-controls';
+                    controlsDiv.innerHTML = `<button onclick="openEditModal('${task.id}')">✏️</button><button onclick="deleteTask('${task.id}')">🗑️</button>`;
+                    taskDiv.appendChild(controlsDiv);
+
+                    taskDiv.addEventListener('dragstart', e => {
+                        e.dataTransfer.setData('text/plain', e.target.id);
+                        e.stopPropagation();
+                    });
+                    cell.appendChild(taskDiv);
+                }
+            }
+        });
+    }
+
+    function addDragAndDropListeners() {
+        // Drag and drop for tasks
+        document.querySelectorAll('.kanban-cell').forEach(cell => {
+            cell.addEventListener('dragover', e => e.preventDefault());
+            cell.addEventListener('drop', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const taskId = e.dataTransfer.getData('text/plain');
+                if (!taskId.startsWith('task-')) return;
+                const task = tasks.find(t => `task-${t.id}` === taskId);
+                if (task) {
+                    task.team = e.currentTarget.dataset.team;
+                    task.stage = e.currentTarget.dataset.stage;
+                    saveData();
+                    renderBoard();
+                }
+            });
+        });
+
+        // Drag and drop for headers (re-added)
+        let draggedItem = null;
+        document.querySelectorAll('.stage-header, .team-header').forEach(header => {
+            header.addEventListener('dragstart', e => {
+                draggedItem = e.target;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', e.target.outerHTML);
+                e.target.style.opacity = '0.5';
+            });
+            header.addEventListener('dragend', e => {
+                e.target.style.opacity = '1';
+                draggedItem = null;
+            });
+            header.addEventListener('dragover', e => e.preventDefault());
+            header.addEventListener('drop', e => {
+                e.preventDefault();
+                if (!draggedItem || draggedItem === e.target) return;
+                
+                if (draggedItem.classList.contains('stage-header') && e.currentTarget.classList.contains('stage-header')) {
+                    const fromIndex = stages.indexOf(draggedItem.dataset.stageName);
+                    const toIndex = stages.indexOf(e.currentTarget.dataset.stageName);
+                    if (fromIndex !== -1 && toIndex !== -1) {
+                        stages.splice(toIndex, 0, stages.splice(fromIndex, 1)[0]);
+                    }
+                } else if (draggedItem.classList.contains('team-header') && e.currentTarget.classList.contains('team-header')) {
+                    const fromIndex = teams.indexOf(draggedItem.dataset.teamName);
+                    const toIndex = teams.indexOf(e.currentTarget.dataset.teamName);
+                     if (fromIndex !== -1 && toIndex !== -1) {
+                        teams.splice(toIndex, 0, teams.splice(fromIndex, 1));
+                    }
+                }
+                saveData();
+                renderBoard();
+            });
+        });
+    }
+
+    function updateSelectOptions() {
+        const selects = ['taskTeam', 'taskStage', 'editTaskTeam', 'editTaskStage'];
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            const isTeam = id.includes('Team');
+            const options = isTeam ? teams : stages;
+            select.innerHTML = options.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+        });
+    }
+    
+    function deleteTask(taskId) {
+        if (confirm('Are you sure you want to delete this task?')) {
+            tasks = tasks.filter(t => t.id != taskId);
+            saveData();
+            renderBoard();
+        }
+    }
+    
+    const modal = document.getElementById('editTaskModal');
+    function openEditModal(taskId) {
+        const task = tasks.find(t => t.id == taskId);
+        if (task) {
+            document.getElementById('editTaskId').value = task.id;
+            document.getElementById('editTaskName').value = task.name;
+            document.getElementById('editTaskActioner').value = task.actioner || '';
+            document.getElementById('editTaskTeam').value = task.team;
+            document.getElementById('editTaskStage').value = task.stage;
+            document.getElementById('editTaskColor').value = task.color;
+            modal.style.display = 'flex';
+        }
+    }
+
+    document.querySelector('.close-button').onclick = () => modal.style.display = 'none';
+    window.onclick = e => { if (e.target == modal) modal.style.display = 'none'; };
+
+    document.getElementById('editTaskForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const taskId = document.getElementById('editTaskId').value;
+        const taskIndex = tasks.findIndex(t => t.id == taskId);
+        if (taskIndex > -1) {
+            tasks[taskIndex].name = document.getElementById('editTaskName').value;
+            tasks[taskIndex].actioner = document.getElementById('editTaskActioner').value;
+            tasks[taskIndex].team = document.getElementById('editTaskTeam').value;
+            tasks[taskIndex].stage = document.getElementById('editTaskStage').value;
+            tasks[taskIndex].color = document.getElementById('editTaskColor').value;
+            saveData();
+            renderBoard();
+            modal.style.display = 'none';
+        }
+    });
+
+    document.getElementById('addTaskForm').addEventListener('submit', e => {
+        e.preventDefault();
+        taskIdCounter++;
+        tasks.push({
+            id: taskIdCounter,
+            name: document.getElementById('taskName').value,
+            actioner: document.getElementById('taskActioner').value,
+            team: document.getElementById('taskTeam').value,
+            stage: document.getElementById('taskStage').value,
+            color: document.getElementById('taskColor').value,
+        });
+        e.target.reset();
+        saveData();
+        renderBoard();
+    });
+    
+    // Event listeners for restored forms
+    document.getElementById('addTeamForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const teamName = document.getElementById('teamName').value.trim();
+        if (teamName && !teams.includes(teamName)) {
+            teams.push(teamName);
+            e.target.reset();
+            saveData();
+            renderBoard();
+        }
+    });
+
+    document.getElementById('addStageForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const stageName = document.getElementById('stageName').value.trim();
+        if (stageName && !stages.includes(stageName)) {
+            stages.push(stageName);
+            e.target.reset();
+            saveData();
+            renderBoard();
+        }
+    });
+    
+    document.getElementById('jsonUpload').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const data = JSON.parse(event.target.result);
+                if (data.opportunities && Array.isArray(data.opportunities)) {
+                    if (confirm("This will overwrite the current board with data from the file. Continue?")) {
+                        const importedTeams = [...new Set(data.opportunities.map(opp => opp.leadOwner).filter(Boolean))];
+                        const importedStages = [...new Set(data.opportunities.map(opp => opp.opportunityStatus).filter(Boolean))];
+                        
+                        const importedTasks = data.opportunities.map(opp => {
+                            const oppName = opp.opportunityName ? opp.opportunityName.trim() : 'Unnamed Opportunity';
+                            const partnerName = opp.partnerOrClientName || opp.partnerClientName || '';
+                            let displayName = oppName;
+
+                            if (partnerName && partnerName.trim().toLowerCase() !== 'nil') {
+                                displayName = `${oppName} (${partnerName.trim()})`;
+                            }
+
+                            return {
+                                id: opp.opportunityID || `opp-${opp.slno}-${Date.now()}`,
+                                name: displayName,
+                                actioner: opp.leadOwner,
+                                team: opp.leadOwner,
+                                stage: opp.opportunityStatus,
+                                color: 'blue'
+                            };
+                        });
+
+                        teams = importedTeams;
+                        stages = importedStages;
+                        tasks = importedTasks;
+                        
+                        alert('Database imported successfully!');
+                        saveData();
+                        renderBoard();
+                    }
+                } else {
+                    alert('Invalid JSON format. Expected a root object with an "opportunities" array.');
+                }
+            } catch (err) {
+                alert('Error reading or parsing JSON file.');
+                console.error(err);
+            } finally {
+                e.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    document.getElementById('printReportBtn').addEventListener('click', () => {
+        const reportWindow = window.open('', 'Kanban Report', 'width=800,height=600,scrollbars=yes');
+        reportWindow.kanbanData = {
+            tasks: JSON.parse(JSON.stringify(tasks)),
+            teams: [...teams],
+            stages: [...stages]
+        };
+        const reportHTML = `
+            <html><head><title>Kanban Report</title><style>
+                body { font-family: sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; } .filters { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+                @media print { .filters { display: none; } }
+            </style></head><body>
+            <h1>Kanban Report</h1>
+            <div class="filters">
+                <select id="teamFilter"><option value="all">All Teams</option></select>
+                <select id="stageFilter"><option value="all">All Stages</option></select>
+                <input type="text" id="actionerFilter" placeholder="Filter by Actioner">
+                <button id="applyFilterBtn">Filter</button>
+                <button onclick="window.print()">Print</button>
+            </div>
+            <table id="reportTable"></table>
+            <script>
+                const { tasks, teams, stages } = window.kanbanData;
+                const teamFilter = document.getElementById('teamFilter');
+                const stageFilter = document.getElementById('stageFilter');
+                teamFilter.innerHTML += teams.map(t => \`<option>\${t}</option>\`).join('');
+                stageFilter.innerHTML += stages.map(s => \`<option>\${s}</option>\`).join('');
+                function renderReport(filteredTasks) {
+                    const table = document.getElementById('reportTable');
+                    table.innerHTML = '<thead><tr><th>Task Name</th><th>Actioner</th><th>Team</th><th>Stage</th></tr></thead>' +
+                        '<tbody>' +
+                        filteredTasks.map(t => \`<tr><td>\${t.name || ''}</td><td>\${t.actioner || ''}</td><td>\${t.team || ''}</td><td>\${t.stage || ''}</td></tr>\`).join('') +
+                        '</tbody>';
+                }
+                document.getElementById('applyFilterBtn').addEventListener('click', () => {
+                    const team = document.getElementById('teamFilter').value;
+                    const stage = document.getElementById('stageFilter').value;
+                    const actioner = document.getElementById('actionerFilter').value.toLowerCase();
+                    let filtered = tasks;
+                    if (team !== 'all') filtered = filtered.filter(t => t.team === team);
+                    if (stage !== 'all') filtered = filtered.filter(t => t.stage === stage);
+                    if (actioner) filtered = filtered.filter(t => t.actioner && t.actioner.toLowerCase().includes(actioner));
+                    renderReport(filtered);
+                });
+                renderReport(tasks);
+            <\/script></body></html>
+        `;
+        reportWindow.document.write(reportHTML);
+        reportWindow.document.close();
+    });
+
+    document.getElementById('clearTasksBtn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to delete ALL tasks?')) {
+            tasks = [];
+            taskIdCounter = 0;
+            saveData();
+            renderBoard();
+        }
+    });
+
+    document.getElementById('clearBoardBtn').addEventListener('click', () => {
+        if (confirm('WARNING: This will delete the ENTIRE board, including all tasks, teams, and stages. Are you sure?')) {
+            tasks = [];
+            teams = [];
+            stages = [];
+            taskIdCounter = 0;
+            saveData();
+            renderBoard();
+        }
+    });
+
+    renderBoard();
+</script>
+
+</body>
+</html>

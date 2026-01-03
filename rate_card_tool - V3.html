@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Pricing & Reporting Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        .settings-table input {
+            border: 1px solid transparent;
+            background-color: transparent;
+        }
+        .settings-table input:focus {
+            border: 1px solid #3498db;
+            background-color: #fff;
+        }
+        .slab-config {
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .slab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .slab-header h3 { border: none; padding: 0; }
+        .remove-btn, .remove-slab-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .slab-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #add-slab-btn, #add-device-btn { background-color: #2ecc71; }
+        #add-slab-btn { grid-column: span 2; }
+        #report-btn { background-color: #f39c12; }
+        #print-btn { background-color: #9b59b6; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle; }
+        th { background-color: #3498db; color: white; }
+        .category-header th {
+            background-color: #34495e;
+            color: white;
+            text-align: center;
+        }
+        .invalid-input { border-color: #e74c3c !important; background-color: #fff2f2 !important; }
+        .reveal-calc {
+            font-size: 0.8em;
+            color: #3498db;
+            cursor: pointer;
+            margin-left: 8px;
+            text-decoration: underline;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .close-btn {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .modal-content h3 { margin-top: 0; }
+        .modal-content p { display: flex; justify-content: space-between; margin: 5px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .modal-content p span:last-child { font-weight: bold; }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ccc;
+            font-size: 0.9em;
+            color: #777;
+        }
+        @media print {
+            body { background-color: #fff; }
+            .container { box-shadow: none; border: none; }
+            .no-print { display: none !important; }
+            table { page-break-inside: auto; }
+            h1, h2, h3 { border: none; text-align: left; page-break-after: avoid; }
+            .category-header th {
+                background-color: #34495e !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print">
+            <h1>Advanced Pricing & Reporting Tool</h1>
+            <div id="settings-section">
+                <h2>Product Settings</h2>
+                <div id="settings-table-container"></div>
+                <button id="add-device-btn" style="width: auto; margin-top: 10px;">+ Add New Device</button>
+            </div>
+            <h2>General Configuration</h2>
+            <div class="input-group">
+                <label for="cet-percent">CET (Client Engagement Team) Cost %</label>
+                <input type="number" id="cet-percent" value="0">
+            </div>
+            <h2>Pricing Slabs</h2>
+        </div>
+        <div id="slabs-container" class="no-print"></div>
+        <div class="button-group no-print">
+            <button id="add-slab-btn">Add New Pricing Slab</button>
+            <button id="report-btn">Generate Full Rate Matrix</button>
+            <button id="print-btn">Print Report</button>
+        </div>
+        <div id="output-container"></div>
+        <footer class="no-print">
+            <p>Pricing Generator credit: Sumith C Mohan (+91 7012332799 | Itsmesumithcmohan@gmail.com)</p>
+        </footer>
+    </div>
+    <div id="calculation-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const settingsTableContainer = document.getElementById('settings-table-container');
+    const slabsContainer = document.getElementById('slabs-container');
+    const outputContainer = document.getElementById('output-container');
+    const modal = document.getElementById('calculation-modal');
+    const modalBody = document.getElementById('modal-body');
+    const closeBtn = document.querySelector('.close-btn');
+    let slabCounter = 0;
+
+    let products = [
+        { name: 'I-COMPASS 2G', bom: 1452.35 }, { name: 'I-COMPASS 4G CAN', bom: 2151.95 },
+        { name: 'DISCOVERY 4G with CAN', bom: 1426.18 }, { name: 'DISCOVERY 2G EV RS232', bom: 907.85 },
+        { name: 'DISCOVERY 2G EV RS485', bom: 827.40 }, { name: 'DISCOVERY 2G+', bom: 998.52 },
+        { name: 'DISCOVERY 2G+ RS485', bom: 1045.88 }, { name: 'I-COMPASS 4G BASIC', bom: 1809.49 }
+    ];
+
+    const inrFormatter = (val, round=true) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency', currency: 'INR',
+            minimumFractionDigits: round ? 0 : 2,
+            maximumFractionDigits: round ? 0 : 2
+        }).format(val);
+    };
+
+    function renderSettings() {
+        let tableHtml = `<table class="settings-table"><thead><tr><th>Product Name</th><th>BOM Cost (₹)</th><th>Action</th></tr></thead><tbody>`;
+        products.forEach((p, index) => {
+            tableHtml += `
+                <tr data-index="${index}">
+                    <td><input type="text" class="product-name" value="${p.name}"></td>
+                    <td><input type="number" class="product-bom" value="${p.bom}"></td>
+                    <td><button class="remove-btn">Remove</button></td>
+                </tr>`;
+        });
+        tableHtml += `</tbody></table>`;
+        settingsTableContainer.innerHTML = tableHtml;
+    }
+
+    function syncProductsFromDOM() {
+        const newProducts = [];
+        let isValid = true;
+        document.querySelectorAll('.settings-table tbody tr').forEach(row => {
+            const nameInput = row.querySelector('.product-name');
+            const bomInput = row.querySelector('.product-bom');
+            const name = nameInput.value.trim();
+            const bom = parseFloat(bomInput.value);
+            nameInput.classList.remove('invalid-input');
+            bomInput.classList.remove('invalid-input');
+            if (!name) {
+                nameInput.classList.add('invalid-input');
+                isValid = false;
+            }
+            if (isNaN(bom) || bom <= 0) {
+                bomInput.classList.add('invalid-input');
+                isValid = false;
+            }
+            if (isValid) {
+                newProducts.push({ name, bom });
+            }
+        });
+        if (isValid) {
+            products = newProducts;
+            return true;
+        } else {
+            alert('Please fix the errors in the Product Settings before generating a report.');
+            return false;
+        }
+    }
+    
+    document.getElementById('add-device-btn').addEventListener('click', () => {
+        products.push({ name: 'New Device', bom: 1000.00 });
+        renderSettings();
+    });
+
+    settingsTableContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-btn')) {
+            const indexToRemove = e.target.closest('tr').dataset.index;
+            products.splice(indexToRemove, 1);
+            renderSettings();
+        }
+    });
+
+    function addSlab() {
+        slabCounter++;
+        const slabId = `slab-${slabCounter}`;
+        let slabHtml;
+        if (slabCounter === 1) { // Base Slab
+            slabHtml = `<div class="slab-config" id="${slabId}" data-slab-type="base"><div class="slab-header"><h3>Base Slab (Slab 1)</h3></div><div class="slab-inputs"><div class="input-group"><label>Min Qty</label><input type="number" class="slab-min-qty" value="1"></div><div class="input-group"><label>Max Qty</label><input type="number" class="slab-max-qty" value="100"></div><div class="input-group"><label>Manufacturing Cost (₹)</label><input type="number" class="mfg-cost" value="373.099968"></div><div class="input-group"><label>SG&A (%)</label><input type="number" class="sga-percent" value="5"></div><div class="input-group"><label>Overhead (%)</label><input type="number" class="overhead-percent" value="1.7831"></div><div class="input-group"><label>Material Profit (%)</label><input type="number" class="material-profit-percent" value="20"></div><div class="input-group"><label>Mfg. Profit (%)</label><input type="number" class="mfg-profit-percent" value="20"></div><div class="input-group"><label>Logistic Cost (₹)</label><input type="number" class="logistic-cost" value="65"></div></div></div>`;
+        } else { // Reduction Slab
+            slabHtml = `<div class="slab-config" id="${slabId}" data-slab-type="reduction"><div class="slab-header"><h3>Reduction Slab ${slabCounter}</h3><button class="remove-slab-btn" data-slab-id="${slabId}">Remove</button></div><div class="slab-inputs"><div class="input-group"><label>Min Qty</label><input type="number" class="slab-min-qty"></div><div class="input-group"><label>Max Qty</label><input type="number" class="slab-max-qty"></div><div class="input-group"><label>Price Reduction (%) from Previous Slab</label><input type="number" class="reduction-percent" placeholder="e.g., 2"></div></div></div>`;
+        }
+        slabsContainer.insertAdjacentHTML('beforeend', slabHtml);
+    }
+    
+    function getCalculationBreakdown(bomCost, baseSlabData, cetPercent) {
+        const mfgCost = baseSlabData['mfg-cost'];
+        const costOfProduction = bomCost + mfgCost;
+        const sgaCost = costOfProduction * (baseSlabData['sga-percent'] / 100);
+        const otherMfgOverhead = costOfProduction * (baseSlabData['overhead-percent'] / 100);
+        const cetCost = costOfProduction * (cetPercent / 100);
+        const totalOverheads = sgaCost + otherMfgOverhead + cetCost;
+        const cogs = costOfProduction + totalOverheads;
+        const profitOnPurchase = bomCost * (baseSlabData['material-profit-percent'] / 100);
+        const profitOnMfg = mfgCost * (baseSlabData['mfg-profit-percent'] / 100);
+        const totalProfit = profitOnPurchase + profitOnMfg;
+        const unroundedPrice = cogs + totalProfit + baseSlabData['logistic-cost'];
+        const floorPrice = cogs + baseSlabData['logistic-cost'];
+        return { bomCost, mfgCost, costOfProduction, sgaCost, otherMfgOverhead, cetCost, totalOverheads, cogs, profitOnPurchase, profitOnMfg, totalProfit, logisticCost: baseSlabData['logistic-cost'], floorPrice, unroundedPrice };
+    }
+
+    function getAndValidateSlabInputs() {
+        document.querySelectorAll('.invalid-input').forEach(el => el.classList.remove('invalid-input'));
+        let isValid = true;
+        const cetPercentInput = document.getElementById('cet-percent');
+        const cetPercent = parseFloat(cetPercentInput.value);
+        if (isNaN(cetPercent)) { cetPercentInput.classList.add('invalid-input'); isValid = false; }
+        const baseSlabEl = document.querySelector('[data-slab-type="base"]');
+        if (!baseSlabEl) { alert("Base slab is missing!"); return null; }
+        const baseSlabData = {};
+        baseSlabEl.querySelectorAll('input').forEach(input => {
+            const val = parseFloat(input.value);
+            if (isNaN(val)) { input.classList.add('invalid-input'); isValid = false; }
+            baseSlabData[input.className.split(' ')[0]] = val;
+        });
+        const reductionSlabsData = Array.from(document.querySelectorAll('[data-slab-type="reduction"]')).map(slabEl => {
+            const slabData = {};
+            slabEl.querySelectorAll('input').forEach(input => {
+                const val = parseFloat(input.value);
+                if (isNaN(val)) { input.classList.add('invalid-input'); isValid = false; }
+                slabData[input.className.split(' ')[0]] = val;
+            });
+            return slabData;
+        });
+        if (!isValid) {
+            alert('Please fill all fields with valid numbers. Invalid fields are highlighted.');
+            return null;
+        }
+        const allSlabs = [baseSlabData, ...reductionSlabsData];
+        return { cetPercent, allSlabs };
+    }
+
+    function generateFullMatrix() {
+        if (!syncProductsFromDOM()) return;
+        const slabInputs = getAndValidateSlabInputs();
+        if (!slabInputs) return;
+        const { cetPercent, allSlabs } = slabInputs;
+        const baseSlabData = allSlabs[0];
+        let tableHtml = `<h2>Full Rate Matrix</h2><table><thead><tr><th>Product Name</th>`;
+        allSlabs.forEach((s, i) => { tableHtml += `<th>Slab ${i+1} (Qty: ${s['slab-min-qty']}-${s['slab-max-qty']})</th>`; });
+        tableHtml += '</tr></thead><tbody>';
+        const generateProductRows = (filter) => {
+            products.filter(p => p.name.toUpperCase().includes(filter)).forEach(product => {
+                tableHtml += `<tr><td>${product.name}</td>`;
+                let previousUnroundedPrice = 0;
+                let breakdownDetails = {};
+                allSlabs.forEach((slab, index) => {
+                    let currentUnroundedPrice;
+                    if (index === 0) {
+                        breakdownDetails = getCalculationBreakdown(product.bom, baseSlabData, cetPercent);
+                        currentUnroundedPrice = breakdownDetails.unroundedPrice;
+                    } else {
+                        const reduction = slab['reduction-percent'] / 100;
+                        currentUnroundedPrice = previousUnroundedPrice * (1 - reduction);
+                        breakdownDetails.reduction = reduction;
+                    }
+                    const flooredPrice = Math.max(currentUnroundedPrice, breakdownDetails.floorPrice);
+                    const finalDisplayPrice = Math.round(flooredPrice / 10) * 10;
+                    breakdownDetails.productName = product.name;
+                    breakdownDetails.slabLabel = `Slab ${index + 1}`;
+                    breakdownDetails.finalPrice = finalDisplayPrice;
+                    tableHtml += `<td>${inrFormatter(finalDisplayPrice)} <span class="reveal-calc" data-details='${JSON.stringify(breakdownDetails)}'>details</span></td>`;
+                    previousUnroundedPrice = flooredPrice;
+                });
+                tableHtml += '</tr>';
+            });
+        };
+        const colspan = allSlabs.length + 1;
+        tableHtml += `<tr class="category-header"><th colspan="${colspan}">Discovery Series</th></tr>`;
+        generateProductRows('DISCOVERY');
+        tableHtml += `<tr class="category-header"><th colspan="${colspan}">Compass Series</th></tr>`;
+        generateProductRows('COMPASS');
+        tableHtml += '</tbody></table>';
+        outputContainer.innerHTML = tableHtml;
+    }
+    
+    outputContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('reveal-calc')) {
+            const details = JSON.parse(e.target.dataset.details);
+            let breakdownHtml = `<h3>Calculation for ${details.productName} (${details.slabLabel})</h3>`;
+            breakdownHtml += `<p><span>BOM Cost:</span> <span>${inrFormatter(details.bomCost, false)}</span></p>`;
+            breakdownHtml += `<p><span>Manufacturing Cost:</span> <span>${inrFormatter(details.mfgCost, false)}</span></p>`;
+            breakdownHtml += `<p><strong>Cost of Production:</strong> <strong>${inrFormatter(details.costOfProduction, false)}</strong></p>`;
+            breakdownHtml += `<hr>`;
+            breakdownHtml += `<p><span>Overheads (SG&A, Other, CET):</span> <span>${inrFormatter(details.totalOverheads, false)}</span></p>`;
+            breakdownHtml += `<p><strong>Cost of Goods Sold (COGS):</strong> <strong>${inrFormatter(details.cogs, false)}</strong></p>`;
+            breakdownHtml += `<hr>`;
+            breakdownHtml += `<p><span>Total Profit (Material + Mfg):</span> <span>${inrFormatter(details.totalProfit, false)}</span></p>`;
+            breakdownHtml += `<p><span>Logistic Cost:</span> <span>${inrFormatter(details.logisticCost, false)}</span></p>`;
+            breakdownHtml += `<hr>`;
+            breakdownHtml += `<p><span>Price before Floor/Rounding:</span> <span>${inrFormatter(details.unroundedPrice, false)}</span></p>`;
+            breakdownHtml += `<p><span>Floor Price (Min. allowed):</span> <span>${inrFormatter(details.floorPrice, false)}</span></p>`;
+            breakdownHtml += `<p style="font-size:1.2em;color:#2c3e50;"><strong>Final Rounded Price:</strong> <strong>${inrFormatter(details.finalPrice)}</strong></p>`;
+            modalBody.innerHTML = breakdownHtml;
+            modal.style.display = "block";
+        }
+    });
+
+    closeBtn.onclick = () => { modal.style.display = "none"; };
+    window.onclick = (e) => { if (e.target == modal) { modal.style.display = "none"; } };
+
+    // --- INITIALIZE THE TOOL ---
+    document.getElementById('add-slab-btn').addEventListener('click', addSlab);
+    document.getElementById('report-btn').addEventListener('click', generateFullMatrix);
+    document.getElementById('print-btn').addEventListener('click', () => window.print());
+    slabsContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-slab-btn')) {
+            document.getElementById(e.target.dataset.slabId).remove();
+        }
+    });
+
+    renderSettings();
+    addSlab();
+});
+</script>
+
+</body>
+</html>

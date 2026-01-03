@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagram Editor with Save/Load</title>
+    <!-- Import Drawflow -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --toolbar-height: 50px;
+            --bg-color: #f0f2f5;
+            --main-color: #4CAF50;
+            --node-bg: #ffffff;
+            --border-color: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            display: flex;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--node-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+        .drag-drawflow {
+            border: 2px solid var(--main-color);
+            background: #f9f9f9;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: grab;
+            text-align: center;
+            font-weight: bold;
+        }
+        .drag-drawflow.boundary { border-style: dashed; border-color: #555; color: #555; }
+        .drag-drawflow.no-fill { background: transparent; border-color: #333; color: #333; }
+        
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; }
+        .toolbar {
+            height: var(--toolbar-height);
+            padding: 0 20px;
+            background: var(--node-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .toolbar .tool-group { display: flex; align-items: center; gap: 15px; }
+        .sidebar .button-group { display: flex; gap: 10px; }
+        .toolbar button, .sidebar button {
+            background-color: var(--main-color); color: white; border: none; padding: 8px 12px;
+            border-radius: 5px; cursor: pointer; font-size: 14px; flex-grow: 1;
+        }
+        .toolbar button.active, .toolbar button:hover, .sidebar button:hover { background-color: #45a049; }
+        .print-section { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color); }
+        .print-section input { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        
+        #drawflow {
+            width: 100%; height: calc(100% - var(--toolbar-height)); background: #fdfdfd;
+            background-image: linear-gradient(to right, #eef 1px, transparent 1px), linear-gradient(to bottom, #eef 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        #print-title { display: none; }
+
+        /* Node Styling */
+        .drawflow-node { border-radius: 8px; background: var(--node-bg); border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 180px; }
+        .drawflow-node .drawflow_content_node { padding: 0; }
+        .drawflow-node.selected { border: 2px solid var(--main-color); }
+        .title-box { padding: 10px; font-weight: bold; border-top-left-radius: 8px; border-top-right-radius: 8px; background-color: #f0f0f0; border-bottom: 1px solid var(--border-color); }
+        .node-body { padding: 15px; min-height: 20px; }
+        [contenteditable]:focus { outline: 2px solid var(--main-color); background: #fff; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+        .port-controls { display: flex; justify-content: space-around; padding: 5px 0; background: #fafafa; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+        .port-controls button { background: none; border: none; cursor: pointer; font-size: 18px; color: #777; padding: 0 10px; }
+        
+        /* Special Node Styles */
+        .drawflow-node.boundary-node { background: rgba(230, 230, 230, 0.25); border: 2px dashed #666; min-height: 150px; min-width: 200px; z-index: 0 !important; resize: both; overflow: hidden; }
+        .drawflow-node.boundary-node .node-body, .drawflow-node.boundary-node .port-controls { display: none; }
+        .drawflow-node.boundary-node .title-box { background: transparent; border: none; text-align: center; }
+
+        .drawflow-node.no-fill-node { background: transparent; box-shadow: none; border: 2px solid #333; }
+        .drawflow-node.no-fill-node .title-box { background: transparent; border: none; }
+
+        /* Connection and Print Styles */
+        .connection.connection-arrow svg path { marker-end: url(#arrowhead); }
+        .connection.connection-dashed svg path { stroke-dasharray: 5, 5; }
+
+        @media print {
+            body { display: block; height: auto; }
+            .sidebar, .toolbar { display: none; }
+            .main-content { margin: 0; padding: 0; border: none; }
+            #drawflow { height: auto; width: 100%; overflow: visible; transform-origin: top left; background-image: none; background-color: white !important; }
+            #print-title { display: block; text-align: center; font-size: 24px; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <h3>Component Blocks</h3>
+        <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-type="component">Component</div>
+        <div class="drag-drawflow no-fill" draggable="true" ondragstart="drag(event)" data-type="nofill">No Fill Block</div>
+        <hr>
+        <h3>Layout Blocks</h3>
+        <div class="drag-drawflow boundary" draggable="true" ondragstart="drag(event)" data-type="boundary">Boundary Box</div>
+        <hr>
+        <div class="button-group">
+            <button onclick="saveDiagram()">Save</button>
+            <button onclick="loadDiagram()">Load</button>
+        </div>
+        <div class="print-section">
+            <button onclick="exportData()">Export Data</button>
+            <input type="text" id="diagram-title-input" placeholder="Diagram Title">
+            <button onclick="printDiagram()">Print Diagram</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <h1 id="print-title"></h1>
+        <div class="toolbar">
+            <div class="tool-group">
+                <span>Line Style:</span>
+                <button id="btn-solid" onclick="setLineStyle('solid')">Solid</button>
+                <button id="btn-dashed" onclick="setLineStyle('dashed')">Dashed</button>
+                <button id="btn-arrow" onclick="setLineStyle('arrow')">Arrow</button>
+            </div>
+            <h4>Advanced Diagram Editor</h4>
+        </div>
+        <div id="drawflow"></div>
+    </main>
+
+<script>
+    const editor = new Drawflow(document.getElementById('drawflow'));
+    editor.start();
+
+    // --- 1. SVG SETUP ---
+    requestAnimationFrame(() => {
+        const svg = editor.container.querySelector('svg');
+        if (svg) {
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            defs.innerHTML = `<marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#555"></path></marker>`;
+            svg.appendChild(defs);
+        }
+    });
+
+    // --- 2. NODE LOGIC ---
+    function drag(ev) {
+        ev.dataTransfer.setData("nodeTitle", ev.target.textContent);
+        ev.dataTransfer.setData("nodeType", ev.target.dataset.type);
+    }
+    
+    const componentTemplate = `<div><div class="title-box" contenteditable="true" onblur="updateNodeData(this)">TITLE</div><div class="node-body" contenteditable="true" onblur="updateNodeData(this, 'body')">BODY</div><div class="port-controls"><div><button onclick="addPort(this, 'input')">+</button><button onclick="removePort(this, 'input')">-</button><span>IN</span></div><div><span>OUT</span><button onclick="addPort(this, 'output')">+</button><button onclick="removePort(this, 'output')">-</button></div></div></div>`;
+    const boundaryTemplate = `<div><div class="title-box" contenteditable="true" onblur="updateNodeData(this)">TITLE</div></div>`;
+    
+    editor.registerNode('componentNode', componentTemplate);
+    editor.registerNode('boundaryNode', boundaryTemplate);
+    editor.registerNode('noFillNode', componentTemplate);
+
+    document.getElementById('drawflow').addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        const title = ev.dataTransfer.getData("nodeTitle");
+        const type = ev.dataTransfer.getData("nodeType");
+        if (!title) return;
+
+        let nodeName, html, data, className, inputs, outputs;
+
+        if (type === 'boundary') {
+            nodeName = 'boundaryNode'; html = boundaryTemplate.replace('TITLE', title); data = { title: title }; className = 'boundary-node'; inputs = 0; outputs = 0;
+        } else if (type === 'nofill') {
+            nodeName = 'noFillNode'; html = componentTemplate.replace('TITLE', title).replace('BODY', 'Description'); data = { title: title, body: 'Description' }; className = 'no-fill-node'; inputs = 1; outputs = 1;
+        } else {
+            nodeName = 'componentNode'; html = componentTemplate.replace('TITLE', title).replace('BODY', 'Description'); data = { title: title, body: 'Description' }; className = 'component-node'; inputs = 1; outputs = 1;
+        }
+        editor.addNode(nodeName, inputs, outputs, ev.clientX - 250, ev.clientY - 50, className, data, html);
+    });
+    document.getElementById('drawflow').addEventListener('dragover', (ev) => ev.preventDefault());
+
+    // --- 3. DATA SYNC & RESIZE LOGIC ---
+    window.updateNodeData = function(element, field = 'title') {
+        const nodeId = element.closest('.drawflow-node').id.split('-')[1];
+        const nodeData = editor.getNodeFromId(nodeId).data;
+        nodeData[field] = element.textContent;
+        editor.updateNodeDataFromId(nodeId, nodeData);
+    };
+    
+    editor.on('nodeCreated', function(id) {
+        requestAnimationFrame(() => {
+            const nodeElement = document.getElementById(`node-${id}`);
+            const node = editor.getNodeFromId(id);
+            if (!nodeElement || !node || node.class !== 'boundary-node') return;
+
+            if (node.data.width && node.data.height) {
+                nodeElement.style.width = node.data.width;
+                nodeElement.style.height = node.data.height;
+            }
+            nodeElement.addEventListener('mouseup', () => {
+                const style = window.getComputedStyle(nodeElement);
+                node.data.width = style.width;
+                node.data.height = style.height;
+                editor.updateNodeDataFromId(id, node.data);
+            });
+        });
+    });
+    
+    // --- 4. PORT MANAGEMENT ---
+    window.addPort = (btn, type) => {
+        const nodeId = btn.closest('.drawflow-node').id.split('-')[1];
+        if (type === 'input') editor.addNodeInput(nodeId); else editor.addNodeOutput(nodeId);
+    };
+    window.removePort = (btn, type) => {
+        const nodeId = btn.closest('.drawflow-node').id.split('-')[1];
+        const node = editor.getNodeFromId(nodeId);
+        if (type === 'input' && Object.keys(node.inputs).length > 1) editor.removeNodeInput(nodeId, Object.keys(node.inputs).pop());
+        if (type === 'output' && Object.keys(node.outputs).length > 1) editor.removeNodeOutput(nodeId, Object.keys(node.outputs).pop());
+    };
+
+    // --- 5. CONNECTION STYLING ---
+    let currentLineStyle = 'solid';
+    function setLineStyle(style) {
+        currentLineStyle = style;
+        document.querySelectorAll('.toolbar button[id^="btn-"]').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-${style}`).classList.add('active');
+    }
+    setLineStyle('solid');
+    editor.on('connectionCreated', (conn) => {
+        requestAnimationFrame(() => {
+            const el = editor.container.querySelector(`.connection.node_in_node-${conn.input_id}.node_out_node-${conn.output_id}`);
+            if (el) {
+                el.classList.remove('connection-dashed', 'connection-arrow');
+                if (currentLineStyle === 'dashed') el.classList.add('connection-dashed');
+                if (currentLineStyle === 'arrow') el.classList.add('connection-arrow');
+            }
+        });
+    });
+
+    // --- 6. SAVE, LOAD, EXPORT & PRINT ---
+    function saveDiagram() {
+        const data = editor.export();
+        localStorage.setItem("myDiagram", JSON.stringify(data));
+        alert("Diagram saved to your local library!");
+    }
+
+    function loadDiagram() {
+        const savedData = localStorage.getItem("myDiagram");
+        if (savedData) {
+            editor.clear();
+            editor.import(JSON.parse(savedData));
+            alert("Diagram loaded from your library.");
+        } else {
+            alert("No saved diagram found in your library.");
+        }
+    }
+
+    function exportData() {
+        console.log(JSON.stringify(editor.export(), null, 2));
+        alert("Diagram data logged to console (F12).");
+    }
+    
+    function printDiagram() {
+        const title = document.getElementById('diagram-title-input').value;
+        document.getElementById('print-title').textContent = title || "My Diagram";
+        const nodes = Object.values(editor.export().drawflow.Home.data);
+
+        if (nodes.length === 0) { window.print(); return; }
+
+        const originalState = { zoom: editor.zoom, canvas_x: editor.canvas_x, canvas_y: editor.canvas_y };
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        nodes.forEach(node => {
+            const nodeEl = document.getElementById(`node-${node.id}`);
+            if (nodeEl) {
+                minX = Math.min(minX, node.pos_x);
+                minY = Math.min(minY, node.pos_y);
+                maxX = Math.max(maxX, node.pos_x + nodeEl.offsetWidth);
+                maxY = Math.max(maxY, node.pos_y + nodeEl.offsetHeight);
+            }
+        });
+
+        const contentWidth = maxX - minX;
+        const contentHeight = maxY - minY;
+        const viewEl = document.getElementById('drawflow');
+        const padding = 60;
+        
+        const zoomX = viewEl.clientWidth / (contentWidth + padding * 2);
+        const zoomY = viewEl.clientHeight / (contentHeight + padding * 2);
+        editor.zoom = Math.min(zoomX, zoomY, 1);
+        
+        editor.canvas_x = -(minX * editor.zoom) + (viewEl.clientWidth - (contentWidth * editor.zoom)) / 2;
+        editor.canvas_y = -(minY * editor.zoom) + (viewEl.clientHeight - (contentHeight * editor.zoom)) / 2;
+        
+        setTimeout(() => { window.print(); }, 300);
+
+        window.onafterprint = () => {
+            editor.zoom = originalState.zoom;
+            editor.canvas_x = originalState.canvas_x;
+            editor.canvas_y = originalState.canvas_y;
+            window.onafterprint = null;
+        };
+    }
+</script>
+</body>
+</html>

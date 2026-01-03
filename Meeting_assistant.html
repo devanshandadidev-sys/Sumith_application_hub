@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Assisted Meeting Manager (Action Item Done State)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* Set dark theme defaults and Inter font */
+        :root {
+            --bg-dark: #1f2937; /* Gray-800 */
+            --bg-card: #374151; /* Gray-700 */
+            --text-light: #f3f4f6; /* Gray-100 */
+            --accent-color: #3b82f6; /* Blue-500 */
+        }
+        .dark {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better look in dark mode */
+        .overflow-y-auto::-webkit-scrollbar { width: 8px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: var(--bg-dark); }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 4px; }
+        
+        /* Custom style for completed action items */
+        .action-done {
+            text-decoration: line-through;
+            color: #9ca3af; /* Gray-400 */
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body class="dark min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto space-y-8">
+        <header class="text-center pb-4 border-b border-gray-700">
+            <h1 class="text-3xl font-extrabold text-white tracking-tight">Meeting Note Manager (Action Status)</h1>
+            <p class="text-gray-400 mt-1">Local, persistent storage with action item status tracking</p>
+        </header>
+
+        <div id="form-card" class="bg-gray-700 p-6 rounded-xl shadow-2xl transition duration-300">
+            <h2 id="form-title" class="text-xl font-semibold mb-4 text-white">Add New Meeting</h2>
+            <form id="meeting-form" class="space-y-4">
+                <input type="hidden" id="item-id">
+                <input type="hidden" id="item-timestamp">
+                <input type="hidden" id="item-actions">
+
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-300 mb-1">Meeting Title <span class="text-red-400">*</span></label>
+                    <input type="text" id="title" required maxlength="100" placeholder="e.g., Q3 Strategy Review"
+                        class="w-full p-3 rounded-lg bg-gray-600 border border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 transition duration-150">
+                </div>
+
+                <div>
+                    <label for="labels" class="block text-sm font-medium text-gray-300 mb-1">Labels (Comma Separated)</label>
+                    <input type="text" id="labels" placeholder="e.g., Client, Urgent, Q3-Planning"
+                        class="w-full p-3 rounded-lg bg-gray-600 border border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 transition duration-150">
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Key Decisions & Notes (Use **`&lt;&lt;action item&gt;&gt;`** to mark a line)</label>
+                    <textarea id="description" rows="4" placeholder="e.g., Final decision made. &lt;&lt;action item&gt;&gt; [John] Email design brief. New project discussed."
+                        class="w-full p-3 rounded-lg bg-gray-600 border border-gray-600 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 transition duration-150"></textarea>
+                </div>
+
+                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                    <button type="submit" id="save-button"
+                        class="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                        <i data-lucide="save" class="w-5 h-5 inline mr-2"></i> Save Meeting Note
+                    </button>
+                    <button type="button" id="cancel-button"
+                        class="sm:w-auto px-6 py-3 bg-gray-600 text-gray-300 font-semibold rounded-lg hover:bg-gray-500 transition duration-200 hidden">
+                        <i data-lucide="x" class="w-5 h-5 inline mr-2"></i> Cancel Edit
+                    </button>
+                </div>
+            </form>
+            <p id="validation-message" class="text-red-400 text-sm mt-3 hidden">Title is required.</p>
+        </div>
+
+        <div class="mt-8">
+            <label for="search-input" class="block text-sm font-medium text-gray-300 mb-1">Search Notes</label>
+            <div class="flex items-center space-x-2">
+                <input type="text" id="search-input" placeholder="Filter by title, labels, or content..."
+                    class="flex-1 p-3 rounded-lg bg-gray-600 border border-gray-600 focus:ring-green-500 focus:border-green-500 text-white placeholder-gray-400 transition duration-150">
+                <button id="clear-search" class="p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition" title="Clear Search">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-bold text-white mt-8 border-b border-gray-700 pb-2">Recent Meetings</h2>
+        <div id="list-container" class="space-y-4">
+            <div id="loading-state" class="text-center p-8 text-gray-400">
+                <i data-lucide="loader" class="w-8 h-8 animate-spin mx-auto mb-2"></i>
+                <p>Loading records...</p>
+            </div>
+            <div id="empty-state" class="text-center p-10 text-gray-400 border border-gray-700 rounded-xl hidden">
+                <i data-lucide="file-text" class="w-10 h-10 mx-auto mb-3"></i>
+                <p class="text-lg font-semibold">No Meeting Records Found</p>
+                <p class="text-sm">Use the form above to add your first meeting note.</p>
+            </div>
+            </div>
+
+    </div>
+
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-gray-700 p-6 rounded-xl shadow-2xl max-w-sm w-full space-y-4">
+            <h3 class="text-xl font-bold text-red-400 flex items-center">
+                <i data-lucide="alert-triangle" class="w-6 h-6 mr-2"></i> Confirm Deletion
+            </h3>
+            <p class="text-gray-300">Are you sure you want to permanently delete the meeting note: **<span id="modal-item-title" class="font-semibold text-white"></span>**?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-delete" class="px-4 py-2 bg-gray-600 text-gray-300 rounded-lg hover:bg-gray-500 transition">Cancel</button>
+                <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                    <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification" class="fixed bottom-5 right-5 z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="bg-green-600 text-white px-4 py-3 rounded-lg shadow-xl flex items-center space-x-3">
+            <i id="toast-icon" data-lucide="check-circle" class="w-5 h-5"></i>
+            <span id="toast-message">Operation successful!</span>
+        </div>
+    </div>
+
+
+    <script>
+        // --- IndexedDB Setup ---
+        const DB_NAME = 'DataManagerDB';
+        const STORE_NAME = 'items';
+        const DB_VERSION = 1;
+        let db;
+
+        // Cache DOM elements that are accessed frequently
+        const listContainer = document.getElementById('list-container');
+        const loadingState = document.getElementById('loading-state');
+        const emptyState = document.getElementById('empty-state');
+        const searchInput = document.getElementById('search-input');
+        
+        const openDB = () => {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        };
+
+        const transaction = (mode, callback) => {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    if (!db) await openDB();
+                    const tx = db.transaction(STORE_NAME, mode);
+                    const store = tx.objectStore(STORE_NAME);
+                    callback(store);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (event) => reject(event.target.error);
+                } catch (error) {
+                    console.error(`DB Transaction Error (${mode}):`, error);
+                    reject(error);
+                }
+            });
+        };
+
+        // --- Core Action Item Logic ---
+
+        /** Extracts text from between <<action item>> tags and returns a structured array. */
+        const extractActionItemsFromText = (description) => {
+            if (!description) return [];
+            // Regex to find all occurrences of <<action item>> followed by any text until the end of the line or the next tag
+            const regex = /<<action item>>(.*?)(\r?\n|$)/gi;
+            let structuredActions = [];
+            let match;
+            
+            while ((match = regex.exec(description)) !== null) {
+                // Creates a new action item object with default done: false
+                structuredActions.push({
+                    text: match[1].trim(),
+                    done: false 
+                });
+            }
+            return structuredActions;
+        };
+        
+        /** Removes the literal <<action item>> tag from the description for clean notes display, preserving the rest of the text. */
+        const cleanDescriptionForDisplay = (description) => {
+            if (!description) return '';
+            return description.replace(/<<action item>>/gi, '').trim();
+        };
+        
+        // --- NEW: Toggle Done Status and Save ---
+
+        /** Toggles the 'done' status of a specific action item within a meeting note. */
+        const toggleActionDone = async (itemId, actionIndex) => {
+            try {
+                let item;
+                // 1. Fetch the item
+                await transaction('readonly', (store) => {
+                    const request = store.get(itemId);
+                    request.onsuccess = (event) => {
+                        item = event.target.result;
+                    };
+                });
+
+                if (!item || !item.actions || item.actions.length <= actionIndex) {
+                    throw new Error("Action item not found.");
+                }
+
+                // 2. Modify the action status
+                item.actions[actionIndex].done = !item.actions[actionIndex].done;
+                
+                // 3. Save the updated item
+                await transaction('readwrite', (store) => {
+                    store.put(item);
+                });
+
+                // 4. Update the UI
+                await loadItems(searchInput.value);
+                showToast(`Action item marked as ${item.actions[actionIndex].done ? 'done' : 'undone'}.`, 'update');
+
+            } catch (e) {
+                console.error("Failed to toggle action status:", e);
+                showToast(`Error toggling status: ${e.message}`, 'error');
+            }
+        };
+
+
+        // --- CRUD Operations ---
+
+        /** Creates or Updates a meeting record. */
+        const saveItem = async (item) => {
+            const isUpdate = !!item.id;
+            try {
+                if (!item.title.trim()) {
+                    showValidationMessage("Title cannot be empty.");
+                    return;
+                }
+
+                let itemData = { 
+                    title: item.title, 
+                    description: item.description,
+                    labels: item.labels 
+                };
+
+                if (isUpdate) {
+                    itemData.id = item.id;
+                    itemData.timestamp = item.timestamp; 
+
+                    // If updating, check for NEW action items in description.
+                    // If new actions exist, merge them with existing, incomplete actions.
+                    const existingActions = item.actions || [];
+                    const newActions = extractActionItemsFromText(item.description);
+                    
+                    // Simple logic: if the user edits the description, any old actions that
+                    // are *not* in the new description are dropped (they edited them out).
+                    // We preserve the 'done' status for actions that match the new text.
+                    
+                    // Note: For a robust system, this merge logic is complex. 
+                    // For simplicity here, if the user is editing:
+                    // 1. We keep the structured 'actions' array from the hidden field (item.actions).
+                    // 2. We only update the description/title/labels.
+                    // If we want to support editing the action text via the description field, 
+                    // a full re-parse is necessary. Let's use the full re-parse for simplicity in a single file app.
+                    
+                    itemData.actions = [];
+                    newActions.forEach(newAction => {
+                        // Check if this action text already exists and was marked done
+                        const existingMatch = existingActions.find(a => a.text === newAction.text);
+                        itemData.actions.push({
+                            text: newAction.text,
+                            done: existingMatch ? existingMatch.done : false
+                        });
+                    });
+
+                } else {
+                    itemData.timestamp = new Date().toISOString();
+                    // NEW: Extract actions upon creation
+                    itemData.actions = extractActionItemsFromText(item.description); 
+                }
+
+                await transaction('readwrite', (store) => {
+                    store.put(itemData); // Use put for both add and update
+                });
+
+                await loadItems(searchInput.value); 
+                resetForm();
+                showToast(isUpdate ? "Meeting note updated successfully!" : "New meeting note saved!", isUpdate ? 'update' : 'save');
+            } catch (e) {
+                console.error("Failed to save item:", e);
+                showToast(`Error saving note: ${e.message}`, 'error');
+            }
+        };
+        
+        /** Reads all meeting records and displays them, applying a search filter. */
+        const loadItems = async (filterText = '') => {
+            if (!listContainer || !loadingState || !emptyState) {
+                console.error("loadItems: Critical DOM elements are missing.");
+                return;
+            }
+
+            const searchFilter = filterText.toLowerCase().trim();
+
+            listContainer.innerHTML = ''; 
+            loadingState.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                let items = [];
+                await transaction('readonly', (store) => {
+                    const request = store.getAll();
+                    request.onsuccess = (event) => {
+                        items = event.target.result;
+                    };
+                });
+
+                // Sort by timestamp descending (newest first)
+                items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                // Apply search filtering
+                const filteredItems = items.filter(item => {
+                    if (!searchFilter) return true; 
+
+                    const titleMatch = item.title.toLowerCase().includes(searchFilter);
+                    const descriptionMatch = item.description.toLowerCase().includes(searchFilter);
+                    const labelsMatch = item.labels ? item.labels.toLowerCase().includes(searchFilter) : false;
+
+                    return titleMatch || descriptionMatch || labelsMatch;
+                });
+
+                loadingState.classList.add('hidden');
+
+                if (filteredItems.length === 0) {
+                    emptyState.querySelector('p').textContent = searchFilter 
+                        ? "No notes matched your search criteria." 
+                        : "No Meeting Records Found";
+                    emptyState.classList.remove('hidden');
+                } else {
+                    filteredItems.forEach(createItemCard);
+                }
+
+                lucide.createIcons();
+            } catch (e) {
+                console.error("Failed to load items:", e);
+                loadingState.classList.add('hidden');
+                emptyState.innerHTML = `<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-3 text-red-400"></i><p>Error loading notes: ${e.message}</p>`;
+                emptyState.classList.remove('hidden');
+                lucide.createIcons();
+            }
+        };
+
+        /** Fills the form for editing. */
+        const editItem = async (id) => {
+            try {
+                let item;
+                await transaction('readonly', (store) => {
+                    const request = store.get(id);
+                    request.onsuccess = (event) => {
+                        item = event.target.result;
+                    };
+                });
+
+                if (item) {
+                    document.getElementById('item-id').value = item.id;
+                    document.getElementById('item-timestamp').value = item.timestamp;
+                    document.getElementById('title').value = item.title;
+                    document.getElementById('labels').value = item.labels || ''; 
+                    document.getElementById('description').value = item.description;
+                    document.getElementById('item-actions').value = JSON.stringify(item.actions || []); // NEW: Store structured actions for persistence
+
+                    document.getElementById('form-title').textContent = 'Edit Meeting Note';
+                    document.getElementById('save-button').innerHTML = '<i data-lucide="check" class="w-5 h-5 inline mr-2"></i> Update Note';
+                    document.getElementById('cancel-button').classList.remove('hidden');
+                    document.getElementById('title').focus();
+                    document.getElementById('form-card').scrollIntoView({ behavior: 'smooth' });
+                    lucide.createIcons();
+                }
+            } catch (e) {
+                console.error("Failed to load item for edit:", e);
+                showToast("Error loading note for edit.", 'error');
+            }
+        };
+
+        /** Deletes a meeting record after confirmation. */
+        const deleteItem = async (id) => {
+            try {
+                await transaction('readwrite', (store) => {
+                    store.delete(id);
+                });
+                await loadItems(searchInput.value); 
+                showToast("Meeting note permanently deleted.", 'delete');
+            } catch (e) {
+                console.error("Failed to delete item:", e);
+                showToast("Error deleting note.", 'error');
+            }
+        };
+
+        /** Duplicates a meeting record. */
+        const duplicateItem = async (id) => {
+            try {
+                let item;
+                await transaction('readonly', (store) => {
+                    const request = store.get(id);
+                    request.onsuccess = (event) => {
+                        item = event.target.result;
+                    };
+                });
+
+                if (item) {
+                    const newItem = {
+                        title: `${item.title} (COPY)`,
+                        description: item.description,
+                        labels: item.labels, 
+                        // NEW: Copy actions but reset done status for the copy
+                        actions: (item.actions || []).map(a => ({ text: a.text, done: false })),
+                        timestamp: new Date().toISOString()
+                    };
+
+                    await transaction('readwrite', (store) => {
+                        store.add(newItem);
+                    });
+
+                    await loadItems(searchInput.value); 
+                    showToast("Meeting note successfully duplicated!", 'duplicate');
+                }
+            } catch (e) {
+                console.error("Failed to duplicate item:", e);
+                showToast(`Error duplicating note: ${e.message}`, 'error');
+            }
+        };
+
+        // --- UI & Utility Functions ---
+
+        /** Creates the visual card for a single meeting item. */
+        const createItemCard = (item) => {
+            const container = document.getElementById('list-container');
+            const date = new Date(item.timestamp);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            
+            // Get structured actions (now stored on the item)
+            const actions = item.actions || [];
+            
+            // Clean the description by REMOVING ONLY THE TAG
+            const cleanDescription = cleanDescriptionForDisplay(item.description);
+
+            // Label Badges
+            const labelBadges = (item.labels || '')
+                .split(',')
+                .map(label => label.trim())
+                .filter(label => label)
+                .map(label => `<span class="inline-block bg-blue-900/50 text-blue-300 text-xs font-semibold px-2 py-0.5 rounded-full">${label}</span>`)
+                .join(' ');
+
+            // Action Item List (NEW: Includes toggle button and status class)
+            const actionListHtml = actions.length > 0 ? `
+                <div class="mt-3 p-3 bg-gray-600 rounded-lg border border-red-500/50">
+                    <h4 class="text-sm font-bold text-red-400 flex items-center mb-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 mr-1"></i> Action Items (${actions.filter(a => !a.done).length} Pending / ${actions.length} Total)
+                    </h4>
+                    <ul class="text-sm space-y-2 text-gray-200">
+                        ${actions.map((action, index) => `
+                            <li class="flex items-start">
+                                <button onclick="toggleActionDone(${item.id}, ${index})" class="flex-shrink-0 p-1 mr-2 transition 
+                                    ${action.done ? 'text-green-500 hover:text-green-400' : 'text-gray-400 hover:text-white'}">
+                                    <i data-lucide="${action.done ? 'check-square' : 'square'}" class="w-5 h-5"></i>
+                                </button>
+                                <span class="flex-1 pt-0.5 whitespace-pre-wrap ${action.done ? 'action-done' : ''}">
+                                    ${action.text}
+                                </span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            ` : '';
+
+
+            const card = document.createElement('div');
+            card.id = `item-${item.id}`;
+            card.className = 'bg-gray-700 p-5 rounded-xl shadow-lg border border-gray-600 hover:border-green-500/50 transition duration-200 space-y-3';
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-xl font-bold text-green-400 break-words">${item.title}</h3>
+                        <div class="text-xs text-gray-400 mt-1 flex flex-wrap items-center space-x-2">
+                            <span>ID: ${item.id} | Created: ${formattedDate}</span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editItem(${item.id})" class="text-gray-400 hover:text-blue-400 p-1 transition" title="Edit">
+                            <i data-lucide="square-pen" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="duplicateItem(${item.id})" class="text-gray-400 hover:text-yellow-400 p-1 transition" title="Duplicate">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="openDeleteModal(${item.id}, '${item.title.replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-red-400 p-1 transition" title="Delete">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="pt-2">
+                    ${labelBadges}
+                </div>
+                
+                ${actionListHtml}
+                
+                <div class="text-gray-300 text-sm whitespace-pre-wrap pt-2 border-t border-gray-600">
+                    <h4 class="text-xs font-semibold text-gray-400 mb-1">Notes:</h4>
+                    ${cleanDescription || '<span class="text-gray-500 italic">No main notes recorded.</span>'}
+                </div>
+            `;
+            container.appendChild(card);
+        };
+        
+        // --- Modal/Toast/Form Utilities (Reused/Updated) ---
+        
+        const openDeleteModal = (id, title) => {
+            const modal = document.getElementById('delete-modal');
+            const modalTitle = document.getElementById('modal-item-title');
+            const confirmBtn = document.getElementById('confirm-delete');
+
+            modalTitle.textContent = title;
+            confirmBtn.onclick = () => {
+                deleteItem(id);
+                closeDeleteModal();
+            };
+
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+            });
+            lucide.createIcons();
+        };
+
+        const closeDeleteModal = () => {
+            const modal = document.getElementById('delete-modal');
+            modal.classList.add('opacity-0');
+            modal.addEventListener('transitionend', function handler() {
+                modal.classList.add('hidden');
+                modal.removeEventListener('transitionend', handler);
+            });
+        };
+
+        const resetForm = () => {
+            document.getElementById('meeting-form').reset();
+            document.getElementById('item-id').value = '';
+            document.getElementById('item-timestamp').value = '';
+            document.getElementById('item-actions').value = ''; // NEW: Clear actions field
+            document.getElementById('form-title').textContent = 'Add New Meeting';
+            document.getElementById('save-button').innerHTML = '<i data-lucide="save" class="w-5 h-5 inline mr-2"></i> Save Meeting Note';
+            document.getElementById('cancel-button').classList.add('hidden');
+            hideValidationMessage();
+            lucide.createIcons();
+        };
+
+        const showToast = (message, type = 'save') => {
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            const toastContent = toast.querySelector('div');
+            const iconElement = document.getElementById('toast-icon'); 
+            
+            toastContent.classList.remove('bg-blue-600', 'bg-red-600', 'bg-yellow-600', 'bg-red-700');
+            
+            let iconName = 'check-circle';
+            if (type === 'save' || type === 'update') {
+                toastContent.classList.add('bg-blue-600');
+                iconName = 'check-circle';
+            } else if (type === 'delete') {
+                toastContent.classList.add('bg-red-600');
+                iconName = 'trash-2';
+            } else if (type === 'duplicate') {
+                toastContent.classList.add('bg-yellow-600');
+                iconName = 'copy-plus';
+            } else if (type === 'error') {
+                toastContent.classList.add('bg-red-700');
+                iconName = 'bug';
+            }
+            
+            iconElement.setAttribute('data-lucide', iconName);
+            lucide.createIcons();
+
+            toastMessage.textContent = message;
+            toast.classList.remove('hidden', 'opacity-0');
+            toast.classList.add('opacity-100', 'pointer-events-auto');
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'pointer-events-auto');
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300); 
+            }, 3000);
+        };
+
+        const showValidationMessage = (message) => {
+            const msgElement = document.getElementById('validation-message');
+            if (msgElement) {
+                msgElement.textContent = message;
+                msgElement.classList.remove('hidden');
+            }
+        };
+
+        const hideValidationMessage = () => {
+            const msgElement = document.getElementById('validation-message');
+            if (msgElement) {
+                msgElement.classList.add('hidden');
+            }
+        };
+
+        // --- Event Listeners and Initialization ---
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check for potential IndexedDB schema issue if upgrading from an older version
+            try {
+                await openDB();
+            } catch (e) {
+                console.warn("Could not open DB. If upgrading from a previous version, data structure might be incompatible. Clearing DB...");
+                indexedDB.deleteDatabase(DB_NAME);
+                await openDB(); // Re-open after deletion
+            }
+            
+            await loadItems();
+
+            document.getElementById('meeting-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                hideValidationMessage();
+
+                const id = document.getElementById('item-id').value ? parseInt(document.getElementById('item-id').value) : null;
+                const timestamp = document.getElementById('item-timestamp').value || null;
+                const title = document.getElementById('title').value.trim();
+                const labels = document.getElementById('labels').value.trim();
+                const description = document.getElementById('description').value.trim();
+                
+                // NEW: Load existing actions for updates
+                let actions = [];
+                const actionsField = document.getElementById('item-actions').value;
+                if (id && actionsField) {
+                    try {
+                        actions = JSON.parse(actionsField);
+                    } catch (e) {
+                        console.error("Failed to parse existing actions:", e);
+                    }
+                }
+
+                if (!title) {
+                    showValidationMessage("Meeting Title is required to save the note.");
+                    return;
+                }
+
+                const item = { id, timestamp, title, labels, description, actions };
+                saveItem(item);
+            });
+            
+            // Search Input Listener 
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    loadItems(searchInput.value);
+                }, 300); 
+            });
+
+            // Clear Search Button
+            document.getElementById('clear-search').addEventListener('click', () => {
+                searchInput.value = '';
+                loadItems('');
+            });
+
+            document.getElementById('cancel-button').addEventListener('click', resetForm);
+            document.getElementById('cancel-delete').addEventListener('click', closeDeleteModal);
+
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

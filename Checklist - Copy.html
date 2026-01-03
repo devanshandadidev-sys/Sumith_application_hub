@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Checklist & Template App</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #f8f9fa;
+            --text-color: #343a40;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --header-bg: #343a40;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 20px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 20px var(--shadow-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        header.app-header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 15px 25px;
+            text-align: center;
+        }
+
+        header.app-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .main-layout {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .panel {
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .templates-panel { flex: 1; }
+        .projects-panel { flex: 1; }
+        .checklist-panel { flex: 2; }
+
+        .panel-header {
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border-color);
+            background-color: #f1f3f5;
+        }
+
+        .panel-content {
+            padding: 15px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        /* Template Creation Form */
+        #new-template-form {
+            margin-bottom: 15px;
+        }
+        #new-template-name, #new-template-items {
+            width: calc(100% - 20px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        #new-template-items {
+            min-height: 80px;
+            resize: vertical;
+        }
+        #add-template-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Lists */
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .item-list li {
+            padding: 12px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .item-list li:hover { background-color: var(--secondary-color); }
+        .item-list li.active {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .new-project-btn { border-color: var(--success-color); color: var(--success-color); }
+        .delete-btn { border-color: var(--danger-color); color: var(--danger-color); }
+        .item-list li.active .action-btn { background: white; }
+
+
+        /* Checklist View */
+        .checklist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        .checklist-header h3 { margin: 0; }
+        
+        #print-report-btn {
+            padding: 8px 15px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #checklist-items li {
+             padding: 15px 5px;
+        }
+        #checklist-items .item-text { flex-grow: 1; margin: 0 10px; }
+        #checklist-items .item-text.completed { text-decoration: line-through; color: #888; }
+        
+        .placeholder {
+            text-align: center;
+            color: #868e96;
+            padding: 50px 20px;
+        }
+
+        /* Print Styles */
+        @media print {
+            body { background: #fff; margin: 20px; }
+            .app-header, .main-layout .panel:not(.checklist-panel), #print-report-btn, .item-list .action-btn {
+                display: none;
+            }
+            .app-container, .main-layout { display: block; }
+            .checklist-panel { width: 100%; border: none; }
+            .checklist-header { border-color: #000; }
+            h1, h3 { color: #000; }
+            #checklist-items .item-checkbox { display: none; }
+            #checklist-items .item-text::before {
+                font-weight: bold;
+                margin-right: 10px;
+            }
+            #checklist-items .item-text.completed::before { content: "[✓]"; }
+            #checklist-items .item-text:not(.completed)::before { content: "[  ]"; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Project Checklist Manager</h1>
+        </header>
+        <div class="main-layout">
+            <div class="panel templates-panel">
+                <div class="panel-header">Templates</div>
+                <div class="panel-content">
+                    <form id="new-template-form">
+                        <input type="text" id="new-template-name" placeholder="New Template Name" required>
+                        <textarea id="new-template-items" placeholder="Enter checklist items, one per line..." required></textarea>
+                        <button type="submit" id="add-template-btn">Save New Template</button>
+                    </form>
+                    <ul id="template-list" class="item-list"></ul>
+                </div>
+            </div>
+            <div class="panel projects-panel">
+                <div class="panel-header">Projects</div>
+                <div class="panel-content">
+                    <ul id="project-list" class="item-list"></ul>
+                    <div id="projects-placeholder" class="placeholder">Select a template to create a new project.</div>
+                </div>
+            </div>
+            <div class="panel checklist-panel">
+                <div class="panel-header">Active Checklist</div>
+                <div id="checklist-view" class="panel-content">
+                    <div id="checklist-placeholder" class="placeholder">Select a project to view its checklist.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let db;
+        let activeProjectId = null;
+
+        // --- DB SETUP ---
+        function initDB() {
+            const request = indexedDB.open("ProjectChecklistDB", 2);
+            request.onerror = e => console.error("DB Error:", e.target.error);
+            request.onsuccess = e => {
+                db = e.target.result;
+                loadTemplates();
+                loadProjects();
+            };
+            request.onupgradeneeded = e => {
+                db = e.target.result;
+                if (!db.objectStoreNames.contains('templates')) {
+                    db.createObjectStore('templates', { keyPath: 'id', autoIncrement: true });
+                }
+                if (!db.objectStoreNames.contains('projects')) {
+                    const projectStore = db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+                    projectStore.createIndex('templateId', 'templateId', { unique: false });
+                }
+                if (!db.objectStoreNames.contains('project_items')) {
+                    const itemStore = db.createObjectStore('project_items', { keyPath: 'id', autoIncrement: true });
+                    itemStore.createIndex('projectId', 'projectId', { unique: false });
+                }
+            };
+        }
+
+        // --- TEMPLATE LOGIC ---
+        document.getElementById('new-template-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('new-template-name').value.trim();
+            const itemsText = document.getElementById('new-template-items').value.trim();
+            if (!name || !itemsText) return;
+
+            const items = itemsText.split('\n').map(line => line.trim()).filter(line => line);
+            const tx = db.transaction('templates', 'readwrite');
+            tx.objectStore('templates').add({ name, items });
+            tx.oncomplete = () => {
+                document.getElementById('new-template-form').reset();
+                loadTemplates();
+            };
+        });
+
+        function loadTemplates() {
+            const store = db.transaction('templates').objectStore('templates');
+            store.getAll().onsuccess = e => {
+                const templates = e.target.result;
+                const list = document.getElementById('template-list');
+                list.innerHTML = '';
+                templates.forEach(t => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span>${t.name}</span>
+                        <div>
+                            <button class="action-btn new-project-btn" data-id="${t.id}">New Project</button>
+                            <button class="action-btn delete-btn" data-id="${t.id}">Delete</button>
+                        </div>`;
+                    list.appendChild(li);
+                });
+            };
+        }
+        
+        document.getElementById('template-list').addEventListener('click', e => {
+            const id = parseInt(e.target.dataset.id);
+            if (e.target.classList.contains('new-project-btn')) {
+                createProjectFromTemplate(id);
+            }
+            if (e.target.classList.contains('delete-btn')) {
+                deleteTemplate(id);
+            }
+        });
+
+        function deleteTemplate(templateId) {
+            if (!confirm("Are you sure? This will NOT delete projects already created from this template.")) return;
+            const tx = db.transaction('templates', 'readwrite');
+            tx.objectStore('templates').delete(templateId);
+            tx.oncomplete = loadTemplates;
+        }
+
+        // --- PROJECT LOGIC ---
+        function createProjectFromTemplate(templateId) {
+            const projectName = prompt("Enter a name for the new project:");
+            if (!projectName || !projectName.trim()) return;
+
+            const tx = db.transaction(['templates', 'projects', 'project_items'], 'readwrite');
+            const templateStore = tx.objectStore('templates');
+            
+            templateStore.get(templateId).onsuccess = e => {
+                const template = e.target.result;
+                if (!template) return;
+
+                const projectStore = tx.objectStore('projects');
+                const addProjectReq = projectStore.add({
+                    name: projectName,
+                    templateId: templateId,
+                    createdAt: new Date()
+                });
+
+                addProjectReq.onsuccess = (e) => {
+                    const newProjectId = e.target.result;
+                    const itemStore = tx.objectStore('project_items');
+                    template.items.forEach(itemText => {
+                        itemStore.add({
+                            projectId: newProjectId,
+                            text: itemText,
+                            completed: false
+                        });
+                    });
+                };
+            };
+            
+            tx.oncomplete = () => {
+                loadProjects();
+            };
+        }
+        
+        function loadProjects() {
+            const store = db.transaction('projects').objectStore('projects');
+            store.getAll().onsuccess = e => {
+                const projects = e.target.result;
+                const list = document.getElementById('project-list');
+                const placeholder = document.getElementById('projects-placeholder');
+                list.innerHTML = '';
+                
+                if (projects.length === 0) {
+                    placeholder.style.display = 'block';
+                } else {
+                     placeholder.style.display = 'none';
+                }
+                
+                projects.forEach(p => {
+                    const li = document.createElement('li');
+                    li.dataset.id = p.id;
+                    li.className = (p.id === activeProjectId) ? 'active' : '';
+                    li.innerHTML = `<span>${p.name}</span><button class="action-btn delete-btn" data-id="${p.id}">Delete</button>`;
+                    li.addEventListener('click', (ev) => {
+                        if (ev.target.tagName !== 'BUTTON') {
+                            setActiveProject(p.id, p.name);
+                        }
+                    });
+                    list.appendChild(li);
+                });
+            };
+        }
+        
+        document.getElementById('project-list').addEventListener('click', e => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = parseInt(e.target.dataset.id);
+                deleteProject(id);
+                e.stopPropagation();
+            }
+        });
+
+        function deleteProject(projectId) {
+            if (!confirm("Are you sure you want to permanently delete this project and all its data?")) return;
+            const tx = db.transaction(['projects', 'project_items'], 'readwrite');
+            
+            // Delete items
+            const itemStore = tx.objectStore('project_items');
+            const itemIndex = itemStore.index('projectId');
+            const itemRequest = itemIndex.openCursor(IDBKeyRange.only(projectId));
+            itemRequest.onsuccess = e => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    cursor.delete();
+                    cursor.continue();
+                }
+            };
+            
+            // Delete project
+            tx.objectStore('projects').delete(projectId);
+            
+            tx.oncomplete = () => {
+                if (activeProjectId === projectId) {
+                    activeProjectId = null;
+                    renderChecklistPlaceholder();
+                }
+                loadProjects();
+            };
+        }
+
+        // --- CHECKLIST VIEW LOGIC ---
+        function setActiveProject(projectId, projectName) {
+            activeProjectId = projectId;
+            document.querySelectorAll('#project-list li').forEach(li => {
+                li.classList.toggle('active', parseInt(li.dataset.id) === projectId);
+            });
+            renderChecklist(projectId, projectName);
+        }
+
+        function renderChecklist(projectId, projectName) {
+            const view = document.getElementById('checklist-view');
+            view.innerHTML = `
+                <div class="checklist-header">
+                    <h3>${projectName}</h3>
+                    <button id="print-report-btn">Print Report</button>
+                </div>
+                <ul id="checklist-items" class="item-list"></ul>`;
+            
+            document.getElementById('print-report-btn').addEventListener('click', () => window.print());
+            
+            const itemStore = db.transaction('project_items').objectStore('project_items');
+            const index = itemStore.index('projectId');
+            index.getAll(projectId).onsuccess = e => {
+                const items = e.target.result;
+                const list = document.getElementById('checklist-items');
+                list.innerHTML = '';
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.dataset.id = item.id;
+                    li.innerHTML = `
+                        <input type="checkbox" class="item-checkbox" ${item.completed ? 'checked' : ''}>
+                        <span class="item-text ${item.completed ? 'completed' : ''}">${item.text}</span>`;
+                    li.addEventListener('click', () => toggleItem(item.id, projectId));
+                    list.appendChild(li);
+                });
+            };
+        }
+        
+        function renderChecklistPlaceholder() {
+            document.getElementById('checklist-view').innerHTML = 
+                '<div id="checklist-placeholder" class="placeholder">Select a project to view its checklist.</div>';
+        }
+
+        function toggleItem(itemId, projectId) {
+            const tx = db.transaction('project_items', 'readwrite');
+            const store = tx.objectStore('project_items');
+            store.get(itemId).onsuccess = e => {
+                const item = e.target.result;
+                item.completed = !item.completed;
+                store.put(item);
+            };
+            tx.oncomplete = () => {
+                const activeProjectEl = document.querySelector('#project-list li.active');
+                if (activeProjectEl) {
+                    const projectName = activeProjectEl.querySelector('span').textContent;
+                    renderChecklist(projectId, projectName);
+                }
+            };
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', initDB);
+
+    </script>
+</body>
+</html>
