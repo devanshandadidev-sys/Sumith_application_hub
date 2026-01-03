@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Gantt Chart Builder</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        /* --- CSS Styling and Component DNA --- */
+        :root {
+            --primary-color: #3f51b5; /* Indigo */
+            --accent-color: #ff9800; /* Orange */
+            --bg-color: #f4f7fa;
+            --header-bg: #e8f5e9; /* Light green/sage for table header */
+            --border-color: #ccc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Card DNA */
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* --- Tabbed Navigation Styling (Component DNA) --- */
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        .tab-link {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: #555;
+            text-decoration: none;
+            position: relative;
+        }
+        .tab-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--accent-color);
+        }
+
+        /* --- Data Entry Table Styling --- */
+        .data-table-container {
+            overflow-x: auto;
+        }
+
+        #taskTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        #taskTable th, #taskTable td {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        #taskTable th {
+            background-color: var(--header-bg); 
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        #taskTable input, #taskTable select {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        
+        #taskTable input[readonly] {
+            background-color: #f7f7f7;
+        }
+
+        .action-cell {
+            width: 90px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+
+        /* --- Gantt Chart Visualization --- */
+        #gantt-chart {
+            height: 600px;
+            min-height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Project Task Scheduler & Gantt Chart</h1>
+
+    <div class="card">
+        <div class="tab-nav">
+            <a href="#" class="tab-link active">Data Entry</a>
+            <a href="#" class="tab-link">Gantt Visualization</a>
+        </div>
+
+        <div class="controls">
+            <button id="addTaskBtn" class="btn btn-primary">➕ Add Task Row</button>
+            <div class="control-group">
+                <button id="exportBtn" class="btn">💾 Export Data (JSON)</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+                <button id="importBtn" class="btn" onclick="document.getElementById('importFile').click()">📤 Import Data</button>
+                <button id="clearDataBtn" class="btn btn-danger">🗑️ Clear All Data</button>
+            </div>
+        </div>
+
+        <div class="data-table-container">
+            <table id="taskTable">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">Task No.</th>
+                        <th style="width: 15%;">Task Description</th>
+                        <th style="width: 10%;">Expected Deliverable</th>
+                        <th style="width: 10%;">Delivery Month/Milestone</th>
+                        <th style="width: 10%;">Dependencies</th>
+                        <th style="width: 10%;">Billing Trigger</th>
+                        <th style="width: 10%;">Planned Start (YYYY-MM-DD)</th>
+                        <th style="width: 10%;">Planned End (YYYY-MM-DD)</th>
+                        <th style="width: 5%;">Actual Start</th>
+                        <th style="width: 5%;">Actual End</th>
+                        <th style="width: 5%;">Status</th>
+                        <th style="width: 5%;" class="action-cell">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Gantt Chart</h2>
+        <div id="gantt-chart">
+            <p style="text-align: center; padding: 50px;">Loading chart...</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- Vanilla JavaScript Application Logic ---
+
+    // 1. Data Structure and Constants
+    const STORAGE_KEY = 'ganttChartTasks';
+    let tasks = [];
+    let taskIdCounter = 1;
+    let chartsReady = false; 
+
+    // Mapping task data fields
+    const COLUMN_MAP = [
+        { key: 'taskNo', label: 'Task No.', type: 'text', readOnly: true },
+        { key: 'description', label: 'Task Description', type: 'text' },
+        { key: 'deliverable', label: 'Expected Deliverable', type: 'text' },
+        { key: 'milestone', label: 'Delivery Month/Milestone', type: 'text' },
+        { key: 'dependencies', label: 'Dependencies', type: 'text' },
+        { key: 'billingTrigger', label: 'Billing Trigger', type: 'text' },
+        { key: 'plannedStart', label: 'Planned Start', type: 'date' },
+        { key: 'plannedEnd', label: 'Planned End', type: 'date' },
+        { key: 'actualStart', label: 'Actual Start', type: 'date' },
+        { key: 'actualEnd', label: 'Actual End', type: 'date' },
+        { key: 'status', label: 'Status', type: 'select', options: ['Not Started', 'In Progress', 'Completed', 'Blocked'], defaultValue: 'Not Started' }
+    ];
+
+    // 2. Utility Functions
+
+    /**
+     * Converts a non-standard date string (like DD-Mon-YYYY) into the required 
+     * YYYY-MM-DD format for HTML date inputs.
+     */
+    const formatDateForInput = (dateStr) => {
+        if (!dateStr) return '';
+        
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return dateStr;
+        }
+
+        try {
+            // Replaces hyphen with slash or space for better Date parsing
+            const date = new Date(dateStr.replace(/-/g, '/')); 
+            
+            if (isNaN(date.getTime())) {
+                return ''; 
+            }
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            return '';
+        }
+    };
+    
+    const saveTasks = () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    };
+
+    const loadTasks = () => {
+        const storedTasks = localStorage.getItem(STORAGE_KEY);
+        if (storedTasks) {
+            tasks = JSON.parse(storedTasks);
+            
+            // Apply date format correction to all loaded dates
+            tasks.forEach(task => {
+                if (task.plannedStart) task.plannedStart = formatDateForInput(task.plannedStart);
+                if (task.plannedEnd) task.plannedEnd = formatDateForInput(task.plannedEnd);
+                if (task.actualStart) task.actualStart = formatDateForInput(task.actualStart);
+                if (task.actualEnd) task.actualEnd = formatDateForInput(task.actualEnd);
+            });
+
+            const maxId = tasks.reduce((max, task) => Math.max(max, task.id), 0);
+            taskIdCounter = maxId + 1;
+        }
+    };
+
+    // Helper to format a YYYY-MM-DD date string into a Date object for Google Charts
+    const parseDate = (dateStr) => {
+        if (!dateStr || dateStr.length !== 10) return null; 
+        const parts = dateStr.split('-');
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    };
+    
+    // 3. Chart Loading and Redrawing
+
+    google.charts.load('current', {'packages':['gantt']});
+
+    google.charts.setOnLoadCallback(() => {
+        chartsReady = true;
+        requestChartRedraw(); 
+    });
+
+    function requestChartRedraw() {
+        if (chartsReady) {
+            drawGanttChart();
+        } 
+    }
+
+
+    // 4. UI and Data Management Functions
+
+    const renderTable = () => {
+        const tbody = document.querySelector('#taskTable tbody');
+        tbody.innerHTML = ''; 
+
+        tasks.forEach(task => {
+            const row = tbody.insertRow();
+            row.dataset.taskId = task.id;
+
+            COLUMN_MAP.forEach(col => {
+                const cell = row.insertCell();
+                const value = task[col.key] || '';
+
+                if (col.type === 'date') {
+                    cell.innerHTML = `<input type="date" data-key="${col.key}" value="${value}" onchange="updateTask(this, ${task.id}, '${col.key}')">`;
+                } else if (col.type === 'select') {
+                    const select = document.createElement('select');
+                    select.dataset.key = col.key;
+                    select.onchange = (e) => updateTask(e.target, task.id, col.key); 
+                    col.options.forEach(optionText => {
+                        const option = document.createElement('option');
+                        option.value = optionText;
+                        option.textContent = optionText;
+                        if (optionText === value) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                    cell.appendChild(select);
+                } else {
+                     const input = document.createElement('input');
+                     input.type = 'text';
+                     input.dataset.key = col.key;
+                     input.value = value;
+                     input.onchange = (e) => updateTask(e.target, task.id, col.key); 
+
+                     if (col.readOnly) {
+                        input.readOnly = true;
+                        input.style.backgroundColor = '#f7f7f7';
+                     }
+                     cell.appendChild(input);
+                }
+            });
+
+            const actionCell = row.insertCell();
+            actionCell.classList.add('action-cell');
+            actionCell.innerHTML = `<button class="btn btn-danger" onclick="deleteTask(${task.id})">❌ Delete</button>`;
+        });
+
+        requestChartRedraw(); 
+    };
+
+    const addTask = () => {
+        const newTask = { id: taskIdCounter++ };
+        COLUMN_MAP.forEach(col => {
+            newTask[col.key] = col.readOnly ? newTask.id.toString() : (col.defaultValue || '');
+        });
+        tasks.push(newTask);
+        saveTasks();
+        renderTable();
+    };
+
+    const updateTask = (element, id, key) => {
+        const value = element.value;
+        const taskIndex = tasks.findIndex(t => t.id === id);
+
+        if (taskIndex !== -1) {
+            tasks[taskIndex][key] = value;
+            saveTasks();
+            requestChartRedraw();
+        }
+    };
+
+    const deleteTask = (id) => {
+        tasks = tasks.filter(t => t.id !== id);
+        saveTasks();
+        renderTable();
+    };
+
+
+    // 5. Gantt Chart Visualization Logic
+
+    function drawGanttChart() {
+        const data = new google.visualization.DataTable();
+
+        // Define columns required for the Google Gantt Chart
+        data.addColumn('string', 'Task ID');
+        data.addColumn('string', 'Task Name');
+        data.addColumn('string', 'Resource'); 
+        data.addColumn('date', 'Start Date');
+        data.addColumn('date', 'End Date');
+        data.addColumn('number', 'Duration'); 
+        data.addColumn('number', 'Percent Complete');
+        data.addColumn('string', 'Dependencies');
+
+        tasks.forEach(task => {
+            const plannedStart = parseDate(task.plannedStart);
+            const plannedEnd = parseDate(task.plannedEnd);
+
+            // CRITICAL CHECK: Only draw tasks with valid, ordered dates
+            if (plannedStart && plannedEnd && plannedStart <= plannedEnd) {
+                let percentComplete = 0;
+                switch(task.status) {
+                    case 'In Progress': percentComplete = 50; break;
+                    case 'Completed': percentComplete = 100; break;
+                    default: percentComplete = 0;
+                }
+
+                const durationMs = plannedEnd.getTime() - plannedStart.getTime();
+
+                // --- FIX: Dependency String Parsing ---
+                let dependencyIds = '';
+                if (task.dependencies && task.dependencies !== 'N/A') {
+                    // Use regex to extract all numbers, assuming dependencies refer to Task IDs (e.g., "Task 8 & 9 complete" -> 8, 9)
+                    const taskNumbers = task.dependencies.match(/\d+/g);
+                    if (taskNumbers) {
+                        // Map the numbers back to the chart's required format 'TaskID'
+                        dependencyIds = taskNumbers.map(num => {
+                            // Find the task object with the matching 'taskNo'
+                            const dependentTask = tasks.find(t => t.taskNo === `Task ${num}` || t.id.toString() === num);
+                            // If found, use its chart ID format, otherwise fallback to Task + ID
+                            return dependentTask ? `Task${dependentTask.id}` : `Task${num}`; 
+                        }).join(',');
+                    }
+                }
+                // ------------------------------------
+                
+                // FINAL FALLBACK: If dependency string is still bad, use its direct ID if it's a number
+                if (!dependencyIds && task.dependencies && task.dependencies.match(/^\d+$/)) {
+                     dependencyIds = `Task${task.dependencies.trim()}`;
+                }
+                
+                // Chart Row: [ID, Name, Resource, Start, End, Duration, % Complete, Dependencies]
+                data.addRow([
+                    'Task' + task.id, // Task ID (e.g., 'Task3')
+                    task.description || `Task ${task.id}`,
+                    task.milestone || 'Project', 
+                    plannedStart,
+                    plannedEnd,
+                    durationMs,
+                    percentComplete,
+                    dependencyIds // Pass the cleaned/formatted dependency string
+                ]);
+            }
+        });
+
+        const options = {
+            height: Math.max(400, data.getNumberOfRows() * 40), 
+            gantt: {
+                criticalPathEnabled: true,
+                arrow: {
+                    angle: 100,
+                    width: 5,
+                    color: '#8e24aa'
+                },
+                barHeight: 20
+            }
+        };
+
+        const chartContainer = document.getElementById('gantt-chart');
+        
+        if (data.getNumberOfRows() === 0) {
+            chartContainer.innerHTML = '<p style="text-align: center; padding: 50px; color: #777;">Enter tasks with valid **Planned Start** and **Planned End** Dates to view the Gantt Chart. Ensure the **Start Date is before the End Date**.</p>';
+            chartContainer.style.height = '150px';
+        } else {
+            chartContainer.style.height = options.height + 'px';
+            const chart = new google.visualization.Gantt(chartContainer);
+            chart.draw(data, options);
+        }
+    }
+
+    // 6. Export/Import Functionality
+
+    const exportData = () => {
+        const dataStr = JSON.stringify(tasks, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'gantt_chart_tasks_backup.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Data exported as gantt_chart_tasks_backup.json');
+    };
+
+    const importData = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedTasks = JSON.parse(e.target.result);
+                if (Array.isArray(importedTasks) && importedTasks.every(t => t.id !== undefined)) {
+                    
+                    // Apply date format correction to imported data
+                    importedTasks.forEach(task => {
+                        if (task.plannedStart) task.plannedStart = formatDateForInput(task.plannedStart);
+                        if (task.plannedEnd) task.plannedEnd = formatDateForInput(task.plannedEnd);
+                        if (task.actualStart) task.actualStart = formatDateForInput(task.actualStart);
+                        if (task.actualEnd) task.actualEnd = formatDateForInput(task.actualEnd);
+                    });
+
+                    tasks = importedTasks;
+                    saveTasks();
+                    loadTasks(); 
+                    renderTable();
+                    alert('Data imported successfully! The Gantt chart should now display.');
+                } else {
+                    alert('Invalid JSON structure for tasks. Please ensure it is an array of objects with "id" keys.');
+                }
+            } catch (error) {
+                console.error('Import Error:', error);
+                alert('Error parsing JSON file. Please ensure the file is a plain text .json file, not a compressed file (like a ZIP).');
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const clearAllData = () => {
+        if (confirm('Are you sure you want to permanently delete ALL task data? This cannot be undone.')) {
+            tasks = [];
+            taskIdCounter = 1;
+            saveTasks();
+            renderTable();
+            alert('All data cleared.');
+        }
+    };
+
+
+    // 7. Initialization and Event Listeners
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadTasks(); 
+        renderTable(); 
+
+        document.getElementById('addTaskBtn').addEventListener('click', addTask);
+        document.getElementById('exportBtn').addEventListener('click', exportData);
+        document.getElementById('clearDataBtn').addEventListener('click', clearAllData);
+        document.getElementById('importFile').addEventListener('change', importData);
+    });
+
+</script>
+
+</body>
+</html>

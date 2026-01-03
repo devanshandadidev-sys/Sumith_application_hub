@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comprehensive CAN Protocol Study App (Corrected)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f8f9fa; color: #212529; }
+  header { background-color: #343a40; color: white; padding: 18px 25px; text-align: center; font-size: 1.5em; font-weight: 500; }
+  nav { display: flex; background-color: #495057; flex-wrap: wrap; justify-content: center; border-bottom: 3px solid #007bff; }
+  nav button { flex-grow: 1; padding: 16px 10px; cursor: pointer; background: transparent; border: none; color: white; font-size: 0.95em; font-weight: 600; outline: none; transition: background-color 0.2s ease-in-out; text-transform: uppercase; letter-spacing: 0.5px; }
+  nav button.active, nav button:hover { background-color: #007bff; color: white; }
+  main { max-width: 1100px; margin: 25px auto 50px auto; padding: 0 15px; }
+  section { display: none; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.07); margin-top: 25px; }
+  section.active { display: block; }
+  h2 { font-size: 1.8em; color: #007bff; border-bottom: 2px solid #dee2e6; padding-bottom: 15px; margin-top: 0; margin-bottom: 20px; }
+  p { line-height: 1.6; }
+  label { display: block; margin: 18px 0 6px 0; font-weight: 600; color: #495057; }
+  input, select, textarea { padding: 12px; width: 100%; font-size: 1em; box-sizing: border-box; border-radius: 5px; border: 1px solid #ced4da; transition: border-color 0.3s, box-shadow 0.3s; }
+  input:focus, select:focus, textarea:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); outline: none; }
+  table { width: 100%; border-collapse: collapse; margin-top: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  th, td { border: 1px solid #dee2e6; padding: 14px; text-align: center; }
+  th { background-color: #e9ecef; color: #495057; font-weight: 600; }
+  td { background-color: #fff; word-break: break-all; }
+  .action-btn { margin-top: 25px; padding: 14px 30px; background: linear-gradient(145deg, #007bff, #0056b3); border: none; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; font-size: 1.05em; transition: transform 0.2s, box-shadow 0.2s; }
+  .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4); }
+  .result-box { margin-top: 25px; border: 1px solid #dee2e6; padding: 20px; border-radius: 5px; background-color: #f8f9fa; }
+  .error-log { color: #dc3545; font-weight: bold; margin-bottom: 10px; }
+  .log-table-container { max-height: 450px; overflow-y: auto; margin-top: 25px; border: 1px solid #ced4da; border-radius: 5px; }
+  pre { background: #e9ecef; padding: 18px; border: 1px solid #ced4da; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 1.1em; }
+  .bitstuff-visual span.stuffed { color: #dc3545; font-weight: bold; }
+  .highlight { background-color: #fff3cd; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>Comprehensive CAN Protocol Study Tool (Corrected)</header>
+
+<main>
+    <nav>
+      <button class="active" data-tab="overview">Frame Builder</button>
+      <button data-tab="arbitration">Arbitration</button>
+      <button data-tab="errorHandling">Error Handling</button>
+      <button data-tab="bitStuffing">Bit Stuffing</button>
+      <button data-tab="remoteFrames">Remote Frames</button>
+      <button data-tab="acknowledgement">Acknowledgement</button>
+      <button data-tab="overloadFrames">Overload Frame</button>
+      <button data-tab="logViewer">Data Logger</button>
+    </nav>
+
+    <section id="overview" class="active">
+      <h2>1. Frame Builder</h2>
+      <p>Construct a CAN Data or Remote frame. All created frames are logged to IndexedDB for review.</p>
+      
+      <label for="frameKind">Frame Kind</label>
+      <select id="frameKind">
+        <option value="data">Data Frame (Transmits data)</option>
+        <option value="remote">Remote Frame (Requests data)</option>
+      </select>
+      
+      <label for="frameId">Message Identifier (ID)</label>
+      <input type="number" id="frameId" min="0" max="536870911" value="256" title="11-bit ID (0-2047) or 29-bit ID (>2047)">
+      
+      <label for="dlc">Data Length Code (DLC)</label>
+      <select id="dlc">
+        <script>for(let i=0;i<=8;i++) document.write(`<option value="${i}" ${i===8 ? 'selected':''}>${i}</option>`);</script>
+      </select>
+      
+      <div id="dataBytesContainer" style="margin-top: 15px;"></div>
+      
+      <button class="action-btn" id="buildFrame">Build & Log Frame</button>
+      
+      <h3>Generated Frame Structure</h3>
+      <pre id="generatedFrame">Frame details will appear here...</pre>
+    </section>
+
+    <section id="arbitration">
+      <h2>2. Bus Arbitration Simulator</h2>
+      <p>Simulates what happens when multiple nodes transmit at the same time. The node with the lowest ID (highest priority) wins arbitration without message corruption.</p>
+      
+      <label for="numNodes">Number of Competing Nodes</label>
+      <select id="numNodes">
+        <option value="2" selected>2 Nodes</option>
+        <option value="3">3 Nodes</option>
+        <option value="4">4 Nodes</option>
+      </select>
+      
+      <div id="nodeInputs"></div>
+      
+      <button class="action-btn" id="startArbitration">Start Arbitration</button>
+      
+      <div id="arbitrationResult" class="result-box">Results will be displayed here.</div>
+    </section>
+
+    <section id="errorHandling">
+      <h2>3. Error Handling & Fault Confinement</h2>
+      <p>Inject errors to see how nodes use Transmit/Receive Error Counters (TEC/REC) to track faults and transition from <span class="highlight">Error Active</span> to <span class="highlight">Error Passive</span> and finally to <span class="highlight">Bus Off</span>.</p>
+      
+      <label for="injectErrorNode">Select Transmitting Node</label>
+      <select id="injectErrorNode"></select>
+      
+      <label for="errorType">Error Type to Inject</label>
+      <select id="errorType">
+        <option value="Bit Error">Bit Error (Transmitter reads a different bit than it sent)</option>
+        <option value="Stuff Error">Stuff Error (Bit stuffing rule violated)</option>
+        <option value="CRC Error">CRC Error (Receiver's calculated CRC doesn't match)</option>
+        <option value="ACK Error">ACK Error (Transmitter doesn't receive acknowledgement)</option>
+      </select>
+      
+      <button class="action-btn" id="injectError">Inject Error</button>
+      
+      <div class="result-box">
+          <h3>Event Log</h3>
+          <div id="errorLog" class="error-log">No errors injected yet.</div>
+          <h3>Node Status</h3>
+          <div id="nodeStatus"></div>
+      </div>
+    </section>
+
+    <section id="bitStuffing">
+        <h2>4. Bit Stuffing Visualization</h2>
+        <p>To ensure enough signal edges for synchronization, CAN protocol inserts an opposite bit after five consecutive identical bits. This is "bit stuffing." The receiver automatically removes it ("de-stuffing").</p>
+        <label for="bitstreamInput">Enter a Bitstream (e.g., 0000011111100000)</label>
+        <textarea id="bitstreamInput" rows="3" placeholder="Enter a sequence of 0s and 1s"></textarea>
+        <button class="action-btn" id="performBitStuffing">Perform Bit Stuffing</button>
+        <h3>Result</h3>
+        <div class="result-box">
+            <p><strong>Original Stream:</strong></p>
+            <div id="originalBitstream" class="bitstuff-visual"></div>
+            <p style="margin-top:15px;"><strong>Stuffed Stream (stuffed bits are highlighted):</strong></p>
+            <div id="stuffedBitstream" class="bitstuff-visual"></div>
+        </div>
+    </section>
+
+    <section id="remoteFrames">
+        <h2>5. Remote Frame Simulation</h2>
+        <p>A node can request data from another by sending a Remote Frame. The receiving node then responds with a Data Frame containing the requested information.</p>
+        <label for="requestingNode">Requesting Node</label>
+        <select id="requestingNode"></select>
+        <label for="respondingNode">Responding Node (with the data)</label>
+        <select id="respondingNode"></select>
+        <label for="remoteFrameId">Message ID to Request</label>
+        <input type="number" id="remoteFrameId" min="0" max="2047" value="500">
+        <button class="action-btn" id="sendRemoteFrame">Send Remote Frame Request</button>
+        <div id="remoteFrameResult" class="result-box">Simulation results will appear here.</div>
+    </section>
+
+    <section id="acknowledgement">
+        <h2>6. Acknowledgement (ACK) Slot</h2>
+        <p>The ACK slot is a key part of error detection. A transmitter sends a <span class="highlight">recessive (1)</span> bit. If at least one other node receives the message correctly, it will overwrite that bit with a <span class="highlight">dominant (0)</span>. If the transmitter still reads a '1', it knows no node acknowledged the frame and an ACK Error occurs.</p>
+        <label for="ackReceiversOk">Number of Nodes Receiving Correctly</label>
+        <input type="number" id="ackReceiversOk" min="0" max="10" value="2">
+        <button class="action-btn" id="simulateAck">Simulate ACK</button>
+        <div id="ackResult" class="result-box">Simulation results will appear here.</div>
+    </section>
+
+    <section id="overloadFrames">
+        <h2>7. Overload Frame Simulation</h2>
+        <p>If a node is too busy to receive another message (e.g., its buffer is full), it can transmit an Overload Frame to signal its status and force a delay on the bus, preventing data loss.</p>
+        <label for="overloadNodeId">Node that is Overloaded</label>
+        <select id="overloadNodeId"></select>
+        <button class="action-btn" id="sendOverload">Send Overload Frame</button>
+        <div id="overloadResult" class="result-box">Simulation results will appear here.</div>
+    </section>
+
+    <section id="logViewer">
+      <h2>8. Event Logger (IndexedDB)</h2>
+      <p>This log shows all events from your simulation sessions. The data is saved in your browser's IndexedDB and will persist even if you close the tab.</p>
+      
+      <button class="action-btn" id="refreshLog">Refresh Log</button>
+      <button class="action-btn" id="clearLog" style="background: linear-gradient(145deg, #dc3545, #c82333);">Clear All Log Data</button>
+
+      <div class="log-table-container">
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Type</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="3">Click "Refresh Log" to load data.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- App State & DB ---
+    const DB_NAME = 'canStudyDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'canEvents';
+    let db;
+    let nodes = [];
+
+    // --- DOM Element Cache ---
+    const errorLog = document.getElementById('errorLog');
+    const nodeStatusDiv = document.getElementById('nodeStatus');
+
+    // --- IndexedDB (Corrected) ---
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject('Error opening IndexedDB.');
+        request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+        request.onupgradeneeded = (event) => {
+          const database = event.target.result;
+          if (!database.objectStoreNames.contains(STORE_NAME)) {
+            database.createObjectStore(STORE_NAME, { keyPath: 'timestamp' });
+          }
+        };
+      });
+    }
+
+    async function logEvent(eventData) {
+        try {
+            const db = await openDB();
+            db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(eventData);
+        } catch (error) { console.error('Failed to log event to IndexedDB:', error); }
+    }
+
+    async function loadLogEntries() {
+      try {
+        const db = await openDB();
+        const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll();
+        request.onsuccess = () => displayLogEntries(request.result);
+        request.onerror = () => {
+          document.querySelector('#logTable tbody').innerHTML = `<tr><td colspan="3">Error loading log data.</td></tr>`;
+        };
+      } catch (error) { console.error('DB error on load:', error); }
+    }
+    
+    async function clearLogEntries() {
+        if (!confirm('Are you sure you want to delete all log entries? This action cannot be undone.')) return;
+        try {
+            const db = await openDB();
+            db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).clear().onsuccess = () => loadLogEntries();
+        } catch (error) { console.error('DB error on clear:', error); }
+    }
+    
+    function displayLogEntries(entries) {
+      const tbody = document.querySelector('#logTable tbody');
+      tbody.innerHTML = entries && entries.length > 0 ? '' : `<tr><td colspan="3">No events logged yet.</td></tr>`;
+      if (!entries) return;
+      
+      entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      entries.forEach(e => {
+        let details = '';
+        switch (e.type) {
+            case 'DataFrame': details = `ID: ${e.id}, DLC: ${e.dlc}, Data: [${e.data.join(', ')}]`; break;
+            case 'RemoteFrame': details = `Node ${e.reqNode} sent Remote Frame Request for ID: ${e.id}`; break;
+            case 'Arbitration': details = `Nodes [${e.ids.join(', ')}] competed. Winner: ID ${e.winner}.`; break;
+            case 'ErrorFrame': details = `Node ${e.nodeId} (Transmitter) had a ${e.errorType}. Its TEC is now ${e.newTEC}.`; break;
+            case 'BitStuffing': details = `Input: ${e.original.substring(0,30)}... | Output: ${e.stuffed.substring(0,40)}...`; break;
+            case 'RemoteResponse': details = `Node ${e.resNode} responded to ID ${e.reqId} with data [${e.data.join(', ')}]`; break;
+            case 'AckSim': details = `Transmitter sent Recessive. ${e.ackCount} nodes received OK. Bus reads: ${e.busResult}. Result: ${e.ackCount > 0 ? 'Success' : 'ACK Error'}.`; break;
+            case 'OverloadFrame': details = `Node ${e.nodeId} is busy and sent an Overload Frame to request a delay.`; break;
+        }
+        tbody.innerHTML += `<tr><td>${new Date(e.timestamp).toLocaleString()}</td><td>${e.type}</td><td>${details}</td></tr>`;
+      });
+    }
+
+    // --- UI & Event Listeners ---
+    const tabs = document.querySelectorAll('nav button');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
+        document.getElementById(tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'logViewer') loadLogEntries();
+      });
+    });
+
+    // --- Module 1: Frame Builder ---
+    const dlcSelect = document.getElementById('dlc');
+    const dataBytesContainer = document.getElementById('dataBytesContainer');
+    const frameKindSelect = document.getElementById('frameKind');
+
+    function buildDataBytesInputs(count) {
+      dataBytesContainer.innerHTML = count > 0 ? '<label>Data Bytes (Hex, 00-FF)</label>' : '';
+      let grid = document.createElement('div');
+      grid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px;';
+      for (let i = 0; i < count; i++) {
+        let input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'dataByte' + i;
+        input.value = (Math.floor(Math.random() * 256)).toString(16).toUpperCase().padStart(2,'0');
+        input.maxLength = 2;
+        grid.appendChild(input);
+      }
+      dataBytesContainer.appendChild(grid);
+    }
+
+    frameKindSelect.addEventListener('change', () => {
+        const isRemote = frameKindSelect.value === 'remote';
+        dataBytesContainer.style.display = isRemote ? 'none' : 'block';
+        if (isRemote) dlcSelect.value = '0';
+    });
+
+    dlcSelect.addEventListener('change', () => buildDataBytesInputs(parseInt(dlcSelect.value)));
+    
+    document.getElementById('buildFrame').addEventListener('click', () => {
+      const id = parseInt(document.getElementById('frameId').value);
+      const dlc = parseInt(dlcSelect.value);
+      const isRemote = frameKindSelect.value === 'remote';
+      const dataBytes = [];
+      if(!isRemote) {
+        for (let i = 0; i < dlc; i++) {
+            const val = document.getElementById('dataByte' + i).value;
+            if (!/^[0-9A-Fa-f]{1,2}$/.test(val)) {
+                alert(`Data byte ${i} is invalid. Please use 1-2 hex characters (00-FF).`);
+                return;
+            }
+            dataBytes.push(val.toUpperCase());
+        }
+      }
+      
+      const rtr = isRemote ? 1 : 0;
+      document.getElementById('generatedFrame').textContent = `ID: ${id}\nRTR Bit: ${rtr} (${isRemote ? 'Remote' : 'Data'} Frame)\nDLC: ${dlc}\nData: ${isRemote ? 'N/A' : dataBytes.join(' ')}`;
+      logEvent({ timestamp: new Date().toISOString(), type: isRemote ? 'RemoteFrame' : 'DataFrame', id, dlc, data: dataBytes, reqNode: 1 });
+    });
+
+    // --- Module 2: Arbitration ---
+    function setupArbitration() {
+        const num = document.getElementById('numNodes').value;
+        const container = document.getElementById('nodeInputs');
+        container.innerHTML = '';
+        for(let i=0; i<num; i++) {
+            container.innerHTML += `<div><label>Node ${i+1} ID:</label><input type="number" id="nodeId${i}" value="${Math.floor(Math.random()*1000)}"></div>`;
+        }
+    }
+    document.getElementById('numNodes').addEventListener('change', setupArbitration);
+    document.getElementById('startArbitration').addEventListener('click', () => {
+        const ids = Array.from({length: document.getElementById('numNodes').value}, (_,i) => parseInt(document.getElementById(`nodeId${i}`).value));
+        const winnerId = Math.min(...ids);
+        document.getElementById('arbitrationResult').innerHTML = `<h3>Result</h3><p>Nodes with IDs <span class="highlight">${ids.join(', ')}</span> competed. The node with the lowest ID (<span class="highlight">${winnerId}</span>) wins arbitration.</p>`;
+        logEvent({timestamp: new Date().toISOString(), type: 'Arbitration', ids, winner: winnerId});
+    });
+
+    // --- Module 3: Error Handling ---
+    function initializeNodes(count = 3) {
+      nodes = Array.from({length: count}, (_, i) => ({ id: i + 1, TEC: 0, REC: 0, state: 'Error Active' }));
+      updateNodeSelectors();
+      updateNodeStatusDisplay();
+    }
+    
+    function updateNodeSelectors() {
+        const selectors = ['injectErrorNode', 'overloadNodeId', 'requestingNode', 'respondingNode'];
+        selectors.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            select.innerHTML = '';
+            nodes.forEach(node => {
+                select.appendChild(new Option(`Node ${node.id}`, node.id));
+            });
+        });
+        if(document.getElementById('respondingNode')) document.getElementById('respondingNode').selectedIndex = 1; // Default to different nodes
+    }
+
+    function updateNodeStatusDisplay() {
+      if(!nodeStatusDiv) return; // Guard against element not found
+      let html = '<table><thead><tr><th>Node</th><th>TEC</th><th>REC</th><th>State</th></tr></thead><tbody>';
+      nodes.forEach(node => {
+        let style = '';
+        if (node.state === 'Error Passive') style = 'background-color: #ffc107;';
+        else if (node.state === 'Bus Off') style = 'background-color: #dc3545; color: white;';
+        html += `<tr><td>Node ${node.id}</td><td>${node.TEC}</td><td>${node.REC}</td><td style="${style}">${node.state}</td></tr>`;
+      });
+      nodeStatusDiv.innerHTML = html + '</tbody></table>';
+    }
+
+    function updateNodeState(node) {
+      if (node.TEC >= 256) node.state = 'Bus Off';
+      else if (node.TEC > 127 || node.REC > 127) node.state = 'Error Passive';
+      else node.state = 'Error Active';
+    }
+    
+    document.getElementById('injectError').addEventListener('click', () => {
+      const nodeId = parseInt(document.getElementById('injectErrorNode').value);
+      const errorType = document.getElementById('errorType').value;
+      const txNode = nodes.find(n => n.id === nodeId);
+      
+      if (!txNode || txNode.state === 'Bus Off') {
+          errorLog.textContent = `Node ${nodeId} is in Bus Off state and cannot transmit.`;
+          return;
+      }
+      
+      const isAckError = errorType === 'ACK Error';
+      if (isAckError) {
+        txNode.TEC += 8;
+      } else {
+          if (txNode.state === 'Error Active') txNode.TEC += 8;
+          // In passive state, TEC doesn't increase for own errors
+          nodes.forEach(n => {
+              if (n.id !== txNode.id && n.state === 'Error Active') n.REC += 1;
+          });
+      }
+
+      nodes.forEach(updateNodeState);
+      updateNodeStatusDisplay();
+      
+      errorLog.textContent = `Node ${txNode.id} (Transmitter) caused an ${errorType}. Its error counters were updated.`;
+      logEvent({ timestamp: new Date().toISOString(), type: 'ErrorFrame', nodeId: txNode.id, errorType, newTEC: txNode.TEC });
+    });
+
+    // --- Module 4: Bit Stuffing ---
+    document.getElementById('performBitStuffing').addEventListener('click', () => {
+        const input = document.getElementById('bitstreamInput').value.replace(/[^01]/g, '');
+        let stuffed = '';
+        let count = 0;
+        let lastBit = '';
+
+        for (const bit of input) {
+            if (bit === lastBit) {
+                count++;
+            } else {
+                count = 1;
+                lastBit = bit;
+            }
+            stuffed += bit;
+            if (count === 5) {
+                const stuffBit = bit === '0' ? '1' : '0';
+                stuffed += `<span class="stuffed">${stuffBit}</span>`;
+                count = 0;
+                lastBit = ''; // Next bit is guaranteed to be different from the stuff bit.
+            }
+        }
+        document.getElementById('originalBitstream').textContent = input;
+        document.getElementById('stuffedBitstream').innerHTML = stuffed;
+        logEvent({timestamp: new Date().toISOString(), type: 'BitStuffing', original: input, stuffed: stuffed.replace(/<[^>]*>/g, '')});
+    });
+
+    // --- Module 5: Remote Frames ---
+    document.getElementById('sendRemoteFrame').addEventListener('click', () => {
+        const reqNode = document.getElementById('requestingNode').value;
+        const resNode = document.getElementById('respondingNode').value;
+        const reqId = document.getElementById('remoteFrameId').value;
+        if(reqNode === resNode) { alert("Requesting and responding nodes must be different."); return; }
+        
+        const data = Array.from({length: 4}, () => Math.floor(Math.random()*256).toString(16).toUpperCase().padStart(2, '0'));
+        document.getElementById('remoteFrameResult').innerHTML = `<p>1. Node ${reqNode} sends a <span class="highlight">Remote Frame</span> for ID ${reqId}.</p>
+                                                                    <p>2. Node ${resNode} receives the request and responds with a <span class="highlight">Data Frame</span> (ID ${reqId}) containing data: <span class="highlight">${data.join(' ')}</span>.</p>`;
+        logEvent({timestamp: new Date().toISOString(), type: 'RemoteFrame', id: reqId, dlc: 0, data: [], reqNode});
+        logEvent({timestamp: new Date().toISOString(), type: 'RemoteResponse', reqId: reqId, resNode: resNode, data: data});
+    });
+
+    // --- Module 6: ACK Simulation ---
+    document.getElementById('simulateAck').addEventListener('click', () => {
+        const okCount = parseInt(document.getElementById('ackReceiversOk').value);
+        const busResult = okCount > 0 ? 'Dominant (0)' : 'Recessive (1)';
+        const outcome = okCount > 0 ? 'Frame Acknowledged Successfully.' : 'No acknowledgement! An ACK Error is generated.';
+        document.getElementById('ackResult').innerHTML = `<p>Transmitter sends a Recessive (1) bit in the ACK slot.</p>
+                                                           <p><span class="highlight">${okCount}</span> nodes received the frame correctly and attempt to drive the bus line low (Dominant).</p>
+                                                           <p><strong>Final Bus State:</strong> The bus reads <span class="highlight">${busResult}</span>.</p>
+                                                           <p><strong>Result:</strong> ${outcome}</p>`;
+        logEvent({timestamp: new Date().toISOString(), type: 'AckSim', ackCount: okCount, busResult});
+    });
+    
+    // --- Module 7: Overload Frame ---
+    document.getElementById('sendOverload').addEventListener('click', () => {
+        const nodeId = document.getElementById('overloadNodeId').value;
+        document.getElementById('overloadResult').innerHTML = `<p>Node ${nodeId} is busy and transmits an <span class="highlight">Overload Frame</span>.</p>
+                                                               <p>All other nodes detect this frame and will wait before sending their next message, giving Node ${nodeId} time to catch up.</p>`;
+        logEvent({timestamp: new Date().toISOString(), type: 'OverloadFrame', nodeId});
+    });
+
+    // --- Data Log Viewer Buttons ---
+    document.getElementById('refreshLog').addEventListener('click', loadLogEntries);
+    document.getElementById('clearLog').addEventListener('click', clearLogEntries);
+    
+    // --- Initializations ---
+    openDB();
+    buildDataBytesInputs(8);
+    setupArbitration();
+    initializeNodes(3);
+});
+</script>
+
+</body>
+</html>

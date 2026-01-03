@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Analysis Manager (Table View)</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Scrollbar for Dark Theme */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #1f2937; } /* bg-gray-800 */
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; } /* bg-gray-600 */
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; } /* bg-gray-500 */
+
+        /* Custom Transition for Delete Modal */
+        .modal-transition-enter-active, .modal-transition-leave-active {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal-transition-enter-from, .modal-transition-leave-to {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-transition-enter-to, .modal-transition-leave-from {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Tailwind Configuration Setup for Dark Mode and Inter Font */
+        :root {
+            --font-inter: 'Inter', sans-serif;
+        }
+        html {
+            font-family: var(--font-inter);
+        }
+
+        /* Responsive Table Scroll */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
+    <script>
+        // Configure Tailwind to include a dark theme and custom colors
+        tailwind.config = {
+            darkMode: 'class', // Use 'dark' class on html tag
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#3b82f6', // blue-500
+                        'dark-bg': '#0f172a', // slate-900 or use gray-900 from body
+                        'card-bg': '#1f2937', // gray-800
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 md:p-8">
+
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
+        </div>
+
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-6 border-b border-blue-600 pb-2">
+            <i data-lucide="briefcase" class="inline-block w-8 h-8 mr-2 text-blue-500"></i>
+            Company Analysis Records
+        </h1>
+
+        <div class="md:grid md:grid-cols-12 md:gap-8">
+
+            <div class="md:col-span-4 lg:col-span-3 mb-8 md:mb-0">
+                <div class="p-6 bg-gray-800 rounded-xl shadow-2xl sticky top-8">
+                    <h2 id="form-title" class="text-xl font-bold text-blue-400 mb-4 flex items-center">
+                        <i data-lucide="plus-circle" class="w-5 h-5 mr-2"></i> Add New Record
+                    </h2>
+
+                    <form id="record-form" class="space-y-4">
+                        <input type="hidden" id="record-id">
+
+                        <div>
+                            <label for="full-json" class="block text-sm font-medium text-gray-300 mb-1">Full JSON Analysis <span class="text-red-400">*</span></label>
+                            <textarea id="full-json" rows="10" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-200 placeholder-gray-400" placeholder='Paste your JSON here (e.g., {"target_company_analysis": ...})'></textarea>
+                            <p id="full-json-error" class="text-sm text-red-400 mt-1 hidden">Please provide valid JSON.</p>
+                        </div>
+
+                        <div class="flex flex-col space-y-3">
+                            <button type="submit" id="save-btn" class="flex items-center justify-center px-4 py-2 text-white font-semibold rounded-lg transition duration-200 shadow-md bg-blue-600 hover:bg-blue-700 hover:scale-[1.02] disabled:bg-blue-800 disabled:opacity-75 disabled:cursor-not-allowed">
+                                <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+                                <span id="save-btn-text">Save Record</span>
+                            </button>
+                            <button type="button" id="cancel-edit-btn" class="hidden text-sm px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition duration-200" onclick="resetForm()">
+                                <i data-lucide="x-circle" class="w-4 h-4 mr-1 inline-block"></i> Cancel Edit
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-6 pt-4 border-t border-gray-700 space-y-3">
+                        <h3 class="text-md font-semibold text-gray-300">Data Management</h3>
+                        <div class="flex space-x-2">
+                            <button id="export-btn" class="flex-1 flex items-center justify-center p-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition duration-200 hover:scale-[1.02]">
+                                <i data-lucide="download" class="w-4 h-4 mr-1"></i> Export JSON
+                            </button>
+                            <button id="import-btn" class="flex-1 flex items-center justify-center p-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition duration-200 hover:scale-[1.02]">
+                                <i data-lucide="upload" class="w-4 h-4 mr-1"></i> Import JSON
+                            </button>
+                        </div>
+                        <input type="file" id="import-file" accept="application/json" class="hidden">
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-8 lg:col-span-9">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 p-4 bg-gray-800 rounded-lg shadow-lg">
+                    <div class="flex-1 w-full sm:mr-4 mb-3 sm:mb-0">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                            <input type="text" id="search-input" placeholder="Search by Company Name or Summary..." class="w-full p-3 pl-10 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-200 placeholder-gray-400">
+                        </div>
+                    </div>
+                    <button id="print-btn" class="flex items-center w-full sm:w-auto p-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition duration-200 hover:scale-[1.05]" onclick="printRecords()">
+                        <i data-lucide="printer" class="w-5 h-5"></i>
+                        <span class="ml-2">Print View</span>
+                    </button>
+                </div>
+
+                <div class="table-container bg-gray-800 rounded-xl shadow-2xl">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700 sticky top-0">
+                            <tr>
+                                <th onclick="sortRecords('title')" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 rounded-tl-xl w-1/4">
+                                    Company Name <i data-lucide="chevrons-up-down" class="w-3 h-3 inline ml-1"></i>
+                                </th>
+                                <th onclick="sortRecords('turnover')" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 hidden md:table-cell w-1/12">
+                                    Turnover <i data-lucide="chevrons-up-down" class="w-3 h-3 inline ml-1"></i>
+                                </th>
+                                <th onclick="sortRecords('employees')" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 hidden lg:table-cell w-1/12">
+                                    Employees <i data-lucide="chevrons-up-down" class="w-3 h-3 inline ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-2/5">
+                                    Key Feedback Snippet
+                                </th>
+                                <th onclick="sortRecords('timestamp')" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 w-1/12">
+                                    Date <i data-lucide="chevrons-up-down" class="w-3 h-3 inline ml-1"></i>
+                                </th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider rounded-tr-xl w-1/12">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-list" class="divide-y divide-gray-800 bg-gray-800">
+                            <tr><td colspan="6" id="loading-message" class="text-center text-gray-400 text-lg py-10">Loading records...</td></tr>
+                            <tr class="hidden"><td colspan="6" id="no-records-message" class="text-center text-gray-400 text-lg py-10">No records found. Add one on the left!</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-modal" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden transition-opacity duration-300">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden modal-transition-enter-from" id="view-modal-content">
+                <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                    <h3 class="text-xl font-bold text-blue-400">Full Analysis View</h3>
+                    <button class="text-gray-400 hover:text-white transition" onclick="closeViewModal()">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <pre id="json-display" class="p-4 overflow-auto text-sm text-gray-300 max-h-[75vh] whitespace-pre-wrap"></pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden transition-opacity duration-300">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 modal-transition-enter-from" id="delete-modal-content">
+                <h3 class="text-xl font-bold text-red-400 mb-3">Confirm Deletion</h3>
+                <p class="text-gray-300 mb-5">Are you sure you want to delete the record for: <span id="delete-item-title" class="font-semibold text-white"></span>?</p>
+                <div class="flex justify-end space-x-3">
+                    <button class="px-4 py-2 text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition" onclick="closeDeleteModal()">Cancel</button>
+                    <button id="confirm-delete-btn" class="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition duration-200">
+                        <i data-lucide="trash-2" class="w-4 h-4 mr-1 inline-block"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ====================================================================
+        // GLOBAL STATE & CONSTANTS
+        // ====================================================================
+        const DB_NAME = 'MarketAnalysisDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'items';
+        let db; // Holds the IndexedDB instance
+        let currentRecords = []; // Holds the list of all records
+        let editId = null; // Stores the ID of the record currently being edited
+        let sortColumn = 'timestamp'; // Default sort column
+        let sortDirection = 'desc'; // Default sort direction
+
+        const elements = {
+            form: document.getElementById('record-form'),
+            recordId: document.getElementById('record-id'),
+            fullJson: document.getElementById('full-json'),
+            saveBtn: document.getElementById('save-btn'),
+            saveBtnText: document.getElementById('save-btn-text'),
+            cancelEditBtn: document.getElementById('cancel-edit-btn'),
+            recordsList: document.getElementById('records-list'), // Now the <tbody>
+            searchInput: document.getElementById('search-input'),
+            loadingMessage: document.getElementById('loading-message'),
+            noRecordsMessage: document.getElementById('no-records-message'),
+            fullJsonError: document.getElementById('full-json-error'),
+            formTitle: document.getElementById('form-title'),
+            deleteModal: document.getElementById('delete-modal'),
+            deleteModalContent: document.getElementById('delete-modal-content'),
+            deleteItemTitle: document.getElementById('delete-item-title'),
+            confirmDeleteBtn: document.getElementById('confirm-delete-btn'),
+            viewModal: document.getElementById('view-modal'),
+            viewModalContent: document.getElementById('view-modal-content'),
+            jsonDisplay: document.getElementById('json-display'),
+            importBtn: document.getElementById('import-btn'),
+            importFile: document.getElementById('import-file'),
+            exportBtn: document.getElementById('export-btn'),
+        };
+
+        // ====================================================================
+        // UTILITY FUNCTIONS
+        // ====================================================================
+
+        /**
+         * Helper to format ISO string to readable date/time
+         */
+        const formatDate = (iso) => new Date(iso).toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        /**
+         * Parses a string value (like "$25.5M", "863", "N/A") into a number for sorting.
+         * @param {string} value - The value to parse.
+         * @returns {number} The numeric value, or 0 if parsing fails (ensures 'N/A' sorts predictably).
+         */
+        function parseValue(value) {
+            if (typeof value !== 'string') return 0;
+            value = value.trim().toUpperCase();
+
+            // Handle Currency/Scale suffixes (M, K, B)
+            if (value.endsWith('M')) {
+                return parseFloat(value.replace(/[^0-9.]/g, '')) * 1000000;
+            }
+            if (value.endsWith('K')) {
+                return parseFloat(value.replace(/[^0-9.]/g, '')) * 1000;
+            }
+            if (value.endsWith('B')) {
+                return parseFloat(value.replace(/[^0-9.]/g, '')) * 1000000000;
+            }
+
+            // Handle regular numbers, ignoring currency symbols
+            const num = parseFloat(value.replace(/[^0-9.]/g, ''));
+            return isNaN(num) ? 0 : num;
+        }
+
+
+        /**
+         * Safely attempts to parse the stored JSON and extract a specific field.
+         * @param {Object} item - The record object.
+         * @param {string} path - The dot-separated path to the field.
+         * @returns {string} The extracted value or a placeholder string.
+         */
+        function extractJsonField(item, path) {
+            try {
+                const data = JSON.parse(item.full_json);
+                const parts = path.split('.');
+                let current = data;
+                for (const part of parts) {
+                    if (current && current.hasOwnProperty(part)) {
+                        current = current[part];
+                    } else {
+                        return 'N/A';
+                    }
+                }
+                // Handle complex fields like competency feedback (return the first summary)
+                if (path === 'target_company_analysis.competency_feedback' && Array.isArray(current) && current.length > 0) {
+                     return current[0].feedback_summary.trim().substring(0, 100) + '...';
+                }
+                return String(current);
+            } catch {
+                return 'N/A (JSON Error)';
+            }
+        }
+
+
+        // ====================================================================
+        // TOAST NOTIFICATIONS (UX FEEDBACK)
+        // ====================================================================
+
+        /**
+         * Shows a color-coded toast notification.
+         */
+        function showToast(message, type) {
+            const colors = {
+                success: 'bg-green-600 border-green-700',
+                danger: 'bg-red-600 border-red-700',
+                warning: 'bg-yellow-600 border-yellow-700'
+            };
+            const icon = {
+                success: 'check-circle',
+                danger: 'alert-triangle',
+                warning: 'alert-circle'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 flex items-center shadow-lg rounded-lg text-white border-b-4 ${colors[type]} transform transition-transform duration-300 ease-out translate-x-full opacity-0`;
+            toast.innerHTML = `
+                <i data-lucide="${icon[type]}" class="w-5 h-5 mr-3 flex-shrink-0"></i>
+                <p class="text-sm font-medium">${message}</p>
+            `;
+
+            lucide.createIcons();
+
+            document.getElementById('toast-container').appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // ====================================================================
+        // INDEXEDDB SETUP
+        // ====================================================================
+
+        /**
+         * Initializes the IndexedDB database.
+         */
+        function initDB() {
+            elements.loadingMessage.parentElement.classList.remove('hidden');
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onerror = (event) => {
+                console.error("IndexedDB error:", event.target.error);
+                showToast("Critical DB Error: Could not open database.", 'danger');
+                elements.loadingMessage.textContent = 'Failed to load database.';
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                loadItems();
+            };
+
+            request.onupgradeneeded = (event) => {
+                const dbInstance = event.target.result;
+                if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+                    dbInstance.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                }
+            };
+        }
+
+        // ====================================================================
+        // CRUD OPERATIONS
+        // ====================================================================
+
+        /**
+         * Gets a transaction object for the store.
+         */
+        function getStore(mode) {
+            const transaction = db.transaction(STORE_NAME, mode);
+            transaction.onerror = (e) => {
+                console.error(`Transaction failed (${mode}):`, e.target.error);
+                showToast("Database operation failed.", 'danger');
+            };
+            return transaction.objectStore(STORE_NAME);
+        }
+
+        /**
+         * Creates a new record or updates an existing one.
+         */
+        async function saveItem(item) {
+            elements.saveBtn.disabled = true;
+            elements.saveBtnText.textContent = item.id ? 'Updating...' : 'Saving...';
+
+            try {
+                const store = getStore('readwrite');
+                const request = item.id ? store.put(item) : store.add(item);
+
+                request.onsuccess = () => {
+                    showToast(`Record ${item.id ? 'updated' : 'created'} successfully!`, 'success');
+                    loadItems();
+                    resetForm();
+                };
+
+                request.onerror = (e) => {
+                    console.error("Save operation failed:", e.target.error);
+                    showToast(`Failed to ${item.id ? 'update' : 'create'} record.`, 'danger');
+                };
+
+            } catch (error) {
+                console.error('Error during saveItem:', error);
+                showToast("A database error occurred during save.", 'danger');
+            } finally {
+                setTimeout(() => {
+                    elements.saveBtn.disabled = false;
+                    elements.saveBtnText.textContent = editId ? 'Update Record' : 'Save Record';
+                }, 500);
+            }
+        }
+
+        /**
+         * Loads all items from the database.
+         */
+        function loadItems() {
+            elements.loadingMessage.parentElement.classList.remove('hidden');
+            elements.noRecordsMessage.parentElement.classList.add('hidden');
+            elements.recordsList.innerHTML = '';
+
+            try {
+                const store = getStore('readonly');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    currentRecords = event.target.result;
+                    sortAndRenderList();
+                    elements.loadingMessage.parentElement.classList.add('hidden');
+
+                    if (currentRecords.length === 0) {
+                        elements.noRecordsMessage.parentElement.classList.remove('hidden');
+                    }
+                };
+
+                request.onerror = (e) => {
+                    console.error("Load operation failed:", e.target.error);
+                    showToast("Failed to load records from database.", 'danger');
+                    elements.loadingMessage.textContent = 'Error loading records.';
+                };
+
+            } catch (error) {
+                console.error('Error during loadItems:', error);
+                showToast("A database error occurred during load.", 'danger');
+            }
+        }
+
+        /**
+         * Deletes a record by ID.
+         */
+        function deleteItem(id) {
+            try {
+                const store = getStore('readwrite');
+                const request = store.delete(id);
+
+                request.onsuccess = () => {
+                    showToast("Record deleted successfully.", 'success');
+                    loadItems();
+                    closeDeleteModal();
+                };
+
+                request.onerror = (e) => {
+                    console.error("Delete operation failed:", e.target.error);
+                    showToast("Failed to delete record.", 'danger');
+                };
+            } catch (error) {
+                console.error('Error during deleteItem:', error);
+                showToast("A database error occurred during delete.", 'danger');
+            }
+        }
+
+        // ====================================================================
+        // UI HELPERS & RENDERING (TABLE SPECIFIC)
+        // ====================================================================
+
+        /**
+         * Sorts the global records array and triggers rendering.
+         */
+        function sortAndRenderList() {
+            currentRecords.sort((a, b) => {
+                let aVal, bVal;
+                let comparison = 0;
+
+                // 1. Get values based on sort column
+                if (sortColumn === 'title' || sortColumn === 'timestamp') {
+                    // Title uses the indexed property, Timestamp uses Date object comparison
+                    aVal = a[sortColumn];
+                    bVal = b[sortColumn];
+                    
+                    if (sortColumn === 'timestamp') {
+                        comparison = new Date(aVal) - new Date(bVal);
+                    } else {
+                         comparison = aVal.localeCompare(bVal);
+                    }
+                } else if (sortColumn === 'turnover') {
+                    // Turnover requires JSON extraction and numeric parsing
+                    aVal = parseValue(extractJsonField(a, 'target_company_analysis.annual_turnover.value'));
+                    bVal = parseValue(extractJsonField(b, 'target_company_analysis.annual_turnover.value'));
+                    comparison = aVal - bVal;
+                } else if (sortColumn === 'employees') {
+                    // Employee count requires JSON extraction and numeric parsing
+                    aVal = parseValue(extractJsonField(a, 'target_company_analysis.employee_count'));
+                    bVal = parseValue(extractJsonField(b, 'target_company_analysis.employee_count'));
+                    comparison = aVal - bVal;
+                }
+
+                // 2. Apply direction
+                return sortDirection === 'asc' ? comparison : comparison * -1;
+            });
+
+            filterRecords();
+        }
+
+        /**
+         * Toggles the sort column and direction, then re-sorts and renders.
+         */
+        window.sortRecords = function(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                // Default to descending for numbers/dates, ascending for text
+                sortDirection = (column === 'timestamp' || column === 'turnover' || column === 'employees') ? 'desc' : 'asc';
+            }
+            sortAndRenderList();
+        }
+
+        /**
+         * Renders the list of records based on the provided array.
+         */
+        function renderList(records) {
+            elements.recordsList.innerHTML = '';
+            if (records.length === 0) {
+                elements.noRecordsMessage.parentElement.classList.remove('hidden');
+                return;
+            }
+
+            elements.noRecordsMessage.parentElement.classList.add('hidden');
+
+            records.forEach((item, index) => {
+                const row = createRecordRow(item, index);
+                elements.recordsList.appendChild(row);
+            });
+
+            lucide.createIcons();
+        }
+
+        /**
+         * Creates a single table row (<tr>) element.
+         */
+        function createRecordRow(item, index) {
+            const row = document.createElement('tr');
+            row.className = `border-b border-gray-700 hover:bg-gray-700/50 transition duration-150 ${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/80'}`;
+            row.dataset.id = item.id;
+
+            // Extract Complex Fields for Table Display
+            const companyName = item.title;
+            const turnover = extractJsonField(item, 'target_company_analysis.annual_turnover.value');
+            const employees = extractJsonField(item, 'target_company_analysis.employee_count');
+            const keyFeedback = extractJsonField(item, 'target_company_analysis.competency_feedback');
+
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm font-medium text-white max-w-xs truncate">${companyName}</td>
+                <td class="px-4 py-3 text-sm text-gray-300 hidden md:table-cell">${turnover}</td>
+                <td class="px-4 py-3 text-sm text-gray-300 hidden lg:table-cell">${employees}</td>
+                <td class="px-4 py-3 text-sm text-gray-400 max-w-md truncate">${keyFeedback}</td>
+                <td class="px-4 py-3 text-xs text-gray-400">${formatDate(item.timestamp)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    <div class="flex space-x-1 justify-center">
+                        <button onclick="openViewModal(${item.id})" class="text-gray-300 hover:text-blue-400 p-1 transition duration-200" title="View Full JSON">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="editItem(${item.id})" class="text-gray-300 hover:text-yellow-400 p-1 transition duration-200" title="Edit Record">
+                            <i data-lucide="square-pen" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="duplicateItem(${item.id})" class="text-gray-300 hover:text-purple-400 p-1 transition duration-200" title="Duplicate Record">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="openDeleteModal(${item.id}, '${companyName.replace(/'/g, "\\'")}')" class="text-gray-300 hover:text-red-400 p-1 transition duration-200" title="Delete Record">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            return row;
+        }
+
+        /**
+         * Clears the form and resets it to 'Add New Record' state.
+         */
+        function resetForm() {
+            editId = null;
+            elements.recordId.value = '';
+            elements.fullJson.value = '';
+            elements.fullJsonError.classList.add('hidden');
+            elements.fullJson.classList.remove('border-red-500');
+
+            // Reset UI
+            elements.saveBtnText.textContent = 'Save Record';
+            elements.saveBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+            elements.saveBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            elements.cancelEditBtn.classList.add('hidden');
+            elements.formTitle.innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5 mr-2"></i> Add New Record';
+            lucide.createIcons();
+        }
+
+        /**
+         * Fills the form with data for editing.
+         */
+        window.editItem = function(id) {
+            const item = currentRecords.find(r => r.id === id);
+            if (!item) {
+                showToast("Record not found for editing.", 'danger');
+                return;
+            }
+
+            editId = id;
+            elements.recordId.value = id;
+            elements.fullJson.value = item.full_json;
+
+            // Update UI for Edit state
+            elements.saveBtnText.textContent = `Update Record (ID: ${id})`;
+            elements.saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            elements.saveBtn.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            elements.cancelEditBtn.classList.remove('hidden');
+            elements.formTitle.innerHTML = `<i data-lucide="square-pen" class="w-5 h-5 mr-2"></i> Editing Record (ID: ${id})`;
+            lucide.createIcons();
+
+            elements.form.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /**
+         * Duplicates a record by ID.
+         */
+        window.duplicateItem = function(id) {
+            const original = currentRecords.find(r => r.id === id);
+            if (!original) {
+                showToast("Record not found for duplication.", 'danger');
+                return;
+            }
+
+            // Extract name from full_json
+            const companyName = extractJsonField(original, 'target_company_analysis.company_name');
+
+            const duplicatedItem = {
+                title: companyName + ' (Copy)',
+                description: original.description,
+                full_json: original.full_json,
+                timestamp: new Date().toISOString()
+            };
+
+            saveItem(duplicatedItem);
+            showToast("Duplicating record...", 'warning');
+        }
+
+
+        // ====================================================================
+        // MODALS
+        // ====================================================================
+
+        /**
+         * Opens the delete confirmation modal.
+         */
+        window.openDeleteModal = function(id, title) {
+            elements.deleteItemTitle.textContent = title;
+            elements.confirmDeleteBtn.onclick = () => deleteItem(id);
+            elements.deleteModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            elements.deleteModalContent.classList.remove('modal-transition-enter-from');
+        }
+
+        /**
+         * Closes the delete confirmation modal.
+         */
+        window.closeDeleteModal = function() {
+            elements.deleteModalContent.classList.add('modal-transition-enter-from');
+            setTimeout(() => {
+                elements.deleteModal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }, 300);
+        }
+
+        /**
+         * Opens the full JSON view modal.
+         */
+        window.openViewModal = function(id) {
+            const item = currentRecords.find(r => r.id === id);
+            if (!item) return;
+
+            const prettyJson = JSON.stringify(JSON.parse(item.full_json), null, 2);
+            elements.jsonDisplay.textContent = prettyJson;
+
+            elements.viewModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            elements.viewModalContent.classList.remove('modal-transition-enter-from');
+        }
+
+        /**
+         * Closes the full JSON view modal.
+         */
+        window.closeViewModal = function() {
+            elements.viewModalContent.classList.add('modal-transition-enter-from');
+            setTimeout(() => {
+                elements.viewModal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }, 300);
+        }
+
+        // ====================================================================
+        // SEARCH AND FILTERING
+        // ====================================================================
+
+        /**
+         * Filters the list of records based on the search input.
+         */
+        function filterRecords() {
+            const searchTerm = elements.searchInput.value.trim().toLowerCase();
+            let filtered;
+
+            if (!searchTerm) {
+                filtered = currentRecords;
+            } else {
+                filtered = currentRecords.filter(item =>
+                    item.title.toLowerCase().includes(searchTerm) ||
+                    item.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            renderList(filtered);
+        }
+
+        // ====================================================================
+        // FORM SUBMISSION AND VALIDATION
+        // ====================================================================
+
+        /**
+         * Handles the form submission (Add/Update).
+         */
+        elements.form.onsubmit = async function(e) {
+            e.preventDefault();
+            elements.fullJsonError.classList.add('hidden');
+            elements.fullJson.classList.remove('border-red-500');
+
+            const fullJsonValue = elements.fullJson.value.trim();
+            let parsedJson;
+
+            // 1. Client-side Validation and Parsing
+            if (!fullJsonValue) {
+                elements.fullJsonError.textContent = 'JSON payload cannot be empty.';
+                elements.fullJsonError.classList.remove('hidden');
+                elements.fullJson.classList.add('border-red-500');
+                return;
+            }
+
+            try {
+                parsedJson = JSON.parse(fullJsonValue);
+            } catch (error) {
+                elements.fullJsonError.textContent = 'Invalid JSON format. Please correct it.';
+                elements.fullJsonError.classList.remove('hidden');
+                elements.fullJson.classList.add('border-red-500');
+                return;
+            }
+
+            // 2. Extract key data points for indexing
+            const companyName = parsedJson.target_company_analysis?.company_name || 'Untitled Company';
+            const businessModelSummary = parsedJson.target_company_analysis?.business_model_summary || 'No summary available.';
+
+            if (!companyName || !businessModelSummary) {
+                 elements.fullJsonError.textContent = 'JSON must contain "company_name" and "business_model_summary" under "target_company_analysis".';
+                 elements.fullJsonError.classList.remove('hidden');
+                 elements.fullJson.classList.add('border-red-500');
+                 return;
+            }
+
+            // 3. Prepare the final item object
+            const item = {
+                title: companyName.trim().substring(0, 100),
+                description: businessModelSummary.trim(),
+                full_json: fullJsonValue,
+                timestamp: new Date().toISOString()
+            };
+
+            if (editId) {
+                item.id = editId;
+                const originalItem = currentRecords.find(r => r.id === editId);
+                item.timestamp = originalItem ? originalItem.timestamp : new Date().toISOString();
+            }
+
+            // 4. Save to DB
+            await saveItem(item);
+        };
+
+        // ====================================================================
+        // DATA EXPORT/IMPORT
+        // ====================================================================
+
+        /**
+         * Triggers the download of all records as a JSON file.
+         */
+        elements.exportBtn.onclick = function() {
+            if (currentRecords.length === 0) {
+                showToast("No records to export.", 'warning');
+                return;
+            }
+            try {
+                const exportData = JSON.stringify(currentRecords, null, 2);
+                const blob = new Blob([exportData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AnalysisDB_Export_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("Export successful!", 'success');
+            } catch (error) {
+                console.error("Export failed:", error);
+                showToast("Failed to export data.", 'danger');
+            }
+        };
+
+        /**
+         * Handles the click on the Import button to open the file dialog.
+         */
+        elements.importBtn.onclick = () => elements.importFile.click();
+
+        /**
+         * Handles the file selection for import.
+         */
+        elements.importFile.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const importedRecords = JSON.parse(event.target.result);
+                    if (!Array.isArray(importedRecords)) {
+                        throw new Error("Imported file is not an array of records.");
+                    }
+                    await mergeImportedRecords(importedRecords);
+                    elements.importFile.value = '';
+                } catch (error) {
+                    console.error("Import error:", error);
+                    showToast(`Import failed: ${error.message || 'Invalid file format.'}`, 'danger');
+                    elements.importFile.value = '';
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        /**
+         * Non-destructive merge (append) of imported records.
+         */
+        async function mergeImportedRecords(importedRecords) {
+            let successCount = 0;
+            let errorCount = 0;
+
+            const store = getStore('readwrite');
+            const transaction = store.transaction;
+
+            transaction.oncomplete = () => {
+                showToast(`Import complete. Added ${successCount} new records.`, 'success');
+                if (errorCount > 0) {
+                    showToast(`${errorCount} records failed to import. Check console.`, 'warning');
+                }
+                loadItems();
+            };
+
+            transaction.onerror = (e) => {
+                console.error("Import transaction failed:", e.target.error);
+                showToast("Import transaction failed due to a database error.", 'danger');
+                loadItems();
+            };
+
+            importedRecords.forEach(record => {
+                try {
+                    const newRecord = {
+                        title: (record.title || 'Imported Record').trim().substring(0, 100),
+                        description: (record.description || 'No description').trim(),
+                        full_json: record.full_json || JSON.stringify(record),
+                        timestamp: new Date().toISOString()
+                    };
+                    delete newRecord.id;
+
+                    const request = store.add(newRecord);
+                    request.onsuccess = () => { successCount++; };
+                    request.onerror = (e) => {
+                        console.error("Failed to add record:", record, e.target.error);
+                        errorCount++;
+                    };
+                } catch (e) {
+                    console.error("Skipping malformed imported record:", record, e);
+                    errorCount++;
+                }
+            });
+        }
+
+        // ====================================================================
+        // PRINT VIEW
+        // ====================================================================
+
+        /**
+         * Generates and opens a print-friendly view of the currently filtered records.
+         */
+        window.printRecords = function() {
+            const recordsToPrint = Array.from(elements.recordsList.querySelectorAll('tr[data-id]')).map(row => {
+                const id = parseInt(row.dataset.id);
+                return currentRecords.find(r => r.id === id);
+            }).filter(item => item !== undefined); // Only include records currently visible in the filtered list
+
+            if (recordsToPrint.length === 0) {
+                showToast("No records to print. The list is empty or filtered out.", 'warning');
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Company Analysis Print View</title>
+                    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+                    <style>
+                        body { font-family: 'Inter', sans-serif; padding: 20px; color: #333; }
+                        h1 { color: #1e40af; border-bottom: 2px solid #3b82f6; padding-bottom: 5px; margin-bottom: 20px; font-size: 24px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+                        th { background-color: #f4f4f4; color: #333; font-weight: 600; font-size: 14px; }
+                        .json-pre { background: #f9f9f9; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; font-size: 12px; max-height: 200px; }
+
+                        @media print {
+                            body { background-color: white !important; color: black !important; font-size: 10pt; }
+                            table { table-layout: fixed; }
+                            td:nth-child(2) { width: 25%; } /* Company Name */
+                            .json-pre { max-height: none; }
+                            .print-break { page-break-after: always; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>Company Analysis Print View (${recordsToPrint.length} Items)</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Company Name</th>
+                                <th>Turnover</th>
+                                <th>Employees</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `);
+
+            recordsToPrint.forEach(item => {
+                const turnover = extractJsonField(item, 'target_company_analysis.annual_turnover.value');
+                const employees = extractJsonField(item, 'target_company_analysis.employee_count');
+                let prettyJson = '';
+                try {
+                    prettyJson = JSON.stringify(JSON.parse(item.full_json), null, 2);
+                } catch (e) {
+                    prettyJson = item.full_json;
+                }
+
+                printWindow.document.write(`
+                    <tr>
+                        <td>${item.title}</td>
+                        <td>${turnover}</td>
+                        <td>${employees}</td>
+                        <td>${new Date(item.timestamp).toLocaleDateString()}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4">
+                            <strong>Summary:</strong> ${item.description}<br><br>
+                            <strong>Full JSON Analysis:</strong>
+                            <pre class="json-pre">${prettyJson}</pre>
+                        </td>
+                    </tr>
+                    <tr class="print-break"><td colspan="4"></td></tr>
+                `);
+            });
+
+            printWindow.document.write('</tbody></table></body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // ====================================================================
+        // EVENT LISTENERS & INITIALIZATION
+        // ====================================================================
+
+        elements.searchInput.addEventListener('input', filterRecords);
+
+        // Start the application
+        lucide.createIcons();
+        window.onload = initDB;
+    </script>
+</body>
+</html>

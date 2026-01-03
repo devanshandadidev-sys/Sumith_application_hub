@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Resource Allocator Tool (V2 - Excel Template)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* Instruction 2.1: CSS Styling (CSS Variables) */
+        :root {
+            --primary-color: #005A9C;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --text-color: #333;
+            --border-color: #ddd;
+            --shadow-light: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --actual-cost-color: #d81b60; /* New color for Actuals */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Instruction 2.2: Component DNA (.card) */
+        .container {
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow-light);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* Instruction 2.2: Tabbed Navigation */
+        .tabs {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .tab-link {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: border-color 0.3s, color 0.3s;
+            margin-right: 15px;
+            white-space: nowrap;
+        }
+
+        .tab-link:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-link.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Forms and Inputs */
+        input[type="text"], input[type="number"], select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background-color: #004f8b;
+        }
+        
+        button.secondary {
+            background-color: var(--accent-color);
+        }
+        
+        button.secondary:hover {
+            background-color: #d16b1e;
+        }
+
+        /* Tables and Data Views */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        th {
+            background-color: #e9ecef;
+            color: var(--primary-color);
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+        }
+
+        /* Instruction 2.2: .cost-header class */
+        th.cost-header, td.cost-header {
+            text-align: right;
+            background-color: #fff3e0;
+            color: var(--accent-color);
+        }
+        
+        /* New style for Actual Cost Headers */
+        th.actual-cost-header, td.actual-cost-header {
+            text-align: right;
+            background-color: #fce4ec; /* Light pink background */
+            color: var(--actual-cost-color);
+        }
+
+        .action-cell {
+            white-space: nowrap;
+            width: 120px;
+        }
+
+        /* Instruction 2.3: Layouts (#forecasting-grid) */
+        #forecasting-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        #forecast-inputs, #forecast-output {
+            padding: 15px;
+            border: 1px dashed var(--border-color);
+            border-radius: 4px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .currency-display {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-align: right;
+            padding: 5px;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        
+        .chart-container {
+            height: 400px;
+        }
+        
+        /* Utility for Summary Table */
+        .summary-actual {
+            color: var(--actual-cost-color) !important;
+            font-weight: bold;
+        }
+        
+        .summary-planned {
+             color: var(--primary-color) !important;
+             font-weight: bold;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Project Resource Allocator Tool</h1>
+
+        <div class="tabs">
+            <a class="tab-link active" data-tab="projects">Projects & Summary</a>
+            <a class="tab-link" data-tab="manpower">Manpower (A)</a>
+            <a class="tab-link" data-tab="material">Material (B)</a>
+            <a class="tab-link" data-tab="services">Services (C)</a>
+            <a class="tab-link" data-tab="plant">Plant (D)</a>
+            <a class="tab-link" data-tab="overheads">Over Heads (E)</a>
+            <a class="tab-link" data-tab="forecasting">Project Cost Forecasting</a>
+            <a class="tab-link" data-tab="scurve">S-Curve Analysis</a>
+            <a class="tab-link" data-tab="management">Data Management</a>
+        </div>
+
+        <div id="projects" class="tab-content active card">
+            <h2>Projects Management</h2>
+            <form id="project-form">
+                <div class="form-group">
+                    <label for="project-name">Project Name:</label>
+                    <input type="text" id="project-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="project-budget">Total Project Budget (INR ₹):</label>
+                    <input type="number" id="project-budget" min="0" step="1" required>
+                </div>
+                <button type="submit">Add Project</button>
+            </form>
+
+            <h3 style="margin-top: 30px;">Current Projects</h3>
+            <select id="project-selector" onchange="loadProjectData()">
+                <option value="">Select a Project to view details...</option>
+            </select>
+            
+            <div id="project-summary-display" style="margin-top: 20px;">
+                </div>
+            
+            <table id="projects-table" style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th class="cost-header">Budget (₹)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="manpower" class="tab-content card">
+            <h2>Manpower (A) - Direct Cost</h2>
+            <input type="text" id="manpower-search" onkeyup="filterTable('manpower', 'manpower-table', ['role', 'unit', 'rate'])" placeholder="Search by Role, Unit, or Rate...">
+
+            <form id="manpower-form" style="margin-top: 15px;">
+                <input type="text" id="manpower-role" placeholder="Role (e.g., Project Manager)" required>
+                <input type="text" id="manpower-unit" placeholder="Unit (e.g., Manmonths)" required>
+                <input type="number" id="manpower-rate" placeholder="Rate (Per Manhour ₹)" min="0" required>
+                <button type="submit">Add Manpower Role</button>
+            </form>
+
+            <table id="manpower-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Unit</th>
+                        <th class="cost-header">Rate (₹/Hr)</th>
+                        <th>Manhours</th>
+                        <th class="cost-header">Planned Cost (₹)</th>
+                        <th class="actual-cost-header">Actual Cost (₹)</th> <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="material" class="tab-content card">
+            <h2>Material (B) - Direct Cost</h2>
+             <form id="material-form" style="margin-top: 15px;">
+                <input type="text" id="material-group" placeholder="Group" required>
+                <input type="text" id="material-item" placeholder="Item Name" required>
+                <input type="text" id="material-uom" placeholder="UoM (e.g., Kg)" required>
+                <input type="number" id="material-rate" placeholder="Rate (₹)" min="0" required>
+                <input type="number" id="material-qty" placeholder="Planned Qty" min="0" required>
+                <input type="number" id="material-gst" placeholder="GST Rate (%)" min="0" max="100" required>
+                <button type="submit">Add Material Item</button>
+            </form>
+            <table id="material-table">
+                <thead>
+                    <tr>
+                        <th>Group</th>
+                        <th>Item</th>
+                        <th>UoM</th>
+                        <th class="cost-header">Rate (₹)</th>
+                        <th>Planned Qty</th>
+                        <th class="cost-header">Planned Cost (₹)</th>
+                        <th>GST (%)</th>
+                        <th class="cost-header">Total Cost (Planned) (₹)</th>
+                        <th class="actual-cost-header">Total Cost (Actual) (₹)</th> <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div id="services" class="tab-content card">
+            <h2>Services (C) - Direct Cost</h2>
+             <form id="services-form" style="margin-top: 15px;">
+                <input type="text" id="service-group" placeholder="Group" required>
+                <input type="text" id="service-item" placeholder="Service Name/Item" required>
+                <input type="number" id="service-cost" placeholder="Planned Cost (₹)" min="0" required>
+                <input type="number" id="service-gst" placeholder="GST Rate (%)" min="0" max="100" required>
+                <button type="submit">Add Service</button>
+            </form>
+            <table id="services-table">
+                <thead>
+                    <tr>
+                        <th>Group</th>
+                        <th>Service</th>
+                        <th class="cost-header">Planned Cost (₹)</th>
+                        <th>GST (%)</th>
+                        <th class="cost-header">Total Cost (Planned) (₹)</th>
+                        <th class="actual-cost-header">Total Cost (Actual) (₹)</th> <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div id="plant" class="tab-content card">
+            <h2>Plant & Machinery (D) - Direct Cost</h2>
+             <form id="plant-form" style="margin-top: 15px;">
+                <input type="text" id="plant-item" placeholder="Item Name (e.g., Craine)" required>
+                <input type="text" id="plant-uom" placeholder="UoM (e.g., Days/Hours)" required>
+                <input type="number" id="plant-rate" placeholder="Rate (₹)" min="0" required>
+                <input type="number" id="plant-qty" placeholder="Planned Qty" min="0" required>
+                <button type="submit">Add Plant Item</button>
+            </form>
+            <table id="plant-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>UoM</th>
+                        <th class="cost-header">Rate (₹)</th>
+                        <th>Planned Qty</th>
+                        <th class="cost-header">Planned Cost (₹)</th>
+                        <th class="actual-cost-header">Actual Cost (₹)</th> <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div id="overheads" class="tab-content card">
+            <h2>Over Heads (E) - Indirect Cost</h2>
+             <form id="overheads-form" style="margin-top: 15px;">
+                <input type="text" id="overhead-item" placeholder="Item Name (e.g., Office Stationary)" required>
+                <input type="text" id="overhead-uom" placeholder="UoM (e.g., Lump/Monthly)" required>
+                <input type="number" id="overhead-rate" placeholder="Rate (₹)" min="0" required>
+                <input type="number" id="overhead-qty" placeholder="Planned Qty" min="0" required>
+                <button type="submit">Add Overhead Item</button>
+            </form>
+            <table id="overheads-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>UoM</th>
+                        <th class="cost-header">Rate (₹)</th>
+                        <th>Planned Qty</th>
+                        <th class="cost-header">Planned Cost (₹)</th>
+                        <th class="actual-cost-header">Actual Cost (₹)</th> <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="forecasting" class="tab-content card">
+            <h2>Project Cost Forecasting Model (Real-Time)</h2>
+            <div id="forecasting-grid">
+                <div id="forecast-inputs">
+                    <h3>Inputs (Persist in Local Storage)</h3>
+                    <div class="form-group">
+                        <label>Selected Project Budget (A):</label>
+                        <div id="forecast-budget-A" class="currency-display">₹ 0.00</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="input-B">Contingency Rate (B%) on Project Budget (A):</label>
+                        <input type="number" id="input-B" value="5" min="0" max="100" step="0.1" oninput="runForecastCalculation()">
+                    </div>
+                    <div class="form-group">
+                        <label for="input-C">Management Reserve (C%) on Budget + Contingency:</label>
+                        <input type="number" id="input-C" value="2" min="0" max="100" step="0.1" oninput="runForecastCalculation()">
+                    </div>
+                    <div class="form-group">
+                        <label for="input-D">Fixed Overhead Cost (D) (INR ₹):</label>
+                        <input type="number" id="input-D" value="100000" min="0" step="1000" oninput="runForecastCalculation()">
+                    </div>
+                    <div class="form-group">
+                        <label for="input-E">Escalation Rate (E%) on Budget Total (A to D):</label>
+                        <input type="number" id="input-E" value="3" min="0" max="100" step="0.1" oninput="runForecastCalculation()">
+                    </div>
+                </div>
+                <div id="forecast-output">
+                    <h3>Calculated Output</h3>
+                    <div class="form-group">
+                        <label>Total Estimated Project Cost (A to E):</label>
+                        <div id="output-total-cost" class="currency-display">₹ 0.00</div>
+                    </div>
+                    <hr>
+                    <p>Calculation Steps:</p>
+                    <ul style="list-style-type: none; padding: 0;">
+                        <li>**Step 1:** Contingency Cost (B%) = <span id="calc-step-1">₹ 0.00</span></li>
+                        <li>**Step 2:** Budget + Contingency = <span id="calc-step-2">₹ 0.00</span></li>
+                        <li>**Step 3:** Management Reserve (C%) = <span id="calc-step-3">₹ 0.00</span></li>
+                        <li>**Step 4:** Fixed Overhead (D) = <span id="calc-step-4">₹ 0.00</span></li>
+                        <li>**Step 5:** Escalation Cost (E%) = <span id="calc-step-5">₹ 0.00</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div id="scurve" class="tab-content card">
+            <h2>S-Curve Analysis (Planned vs. Actual)</h2>
+            <div class="form-group">
+                <label for="scurve-month-count">Number of Months to Track:</label>
+                <input type="number" id="scurve-month-count" value="12" min="1" onchange="updateScurveMonths(this.value)">
+                <button onclick="renderScurveChart()" style="margin-top: 10px;">Refresh Chart</button>
+            </div>
+            <div id="scurve-data-editor">
+                </div>
+            <div class="chart-container" style="margin-top: 20px;">
+                <canvas id="sCurveChart"></canvas>
+            </div>
+        </div>
+
+        <div id="management" class="tab-content card">
+            <h2>Data Management (Backup & Restore)</h2>
+
+            <div style="margin-bottom: 20px;">
+                <h3>Backup (Export)</h3>
+                <p>Exports all application data (projects, all cost categories, and S-Curve) into a single JSON file.</p>
+                <button onclick="backupData()">Download Data Backup (JSON)</button>
+            </div>
+
+            <div>
+                <h3>Restore (Import)</h3>
+                <p>Imports data from a JSON file. **WARNING:** This will overwrite all existing data.</p>
+                <input type="file" id="restore-file-input" accept="application/json" style="margin-bottom: 10px;">
+                <button class="secondary" onclick="restoreData()">Upload & Restore Data</button>
+            </div>
+            
+            <p id="management-status" style="margin-top: 20px; font-weight: bold; color: var(--primary-color);"></p>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Core Architectural Implementation (Instruction 1) ---
+
+        const DB_NAME = 'SumithPCMDB_v1';
+        const DB_VERSION = 2;
+        const STORE_NAMES = [
+            'projects', 'manpower', 'materials', 'services', 'plant', 'overheads', 'scurve'
+        ];
+        // Global array for month labels
+        let MONTHS = Array.from({length: 12}, (_, i) => `Month ${i + 1}`); 
+
+        let db;
+        let sCurveChart;
+
+        /**
+         * Instruction 1.1: IndexedDB Schema Initialization
+         */
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = (event) => reject('Database error: ' + event.target.errorCode);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    if (!db.objectStoreNames.contains('projects')) {
+                        const projectStore = db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+                        projectStore.createIndex('name', 'name', { unique: true });
+                    }
+                    
+                    // Create stores for the five cost categories (A, B, C, D, E)
+                    STORE_NAMES.filter(name => name !== 'projects' && name !== 'scurve').forEach(name => {
+                        if (!db.objectStoreNames.contains(name)) {
+                            db.createObjectStore(name, { keyPath: 'id', autoIncrement: true });
+                        }
+                    });
+                    
+                    // Create S-Curve store (for a single time-phased cost record)
+                     if (!db.objectStoreNames.contains('scurve')) {
+                        db.createObjectStore('scurve', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+            });
+        }
+
+        /**
+         * Instruction 1.2: Promise-based asynchronous helper functions
+         */
+        function transaction(storeName, mode) {
+            const tx = db.transaction(storeName, mode);
+            return tx.objectStore(storeName);
+        }
+
+        async function getById(storeName, id) {
+            const store = transaction(storeName, 'readonly');
+            return new Promise((resolve, reject) => {
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        async function getAll(storeName) {
+            const store = transaction(storeName, 'readonly');
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        async function update(storeName, item) {
+            const store = transaction(storeName, 'readwrite');
+            return new Promise((resolve, reject) => {
+                const request = store.put(item);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+        
+        async function add(storeName, item) {
+            const store = transaction(storeName, 'readwrite');
+            return new Promise((resolve, reject) => {
+                const request = store.add(item);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        async function remove(storeName, id) {
+            const store = transaction(storeName, 'readwrite');
+            return new Promise((resolve, reject) => {
+                const request = store.delete(id);
+                request.onsuccess = () => resolve(true);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        // --- Utility Functions ---
+
+        const formatter = new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+        });
+        
+        function formatINR(amount) {
+            return formatter.format(amount || 0);
+        }
+
+        function calculateMaterialCost(rate, qty, gstRate) {
+            const cost = rate * qty;
+            const gstCost = cost * (gstRate / 100);
+            return {
+                plannedCost: cost,
+                totalCost: cost + gstCost
+            };
+        }
+        
+        function calculateServiceCost(plannedCost, gstRate) {
+            const gstCost = plannedCost * (gstRate / 100);
+            return plannedCost + gstCost;
+        }
+
+        // --- NEW: Calculate Actual Cost for an item based on monthly quantities ---
+        function calculateActualCost(item, storeName) {
+            let totalActualCost = 0;
+            const monthly_actual_qty = item.monthly_actual_qty || Array(MONTHS.length).fill(0);
+            
+            // Sum all actual monthly quantities (Manhours, Qty, or Lump-sum allocation)
+            const totalQtyOrAllocation = monthly_actual_qty.reduce((sum, qty) => sum + qty, 0);
+
+            switch(storeName) {
+                case 'manpower':
+                    // Manpower: Rate (Per Manhour) * Total Actual Manhours
+                    totalActualCost = item.rate * totalQtyOrAllocation; 
+                    break;
+                case 'materials':
+                    // Materials: Rate * Total Actual Qty * (1 + GST Rate)
+                    const materialCostWithoutGST = item.rate * totalQtyOrAllocation;
+                    totalActualCost = materialCostWithoutGST * (1 + (item.gst_rate / 100));
+                    break;
+                case 'services':
+                    // Services: Total Actual Allocation (Lump-sum distribution) * (1 + GST Rate)
+                    // Note: Here, monthly_actual_qty represents a *cost* allocation, not a quantity.
+                    const serviceCostWithoutGST = totalQtyOrAllocation;
+                    totalActualCost = serviceCostWithoutGST * (1 + (item.gst_rate / 100));
+                    break;
+                case 'plant':
+                case 'overheads':
+                    // Plant/Overheads: Rate * Total Actual Qty
+                    totalActualCost = item.rate * totalQtyOrAllocation;
+                    break;
+            }
+            return totalActualCost;
+        }
+
+        // --- UI & Data Rendering ---
+
+        function setupTabs() {
+            document.querySelectorAll('.tab-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    this.classList.add('active');
+                    document.getElementById(this.dataset.tab).classList.add('active');
+                    
+                    // Refresh data/charts when a tab is opened
+                    if (this.dataset.tab === 'forecasting') {
+                        runForecastCalculation();
+                    } else if (this.dataset.tab === 'projects') {
+                        renderProjectTable();
+                        populateProjectSelector();
+                    } else if (this.dataset.tab === 'scurve') {
+                        renderScurveChart();
+                        renderScurveEditor();
+                    } else {
+                         // Refresh cost tables
+                        const storeName = this.dataset.tab;
+                        if (STORE_NAMES.includes(storeName)) {
+                            renderCostTable(storeName);
+                        }
+                    }
+                });
+            });
+            
+            // Generate Month Headers for all cost tables
+            const tableIds = ['manpower-table', 'material-table', 'services-table', 'plant-table', 'overheads-table'];
+            tableIds.forEach(id => {
+                const table = document.getElementById(id);
+                const headerRow = table.querySelector('thead tr');
+                
+                // Clear existing headers first, in case of dynamic month changes
+                const existingMonthHeaders = headerRow.querySelectorAll('th.month-header');
+                existingMonthHeaders.forEach(th => th.remove());
+                
+                // Find the Actions column (always the last one)
+                const actionHeader = headerRow.lastElementChild;
+
+                MONTHS.forEach((month, index) => {
+                    const th = document.createElement('th');
+                    th.classList.add('actual-cost-header', 'month-header'); // Use actual-cost-header style for input fields
+                    th.textContent = month.split(' ')[0] + (index + 1); // e.g., Month1
+                    headerRow.insertBefore(th, actionHeader);
+                });
+            });
+        }
+
+        async function populateProjectSelector() {
+            const selector = document.getElementById('project-selector');
+            const projects = await getAll('projects');
+            const selectedId = selector.value;
+            
+            selector.innerHTML = '<option value="">Select a Project to view details...</option>';
+            projects.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = `${p.name} (${formatINR(p.budget)})`;
+                selector.appendChild(option);
+            });
+            
+            // Re-select the previously selected project if it still exists
+            if (selectedId && projects.find(p => p.id === parseInt(selectedId))) {
+                selector.value = selectedId;
+            } else {
+                 document.getElementById('project-summary-display').innerHTML = '';
+            }
+            
+            loadProjectData(); // Load data for the selected project
+        }
+        
+        async function renderProjectTable() {
+            const projects = await getAll('projects');
+            const tbody = document.getElementById('projects-table').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            projects.forEach(p => {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = p.id;
+                row.insertCell().textContent = p.name;
+                row.insertCell().classList.add('cost-header');
+                row.cells[2].textContent = formatINR(p.budget);
+                
+                const actionCell = row.insertCell();
+                actionCell.classList.add('action-cell');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteItem('projects', p.id, renderProjectTable);
+                actionCell.appendChild(deleteBtn);
+            });
+        }
+
+        async function renderCostTable(storeName) {
+		
+			const tableElement = document.getElementById(`${storeName}-table`);
+    
+			// FIX: Check if the table element exists before proceeding
+			if (!tableElement) {
+				console.warn(`Table element #${storeName}-table not found. Skipping render.`);
+				return; 
+			}
+			
+			const items = await getAll(storeName);
+			const tbody = tableElement.querySelector('tbody');
+			
+			// Ensure tbody exists (it should, but safety first)
+			if (!tbody) {
+				console.error(`TBody not found inside #${storeName}-table. Cannot render.`);
+				return;
+			}
+			
+			tbody.innerHTML = '';
+			
+            // Determine columns based on storeName
+            let columnKeys = [];
+            let isCostTable = true;
+            let actualCostColumnIndex = -1; // Index of the Actual Cost column
+
+            switch(storeName) {
+                case 'manpower':
+                    // Role, Unit, Rate, Manhours, Planned Cost, Actual Cost (Index 5)
+                    columnKeys = ['role', 'unit', 'rate', 'total_manhours', 'planned_cost'];
+                    actualCostColumnIndex = 5;
+                    break;
+                case 'materials':
+                    // Group, Item, UoM, Rate, Planned Qty, Planned Cost, GST, Total Cost (Planned), Total Cost (Actual) (Index 8)
+                    columnKeys = ['group', 'item', 'uom', 'rate', 'planned_qty', 'planned_cost', 'gst_rate', 'total_cost'];
+                    actualCostColumnIndex = 8;
+                    break;
+                case 'services':
+                    // Group, Service, Planned Cost, GST, Total Cost (Planned), Total Cost (Actual) (Index 5)
+                    columnKeys = ['group', 'item', 'planned_cost', 'gst_rate', 'total_cost'];
+                    actualCostColumnIndex = 5;
+                    break;
+                case 'plant':
+                    // Item, UoM, Rate, Planned Qty, Planned Cost, Actual Cost (Index 5)
+                    columnKeys = ['item', 'uom', 'rate', 'qty', 'planned_cost'];
+                    actualCostColumnIndex = 5;
+                    break;
+                case 'overheads':
+                    // Item, UoM, Rate, Planned Qty, Planned Cost, Actual Cost (Index 5)
+                    columnKeys = ['item', 'uom', 'rate', 'planned_qty', 'planned_cost'];
+                    actualCostColumnIndex = 5;
+                    break;
+                default:
+                    isCostTable = false;
+                    break;
+            }
+            
+            if (!isCostTable) return;
+
+            items.forEach(item => {
+                const row = tbody.insertRow();
+                
+                // Fixed Planned columns
+                columnKeys.forEach(key => {
+                    const cell = row.insertCell();
+                    cell.textContent = item[key] !== undefined ? item[key] : 'N/A';
+                    if (['rate', 'planned_cost', 'total_cost'].includes(key)) {
+                         cell.classList.add('cost-header');
+                         cell.textContent = formatINR(item[key]);
+                    }
+                });
+                
+                // NEW: Actual Total Cost Column
+                const totalActualCost = calculateActualCost(item, storeName);
+                const actualCostCell = row.insertCell(actualCostColumnIndex);
+                actualCostCell.classList.add('actual-cost-header');
+                actualCostCell.id = `${storeName}-${item.id}-actual-cost`;
+                actualCostCell.textContent = formatINR(totalActualCost);
+                
+                // Monthly Cost/Quantity Allocation (Input fields) - Actuals
+                const monthlyActualQty = item.monthly_actual_qty || Array(MONTHS.length).fill(0);
+                for (let i = 0; i < MONTHS.length; i++) {
+                    const cell = row.insertCell();
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = monthlyActualQty[i]; // Use actual qty/cost
+                    input.min = "0";
+                    input.style.width = '80px';
+                    
+                    // Live update on change
+                    input.onchange = (e) => updateMonthlyActual(storeName, item.id, i, parseFloat(e.target.value) || 0);
+                    
+                    cell.appendChild(input);
+                    cell.classList.add('actual-cost-header');
+                }
+                
+                // Actions
+                const actionCell = row.insertCell();
+                actionCell.classList.add('action-cell');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteItem(storeName, item.id, () => renderCostTable(storeName));
+                actionCell.appendChild(deleteBtn);
+            });
+            
+            if (storeName === 'manpower') {
+                // Instruction 3.2: Re-apply search filter after rendering
+                filterTable('manpower', 'manpower-table', ['role', 'unit', 'rate']);
+            }
+        }
+        
+        async function updateMonthlyActual(storeName, id, monthIndex, value) {
+             try {
+                const item = await getById(storeName, id);
+                if (item) {
+                    // Initialize if missing
+                    if (!item.monthly_actual_qty) item.monthly_actual_qty = Array(MONTHS.length).fill(0); 
+                    
+                    // Ensure the array size matches the current month count
+                    if(item.monthly_actual_qty.length !== MONTHS.length) {
+                         item.monthly_actual_qty.length = MONTHS.length;
+                         item.monthly_actual_qty.fill(0, item.monthly_actual_qty.length);
+                    }
+
+                    item.monthly_actual_qty[monthIndex] = value;
+                    await update(storeName, item);
+                    
+                    // Recalculate and update the total actual cost cell in the UI
+                    const totalActualCost = calculateActualCost(item, storeName);
+                    document.getElementById(`${storeName}-${id}-actual-cost`).textContent = formatINR(totalActualCost);
+                    
+                    // Refresh Project Summary to include the change
+                    loadProjectData(); 
+                }
+            } catch (e) {
+                console.error(`Error updating monthly actual for ${storeName} ID ${id}:`, e);
+            }
+        }
+
+
+        // --- Form Submissions and Deletion (Updated to include monthly_actual_qty) ---
+        
+        document.getElementById('project-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('project-name').value;
+            const budget = parseFloat(document.getElementById('project-budget').value);
+            
+            if (name && budget >= 0) {
+                try {
+                    await add('projects', { name, budget });
+                    document.getElementById('project-form').reset();
+                    renderProjectTable();
+                    populateProjectSelector();
+                    alert(`Project "${name}" added successfully.`);
+                } catch (error) {
+                    alert('Error adding project. Name may not be unique.');
+                    console.error(error);
+                }
+            }
+        });
+
+        document.getElementById('manpower-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const role = document.getElementById('manpower-role').value;
+            const unit = document.getElementById('manpower-unit').value;
+            const rate = parseFloat(document.getElementById('manpower-rate').value);
+            
+            // Fixed assumption for Planned Manhours/Months for initial data
+            const planned_manhours = 2400; 
+            
+            const newItem = { 
+                role, unit, rate, 
+                total_manhours: planned_manhours, 
+                planned_cost: rate * planned_manhours, 
+                monthly_actual_qty: Array(MONTHS.length).fill(0) // New Actual Qty array
+            }; 
+            await add('manpower', newItem);
+            document.getElementById('manpower-form').reset();
+            renderCostTable('manpower');
+        });
+        
+        document.getElementById('material-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const group = document.getElementById('material-group').value;
+            const item = document.getElementById('material-item').value;
+            const uom = document.getElementById('material-uom').value;
+            const rate = parseFloat(document.getElementById('material-rate').value);
+            const planned_qty = parseFloat(document.getElementById('material-qty').value);
+            const gst_rate = parseFloat(document.getElementById('material-gst').value);
+            
+            const costs = calculateMaterialCost(rate, planned_qty, gst_rate);
+            
+            const newItem = { 
+                group, item, uom, rate, planned_qty, gst_rate, 
+                planned_cost: costs.plannedCost, 
+                total_cost: costs.totalCost, // Planned Total Cost
+                monthly_actual_qty: Array(MONTHS.length).fill(0) // New Actual Qty array
+            }; 
+            await add('materials', newItem);
+            document.getElementById('material-form').reset();
+            renderCostTable('materials');
+        });
+        
+        document.getElementById('services-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const group = document.getElementById('service-group').value;
+            const item = document.getElementById('service-item').value;
+            const planned_cost = parseFloat(document.getElementById('service-cost').value);
+            const gst_rate = parseFloat(document.getElementById('service-gst').value);
+            
+            const total_cost = calculateServiceCost(planned_cost, gst_rate);
+            
+            const newItem = { 
+                group, item, planned_cost, gst_rate, 
+                total_cost, // Planned Total Cost
+                monthly_actual_qty: Array(MONTHS.length).fill(0) // New Actual Cost Allocation array
+            }; 
+            await add('services', newItem);
+            document.getElementById('services-form').reset();
+            renderCostTable('services');
+        });
+        
+        document.getElementById('plant-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const item = document.getElementById('plant-item').value;
+            const uom = document.getElementById('plant-uom').value;
+            const rate = parseFloat(document.getElementById('plant-rate').value);
+            const qty = parseFloat(document.getElementById('plant-qty').value);
+            
+            const planned_cost = rate * qty;
+            
+            const newItem = { 
+                item, uom, rate, qty, planned_cost,
+                monthly_actual_qty: Array(MONTHS.length).fill(0) // New Actual Qty array
+            }; 
+            await add('plant', newItem);
+            document.getElementById('plant-form').reset();
+            renderCostTable('plant');
+        });
+        
+        document.getElementById('overheads-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const item = document.getElementById('overhead-item').value;
+            const uom = document.getElementById('overhead-uom').value;
+            const rate = parseFloat(document.getElementById('overhead-rate').value);
+            const planned_qty = parseFloat(document.getElementById('overhead-qty').value);
+            
+            const planned_cost = rate * planned_qty;
+            
+            const newItem = { 
+                item, uom, rate, planned_qty, planned_cost,
+                monthly_actual_qty: Array(MONTHS.length).fill(0) // New Actual Qty array
+            }; 
+            await add('overheads', newItem);
+            document.getElementById('overheads-form').reset();
+            renderCostTable('overheads');
+        });
+
+        async function deleteItem(storeName, id, callback) {
+            if (confirm(`Are you sure you want to delete item ID ${id} from ${storeName}?`)) {
+                await remove(storeName, id);
+                if (callback) callback();
+                // Refresh summary if a cost item was deleted
+                if (storeName !== 'projects') loadProjectData(); 
+            }
+        }
+        
+        // --- Instruction 3.2: 360 Search Filter ---
+        function filterTable(storeName, tableId, fields) {
+            const input = document.getElementById(`${storeName}-search`);
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById(tableId);
+            const tr = table.getElementsByTagName("tr");
+            
+            for (let i = 1; i < tr.length; i++) {
+                let display = false;
+                const cells = tr[i].getElementsByTagName("td");
+                
+                // Only check the cells corresponding to the specified fields
+                for (let j = 0; j < fields.length; j++) {
+                    // Check against the visible cell content
+                    if (cells[j]) {
+                        if (cells[j].textContent.toUpperCase().indexOf(filter) > -1) {
+                            display = true;
+                            break;
+                        }
+                    }
+                }
+                tr[i].style.display = display ? "" : "none";
+            }
+        }
+        
+        // --- Project Summary and Forecasting (Updated to include Actuals) ---
+        
+        async function loadProjectData() {
+            const projectId = document.getElementById('project-selector').value;
+            const summaryDiv = document.getElementById('project-summary-display');
+            
+            if (!projectId) {
+                document.getElementById('forecast-budget-A').textContent = formatINR(0);
+                runForecastCalculation();
+                summaryDiv.innerHTML = '';
+                return;
+            }
+            
+            const project = await getById('projects', parseInt(projectId));
+            
+            if (project) {
+                document.getElementById('forecast-budget-A').textContent = formatINR(project.budget);
+                runForecastCalculation(); // Update forecast when budget changes
+                
+                let totalPlannedCost = 0;
+                let totalActualCost = 0;
+                
+                const costCategories = await Promise.all(
+                    STORE_NAMES.filter(n => n !== 'projects' && n !== 'scurve').map(async (storeName) => {
+                        const items = await getAll(storeName);
+                        let categoryPlannedTotal = 0;
+                        let categoryActualTotal = 0;
+
+                        items.forEach(item => {
+                            // Sum up planned cost
+                            categoryPlannedTotal += item.total_cost || item.planned_cost || 0;
+                            
+                            // Sum up actual cost
+                            categoryActualTotal += calculateActualCost(item, storeName);
+                        });
+                        totalPlannedCost += categoryPlannedTotal;
+                        totalActualCost += categoryActualTotal;
+
+                        return { storeName, categoryPlannedTotal, categoryActualTotal };
+                    })
+                );
+                
+                // --- NEW Summary Display Structure ---
+                summaryDiv.innerHTML = `
+                    <h3>Cost Summary for: ${project.name}</h3>
+                    <p style="font-weight: bold; font-size: 1.1em;">Total Project Budget: <span style="color: var(--primary-color);">${formatINR(project.budget)}</span></p>
+                    <hr>
+                    <table style="width: 70%;">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="cost-header">Planned Cost (₹)</th>
+                                <th class="actual-cost-header">Actual Cost (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${costCategories.map(c => `
+                                <tr>
+                                    <td>${c.storeName.charAt(0).toUpperCase() + c.storeName.slice(1)}</td>
+                                    <td class="cost-header">${formatINR(c.categoryPlannedTotal)}</td>
+                                    <td class="actual-cost-header">${formatINR(c.categoryActualTotal)}</td>
+                                </tr>`).join('')}
+                            <tr style="border-top: 3px solid var(--primary-color);">
+                                <td style="font-weight: bold;">GRAND TOTAL (A to E)</td>
+                                <td class="cost-header summary-planned">${formatINR(totalPlannedCost)}</td>
+                                <td class="actual-cost-header summary-actual">${formatINR(totalActualCost)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+                
+            } else {
+                 document.getElementById('forecast-budget-A').textContent = formatINR(0);
+                 runForecastCalculation();
+                 summaryDiv.innerHTML = '';
+            }
+        }
+        
+        // --- Instruction 3.1: Financial Forecasting Model Logic ---
+        function loadForecastInputs() {
+            // Instruction 3.1: Local Storage Persistence
+            const inputs = ['input-B', 'input-C', 'input-D', 'input-E'];
+            inputs.forEach(id => {
+                const value = localStorage.getItem(id);
+                if (value !== null) {
+                    document.getElementById(id).value = value;
+                }
+            });
+        }
+        
+        function saveForecastInputs() {
+             const inputs = ['input-B', 'input-C', 'input-D', 'input-E'];
+             inputs.forEach(id => {
+                localStorage.setItem(id, document.getElementById(id).value);
+            });
+        }
+
+        function runForecastCalculation() {
+            saveForecastInputs();
+            
+            // A: Total Project Budget
+            const budgetA = parseFloat(document.getElementById('project-selector').value ? document.getElementById('project-budget').value : 0) || 0;
+
+            // B: Contingency Rate (%)
+            const rateB = parseFloat(document.getElementById('input-B').value) / 100 || 0;
+            // C: Management Reserve Rate (%)
+            const rateC = parseFloat(document.getElementById('input-C').value) / 100 || 0;
+            // D: Fixed Overhead Cost (₹)
+            const costD = parseFloat(document.getElementById('input-D').value) || 0;
+            // E: Escalation Rate (%)
+            const rateE = parseFloat(document.getElementById('input-E').value) / 100 || 0;
+            
+            // Step 1: Contingency Cost (A * B%)
+            const costB = budgetA * rateB;
+            document.getElementById('calc-step-1').textContent = formatINR(costB);
+            
+            // Step 2: Budget + Contingency
+            const resultStep2 = budgetA + costB;
+            document.getElementById('calc-step-2').textContent = formatINR(resultStep2);
+            
+            // Step 3: Management Reserve (Step 2 * C%)
+            const costC = resultStep2 * rateC;
+            document.getElementById('calc-step-3').textContent = formatINR(costC);
+            
+            // Step 4: Add Fixed Overhead (D)
+            const resultStep4 = resultStep2 + costC + costD;
+            document.getElementById('calc-step-4').textContent = formatINR(costD); // D is a fixed cost input
+            
+            // Step 5: Escalation Cost (Step 4 * E%)
+            const costE = resultStep4 * rateE;
+            document.getElementById('calc-step-5').textContent = formatINR(costE);
+            
+            // Final Total Cost (Step 4 + E)
+            const finalTotalCost = resultStep4 + costE;
+            document.getElementById('output-total-cost').textContent = formatINR(finalTotalCost);
+        }
+        
+        // --- S-Curve Analysis (Instruction 3) ---
+
+        async function getScurveData() {
+            const data = await getAll('scurve');
+            if (data.length === 0) {
+                 return { id: 1, labels: MONTHS, cumPlan: Array(MONTHS.length).fill(0), cumActu: Array(MONTHS.length).fill(0) };
+            }
+            // S-Curve data is stored as a single object (id=1)
+            const record = data[0];
+            // Ensure labels array matches current MONTHS length for consistency
+            record.labels = MONTHS.slice(0, MONTHS.length); 
+            record.cumPlan.length = MONTHS.length;
+            record.cumActu.length = MONTHS.length;
+            return record; 
+        }
+        
+        async function updateScurveData(newRecord) {
+            // Ensure ID is set for update
+            if (newRecord.id === undefined) {
+                 const existing = await getAll('scurve');
+                 if (existing.length > 0) newRecord.id = existing[0].id;
+            }
+            
+            if (newRecord.id) {
+                await update('scurve', newRecord);
+            } else {
+                await add('scurve', newRecord);
+            }
+            renderScurveChart();
+        }
+        
+        function updateScurveMonths(count) {
+             const numMonths = parseInt(count);
+             if (numMonths >= 1) {
+                 // Update the global MONTHS array for use in rendering/charting
+                 MONTHS.length = 0;
+                 for(let i = 0; i < numMonths; i++) {
+                     MONTHS.push(`Month ${i + 1}`);
+                 }
+                 // Regenerate Month Headers in all cost tables
+                 setupTabs(); 
+                 renderScurveEditor();
+             }
+        }
+        
+        async function renderScurveEditor() {
+            const data = await getScurveData();
+            const numMonths = data.labels.length;
+            
+            const editorDiv = document.getElementById('scurve-data-editor');
+            editorDiv.innerHTML = `
+                 <table id="scurve-editor-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            ${data.labels.map(label => `<th class="cost-header">${label.replace('Month', 'M')}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cumulative Plan (₹)</td>
+                            ${data.labels.map((_, i) => `
+                                <td class="cost-header"><input type="number" id="scurve-plan-${i}" value="${data.cumPlan[i] || 0}" min="0" onchange="saveScurveFromEditor()"></td>
+                            `).join('')}
+                        </tr>
+                         <tr>
+                            <td>Cumulative Actual (₹)</td>
+                            ${data.labels.map((_, i) => `
+                                <td class="actual-cost-header"><input type="number" id="scurve-actual-${i}" value="${data.cumActu[i] || 0}" min="0" onchange="saveScurveFromEditor()"></td>
+                            `).join('')}
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('scurve-month-count').value = numMonths;
+        }
+        
+        async function saveScurveFromEditor() {
+            const numMonths = document.getElementById('scurve-month-count').value;
+            const cumPlan = [];
+            const cumActu = [];
+            
+            for(let i = 0; i < numMonths; i++) {
+                cumPlan.push(parseFloat(document.getElementById(`scurve-plan-${i}`).value) || 0);
+                cumActu.push(parseFloat(document.getElementById(`scurve-actual-${i}`).value) || 0);
+            }
+            
+            const dataRecord = await getScurveData();
+            dataRecord.labels = MONTHS;
+            dataRecord.cumPlan = cumPlan;
+            dataRecord.cumActu = cumActu;
+            
+            await updateScurveData(dataRecord);
+        }
+
+        async function renderScurveChart() {
+            const dataRecord = await getScurveData();
+            const ctx = document.getElementById('sCurveChart').getContext('2d');
+            
+            if (sCurveChart) {
+                sCurveChart.destroy();
+            }
+
+            sCurveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataRecord.labels,
+                    datasets: [
+                        {
+                            label: 'Cumulative Planned Cost',
+                            data: dataRecord.cumPlan,
+                            borderColor: varToRgb('--primary-color'),
+                            backgroundColor: 'rgba(0, 90, 156, 0.1)',
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Cumulative Actual Cost',
+                            data: dataRecord.cumActu,
+                            borderColor: varToRgb('--actual-cost-color'),
+                            backgroundColor: 'rgba(216, 27, 96, 0.1)',
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Cumulative Cost (INR ₹)'
+                            },
+                            beginAtZero: true
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatINR(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Helper to get RGB string from CSS variable
+            function varToRgb(varName) {
+                const colorHex = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                // Simple regex to convert #RRGGBB to rgba(r, g, b)
+                const r = parseInt(colorHex.substring(1, 3), 16);
+                const g = parseInt(colorHex.substring(3, 5), 16);
+                const b = parseInt(colorHex.substring(5, 7), 16);
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+        }
+        
+        // --- Instruction 3.3: Data Management (Backup/Restore) ---
+
+        async function backupData() {
+            const backup = {};
+            try {
+                for (const storeName of STORE_NAMES) {
+                    backup[storeName] = await getAll(storeName);
+                }
+
+                const json = JSON.stringify(backup, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ProjectAllocatorBackup_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                document.getElementById('management-status').textContent = 'Backup successful.';
+            } catch (e) {
+                document.getElementById('management-status').textContent = 'Backup failed: ' + e.message;
+                console.error('Backup failed:', e);
+            }
+        }
+
+        function restoreData() {
+            const fileInput = document.getElementById('restore-file-input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                document.getElementById('management-status').textContent = 'Please select a file to restore.';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    await clearAndPopulateDB(data);
+                    document.getElementById('management-status').textContent = 'Restore successful! Please refresh or click a tab to see changes.';
+                    
+                    // Reload UI after successful restore
+                    setTimeout(() => window.location.reload(), 1000); 
+                    
+                } catch (error) {
+                    document.getElementById('management-status').textContent = 'Restore failed. The file is corrupted or in the wrong format.';
+                    console.error('Restore failed:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function clearAndPopulateDB(data) {
+            // Re-open DB to ensure a fresh connection for transactions
+            await openDB(); 
+            
+            for (const storeName of STORE_NAMES) {
+                if (data[storeName]) {
+                    // 1. Clear existing data
+                    const clearStore = transaction(storeName, 'readwrite');
+                    await new Promise((resolve, reject) => {
+                        const clearRequest = clearStore.clear();
+                        clearRequest.onsuccess = resolve;
+                        clearRequest.onerror = reject;
+                    });
+                    
+                    // 2. Add new data
+                    const addStore = transaction(storeName, 'readwrite');
+                    for (const item of data[storeName]) {
+                        // Remove original ID to allow auto-increment to assign new one
+                        delete item.id; 
+                        
+                        // Ensure compatibility for restored data lacking new fields
+                         if (!item.monthly_actual_qty) {
+                            item.monthly_actual_qty = Array(MONTHS.length).fill(0);
+                         }
+
+                        await new Promise((resolve, reject) => {
+                            const addRequest = addStore.add(item);
+                            addRequest.onsuccess = resolve;
+                            addRequest.onerror = (e) => {
+                                // Ignore potential unique constraint errors if backup file is bad
+                                console.warn(`Item insertion failed for ${storeName}:`, e.target.error.name);
+                                resolve(); 
+                            };
+                        });
+                    }
+                }
+            }
+        }
+
+
+        // --- Initialization ---
+
+        window.onload = async () => {
+            try {
+                await openDB();
+                
+                // Must be called first to initialize MONTHS and table headers correctly
+                setupTabs(); 
+                
+                loadForecastInputs();
+                
+                // Initial page load rendering
+                renderProjectTable();
+                populateProjectSelector();
+                renderScurveEditor(); // Prepare S-Curve editor
+                
+                // Set the default tab to projects
+                document.querySelector('.tab-link[data-tab="projects"]').click();
+                
+            } catch (e) {
+                alert('Failed to initialize the database. Please check console for errors.');
+                console.error(e);
+            }
+        };
+
+    </script>
+</body>
+</html>

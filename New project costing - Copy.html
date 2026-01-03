@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Project Cost Control</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Dark Theme Setup and Font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* GitHub Dark */
+            color: #c9d1d9;
+        }
+
+        /* Custom scrollbar for a professional look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background-color: #30363d; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: #161b22; }
+
+        /* General form input styling */
+        .input-style {
+            @apply w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-white;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="toast-container" class="fixed flex flex-col-reverse space-y-2 space-y-reverse pointer-events-none z-50 top-4 right-4"></div>
+
+    <main class="p-4 md:p-8 max-w-7xl mx-auto">
+        <h1 class="text-3xl font-extrabold mb-6 text-blue-400 border-b border-gray-700 pb-3">Project Cost Control Dashboard</h1>
+
+        <section id="dashboard" class="mb-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-200 flex items-center">
+                <i data-lucide="layout-dashboard" class="w-6 h-6 mr-2 text-blue-400"></i> Key Financial Summary
+            </h2>
+            
+            <div class="mb-4">
+                <label for="dashboard-project-filter" class="block text-sm font-medium mb-1 text-gray-400">Filter Dashboard by Project:</label>
+                <select id="dashboard-project-filter" onchange="renderDashboard()" class="input-style max-w-sm">
+                    <option value="all">All Projects</option>
+                    </select>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                
+                <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <p class="text-sm font-medium text-gray-400">Total Planned Cost</p>
+                    <p id="dashboard-planned" class="text-2xl font-bold text-blue-400 mt-1">$0.00</p>
+                </div>
+                
+                <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <p class="text-sm font-medium text-gray-400">Total Actual Cost</p>
+                    <p id="dashboard-actual" class="text-2xl font-bold text-emerald-400 mt-1">$0.00</p>
+                </div>
+
+                <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <p class="text-sm font-medium text-gray-400">Total Variance (Actual - Planned)</p>
+                    <p id="dashboard-variance" class="text-2xl font-bold text-white mt-1">$0.00</p>
+                </div>
+                
+                <div class="p-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <p class="text-sm font-medium text-gray-400">Total Project Items</p>
+                    <p id="dashboard-count" class="text-2xl font-bold text-yellow-400 mt-1">0</p>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-semibold mb-3 text-gray-300">Cost Category Breakdown</h3>
+            <div id="category-breakdown" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                </div>
+        </section>
+
+        <div class="flex flex-col md:flex-row gap-8">
+
+            <div class="md:w-full md:max-w-sm flex-shrink-0">
+                
+                <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200">Projects & Filter</h2>
+                    
+                    <div class="mb-4">
+                        <label for="project-filter" class="block text-sm font-medium mb-1 text-gray-400">View Items for Project:</label>
+                        <select id="project-filter" onchange="loadItems()" class="input-style appearance-none">
+                            </select>
+                    </div>
+
+                    <h3 class="text-lg font-semibold mb-2 text-gray-300 border-t border-gray-700 pt-4 mt-4">Manage Project</h3>
+                    <input type="text" id="new-project-name" placeholder="New Project Name" class="input-style mb-2">
+                    <button onclick="addProject()" id="add-project-btn"
+                        class="w-full flex items-center justify-center p-2 font-semibold text-white rounded-lg bg-indigo-600 hover:bg-indigo-700 transition duration-150 ease-in-out">
+                        <i data-lucide="plus" class="w-5 h-5 mr-2"></i> Add/Update Project
+                    </button>
+                    <div id="project-management-actions" class="mt-2 flex space-x-2 hidden">
+                        <button onclick="editSelectedProject()" class="flex-1 p-2 text-sm rounded-lg bg-yellow-600 hover:bg-yellow-700">Edit Selected</button>
+                        <button onclick="deleteSelectedProject()" class="flex-1 p-2 text-sm rounded-lg bg-red-600 hover:bg-red-700">Delete Selected</button>
+                    </div>
+                </div>
+
+                <div id="form-card" class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200" id="form-title">Add Cost Item</h2>
+                    
+                    <form id="item-form">
+                        <input type="hidden" id="item-id" value="">
+                        
+                        <div class="mb-4">
+                            <label for="item-project-id" class="block text-sm font-medium mb-1 text-gray-400">Project <span class="text-red-400">*</span></label>
+                            <select id="item-project-id" class="input-style appearance-none" required>
+                                </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="item-page" class="block text-sm font-medium mb-1 text-gray-400">Cost Category <span class="text-red-400">*</span></label>
+                            <select id="item-page" class="input-style appearance-none" required>
+                                <option value="manpower">Manpower</option>
+                                <option value="material">Material</option>
+                                <option value="vehicles">Vehicles</option>
+                                <option value="travel">Travel & Lodging</option>
+                                <option value="misc">Miscellaneous</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="title" class="block text-sm font-medium mb-1 text-gray-400">Title <span class="text-red-400">*</span></label>
+                            <input type="text" id="title" maxlength="100" class="input-style" placeholder="e.g., Senior Dev Salary" required>
+                            <p id="title-error" class="mt-1 text-sm text-red-400 hidden">Title is required.</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="description" class="block text-sm font-medium mb-1 text-gray-400">Unit/Description</label>
+                            <input type="text" id="description" class="input-style" placeholder="e.g., Man-days, Monthly, Liters">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="rate" class="block text-sm font-medium mb-1 text-gray-400">Rate ($) <span class="text-red-400">*</span></label>
+                            <input type="number" id="rate" step="0.01" min="0" class="input-style" placeholder="e.g., 1200.00" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="planned-qty" class="block text-sm font-medium mb-1 text-gray-400">Planned Qty <span class="text-red-400">*</span></label>
+                            <input type="number" id="planned-qty" step="any" min="0" class="input-style" placeholder="e.g., 50" required>
+                        </div>
+
+                        <div class="mb-6">
+                            <label for="actual-qty" class="block text-sm font-medium mb-1 text-gray-400">Actual Qty <span class="text-red-400">*</span></label>
+                            <input type="number" id="actual-qty" step="any" min="0" class="input-style" placeholder="e.g., 10" required>
+                        </div>
+
+                        <button type="submit" id="submit-btn" 
+                            class="w-full flex items-center justify-center p-3 font-semibold text-white rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-75 transition duration-150 ease-in-out shadow-lg">
+                            <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+                            <span id="submit-btn-text">Save Cost Item</span>
+                        </button>
+                        
+                        <button type="button" id="reset-btn" onclick="resetItemForm()"
+                            class="w-full mt-3 flex items-center justify-center p-3 font-semibold text-gray-300 rounded-lg bg-gray-700 hover:bg-gray-600 transition duration-150 ease-in-out hidden">
+                            <i data-lucide="x" class="w-5 h-5 mr-2"></i>
+                            Cancel Edit
+                        </button>
+                    </form>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-200">Data Backup</h3>
+                    <div class="flex flex-col space-y-3">
+                        <button id="export-btn" onclick="exportData()"
+                            class="w-full flex items-center justify-center p-2.5 font-medium text-white rounded-lg bg-emerald-600 hover:bg-emerald-700 transition duration-150 ease-in-out">
+                            <i data-lucide="download" class="w-5 h-5 mr-2"></i> Export All Data (JSON)
+                        </button>
+                        
+                        <label for="import-file" class="w-full flex items-center justify-center p-2.5 font-medium text-white rounded-lg bg-amber-600 hover:bg-amber-700 cursor-pointer transition duration-150 ease-in-out">
+                            <i data-lucide="upload" class="w-5 h-5 mr-2"></i> Import Data (JSON)
+                        </label>
+                        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-0">
+                
+                <div class="mb-6 bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-700">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input type="text" id="search-input" placeholder="Search items by Title or Unit..."
+                            class="input-style pl-10" 
+                            onkeyup="filterItems()">
+                    </div>
+                </div>
+
+                <div id="items-list-container" class="bg-gray-800 rounded-xl shadow-xl border border-gray-700 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700/50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Item / Project</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Rate / Qty</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Planned Cost</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actual Cost</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Variance</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-list" class="divide-y divide-gray-700">
+                            </tbody>
+                    </table>
+                    <p id="empty-state" class="text-center text-lg text-gray-500 p-8 hidden">No cost items found for this project. Start by adding one!</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="modal-content" class="bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700 w-full max-w-md">
+            <h3 class="text-xl font-bold text-red-400 mb-4">Confirm Deletion</h3>
+            <p class="text-gray-300 mb-6">Are you sure you want to permanently delete: <strong id="item-title-to-delete" class="text-white"></strong>?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()"
+                    class="px-4 py-2 font-medium rounded-lg text-gray-300 bg-gray-700 hover:bg-gray-600 transition">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" 
+                    class="px-4 py-2 font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition">
+                    Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================
+        //                 INDEXEDDB SETUP & CONFIGURATION
+        // =================================================================
+        const DB_NAME = 'PCCDB';
+        const STORE_PROJECTS = 'projects';
+        const STORE_ITEMS = 'items';
+        // Bumped version number from 2 to 3 to guarantee onupgradeneeded runs
+        const DB_VERSION = 3; 
+        let db;
+
+        const CATEGORY_MAP = {
+            manpower: 'Manpower 👷‍♂️',
+            material: 'Material 🧱',
+            vehicles: 'Vehicles 🚗',
+            travel: 'Travel ✈️',
+            misc: 'Misc ⚙️',
+        };
+
+        const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        });
+
+        /**
+         * Initializes the IndexedDB connection and ensures all stores exist.
+         */
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                // IMPORTANT: Use the new DB_VERSION to force the upgrade to run
+                const request = indexedDB.open(DB_NAME, DB_VERSION); 
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.error);
+                    showToast('Critical database error! Check console.', 'danger');
+                    reject(event.target.error);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    // Create object stores if they don't exist
+                    if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
+                        db.createObjectStore(STORE_PROJECTS, { keyPath: 'id', autoIncrement: true });
+                    }
+                    if (!db.objectStoreNames.contains(STORE_ITEMS)) {
+                        db.createObjectStore(STORE_ITEMS, { keyPath: 'id', autoIncrement: true });
+                    }
+                    console.log(`Database upgraded/created to version ${DB_VERSION}.`);
+                    // Note: No need to explicitly resolve/reject here, onsuccess will fire next
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log("IndexedDB connection successful.");
+                    resolve(db);
+                };
+            });
+        }
+
+        /**
+         * Generic function to get a transaction and object store.
+         * @param {string} storeName - The name of the object store.
+         * @param {string} mode - 'readonly' or 'readwrite'
+         */
+        function getStore(storeName, mode) {
+            // Added check for db existence
+            if (!db) {
+                throw new Error("Database not initialized. Ensure initDB() completes successfully.");
+            }
+            const transaction = db.transaction([storeName], mode);
+            return transaction.objectStore(storeName);
+        }
+        
+        // =================================================================
+        //                  DATA & UI REFRESH FUNCTIONS
+        // =================================================================
+
+        let allProjects = [];
+        let allItems = [];
+        let projectMap = {}; // Map of {id: project} for easy lookup
+
+        /**
+         * Loads all data, updates cache, and refreshes all UI components.
+         */
+        async function loadAllData() {
+            try {
+                allProjects = await loadAllRecords(STORE_PROJECTS);
+                allItems = await loadAllRecords(STORE_ITEMS);
+            } catch (error) {
+                 // Log and continue if data loading fails, prevents app crash
+                 console.error("Failed to load initial data. IndexedDB error likely.", error);
+                 allProjects = [];
+                 allItems = [];
+            }
+            
+            projectMap = allProjects.reduce((map, p) => {
+                map[p.id] = p;
+                return map;
+            }, {});
+
+            populateProjectSelectors();
+            await loadItems(); // This also triggers item rendering
+            renderDashboard();
+        }
+
+        /**
+         * Loads all records from a specific store.
+         * @param {string} storeName - The store to read from.
+         */
+        async function loadAllRecords(storeName) {
+            try {
+                const store = getStore(storeName, 'readonly');
+                const request = store.getAll();
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        // Sort by timestamp descending (newest first)
+                        const records = request.result.sort((a, b) => 
+                            new Date(b.timestamp) - new Date(a.timestamp)
+                        );
+                        resolve(records);
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error(`Error loading records from ${storeName}:`, error);
+                throw error; // Re-throw to be caught by loadAllData
+            }
+        }
+
+        /**
+         * Loads and filters cost items based on the project selector.
+         */
+        async function loadItems() {
+            const selectedProjectId = document.getElementById('project-filter').value;
+            let filteredItems = allItems;
+
+            if (selectedProjectId !== 'all' && selectedProjectId !== '') {
+                const projectId = parseInt(selectedProjectId);
+                filteredItems = allItems.filter(item => item.projectId === projectId);
+            }
+
+            renderItems(filteredItems);
+            // Hide/Show management buttons based on selection
+            document.getElementById('project-management-actions').classList.toggle('hidden', selectedProjectId === 'all' || selectedProjectId === '');
+        }
+
+        // =================================================================
+        //                   DASHBOARD CALCULATION & RENDERING
+        // =================================================================
+
+        /**
+         * Calculates and renders the key dashboard metrics.
+         */
+        function renderDashboard() {
+            const filterId = document.getElementById('dashboard-project-filter').value;
+            let targetItems = allItems;
+            
+            if (filterId !== 'all' && filterId !== '') {
+                const projectId = parseInt(filterId);
+                targetItems = allItems.filter(item => item.projectId === projectId);
+            }
+
+            let totalPlanned = 0;
+            let totalActual = 0;
+            const categorySummary = {};
+
+            targetItems.forEach(item => {
+                // Ensure rate and quantities are numbers before calculating
+                const rate = parseFloat(item.rate) || 0;
+                const plannedQty = parseFloat(item.plannedQty) || 0;
+                const actualQty = parseFloat(item.actualQty) || 0;
+
+                const plannedCost = rate * plannedQty;
+                const actualCost = rate * actualQty;
+                
+                totalPlanned += plannedCost;
+                totalActual += actualCost;
+
+                const category = item.page || 'misc';
+                if (!categorySummary[category]) {
+                    categorySummary[category] = { planned: 0, actual: 0 };
+                }
+                categorySummary[category].planned += plannedCost;
+                categorySummary[category].actual += actualCost;
+            });
+
+            const variance = totalActual - totalPlanned;
+            const varianceColor = variance > 0 ? 'text-red-400' : (variance < 0 ? 'text-green-400' : 'text-gray-400');
+            const varianceSign = variance > 0 ? '+' : '';
+
+            // Update Metric Cards
+            document.getElementById('dashboard-planned').textContent = CURRENCY_FORMAT.format(totalPlanned);
+            document.getElementById('dashboard-actual').textContent = CURRENCY_FORMAT.format(totalActual);
+            document.getElementById('dashboard-variance').textContent = varianceSign + CURRENCY_FORMAT.format(variance);
+            document.getElementById('dashboard-variance').className = `text-2xl font-bold mt-1 ${varianceColor}`;
+            document.getElementById('dashboard-count').textContent = targetItems.length;
+
+            // Render Category Breakdown
+            renderCategoryBreakdown(categorySummary);
+            lucide.createIcons();
+        }
+
+        /**
+         * Renders the category breakdown cards.
+         */
+        function renderCategoryBreakdown(summary) {
+            const container = document.getElementById('category-breakdown');
+            container.innerHTML = '';
+            
+            const categories = Object.keys(summary).sort();
+
+            if (categories.length === 0) {
+                 container.innerHTML = '<p class="text-gray-500 md:col-span-3">No cost items available for this selection.</p>';
+                 return;
+            }
+
+            categories.forEach(category => {
+                const data = summary[category];
+                const variance = data.actual - data.planned;
+                const varianceColor = variance > 0 ? 'text-red-400' : (variance < 0 ? 'text-green-400' : 'text-gray-400');
+                const varianceSign = variance > 0 ? '+' : '';
+                
+                const card = document.createElement('div');
+                card.className = 'p-4 bg-gray-900 rounded-lg border border-gray-700 shadow-md';
+                card.innerHTML = `
+                    <h4 class="text-md font-semibold text-gray-200 mb-2">${CATEGORY_MAP[category] || category}</h4>
+                    <p class="text-sm text-gray-400">Planned: <span class="font-medium text-blue-300">${CURRENCY_FORMAT.format(data.planned)}</span></p>
+                    <p class="text-sm text-gray-400">Actual: <span class="font-medium text-emerald-300">${CURRENCY_FORMAT.format(data.actual)}</span></p>
+                    <p class="text-sm font-medium mt-1 ${varianceColor}">Variance: ${varianceSign}${CURRENCY_FORMAT.format(variance)}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // =================================================================
+        //                 PROJECT MANAGEMENT (CRUD)
+        // =================================================================
+
+        /**
+         * Adds a new project or updates the selected one.
+         */
+        async function addProject() {
+            const nameInput = document.getElementById('new-project-name');
+            const name = nameInput.value.trim();
+            const filterSelect = document.getElementById('project-filter');
+            const filterId = filterSelect.value;
+            
+            if (!name) {
+                showToast('Project name cannot be empty.', 'danger');
+                return;
+            }
+
+            let project = allProjects.find(p => p.id === parseInt(filterId));
+            
+            if (project && filterId !== 'all' && filterId !== '') {
+                // Update existing project
+                project.name = name;
+                project.timestamp = new Date().toISOString();
+                await saveRecord(STORE_PROJECTS, project);
+                showToast(`Project '${name}' updated successfully.`, 'success');
+                filterSelect.value = project.id; // Keep selected
+            } else {
+                // Add new project
+                project = { name: name, timestamp: new Date().toISOString() };
+                const newId = await saveRecord(STORE_PROJECTS, project);
+                showToast(`Project '${name}' created successfully.`, 'success');
+                filterSelect.value = newId; // Select the newly created project
+            }
+
+            nameInput.value = '';
+            await loadAllData();
+            loadItems();
+        }
+
+        /**
+         * Sets the project name input for editing the selected project.
+         */
+        function editSelectedProject() {
+            const filterId = document.getElementById('project-filter').value;
+            const project = projectMap[parseInt(filterId)];
+            if (project) {
+                document.getElementById('new-project-name').value = project.name;
+            }
+        }
+
+        /**
+         * Deletes the currently selected project and all its associated items.
+         */
+        function deleteSelectedProject() {
+            const filterId = document.getElementById('project-filter').value;
+            const project = projectMap[parseInt(filterId)];
+            
+            if (!project) return;
+            
+            openDeleteModal(project.id, `Project: ${project.name} (and all its items!)`, async () => {
+                try {
+                    // 1. Delete all associated items
+                    const itemsToDelete = allItems.filter(item => item.projectId === project.id);
+                    const itemStore = getStore(STORE_ITEMS, 'readwrite');
+                    
+                    itemsToDelete.forEach(item => itemStore.delete(item.id));
+                    
+                    // 2. Delete the project itself
+                    await deleteRecord(STORE_PROJECTS, project.id);
+                    
+                    showToast(`Project '${project.name}' and ${itemsToDelete.length} items deleted.`, 'success');
+                    
+                    // 3. Reset UI and reload
+                    document.getElementById('project-filter').value = 'all';
+                    document.getElementById('dashboard-project-filter').value = 'all';
+                    await loadAllData();
+                    closeDeleteModal();
+                } catch (error) {
+                    console.error("Error deleting project:", error);
+                    showToast('Failed to delete project.', 'danger');
+                }
+            });
+        }
+
+
+        // =================================================================
+        //                 COST ITEM MANAGEMENT (CRUD)
+        // =================================================================
+
+        /**
+         * Handles the form submission for creation and updates of cost items.
+         */
+        document.getElementById('item-form').onsubmit = async (event) => {
+            event.preventDefault();
+            
+            const idInput = document.getElementById('item-id');
+            const submitBtn = document.getElementById('submit-btn');
+
+            // Basic validation for required fields
+            const title = document.getElementById('title').value.trim();
+            const rate = parseFloat(document.getElementById('rate').value);
+            const plannedQty = parseFloat(document.getElementById('planned-qty').value);
+            const actualQty = parseFloat(document.getElementById('actual-qty').value);
+            
+            if (!title) {
+                document.getElementById('title-error').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('title-error').classList.add('hidden');
+
+            if (isNaN(rate) || rate < 0 || isNaN(plannedQty) || plannedQty < 0 || isNaN(actualQty) || actualQty < 0) {
+                showToast('Rate and Quantities must be non-negative numbers.', 'danger');
+                return;
+            }
+            
+            const item = {
+                projectId: parseInt(document.getElementById('item-project-id').value),
+                title: title,
+                description: document.getElementById('description').value.trim(),
+                rate: rate,
+                plannedQty: plannedQty,
+                actualQty: actualQty,
+                page: document.getElementById('item-page').value, // 'page' is used as category
+            };
+
+            // If id is present, it's an update operation
+            if (idInput.value) {
+                item.id = parseInt(idInput.value);
+                // Preserve the original timestamp during update
+                const originalItem = allItems.find(i => i.id === item.id);
+                item.timestamp = originalItem ? originalItem.timestamp : new Date().toISOString(); 
+            } else {
+                item.timestamp = new Date().toISOString();
+            }
+
+            // UI Feedback
+            submitBtn.disabled = true;
+            submitBtn.querySelector('#submit-btn-text').textContent = idInput.value ? 'Updating...' : 'Saving...';
+            
+            await saveRecord(STORE_ITEMS, item);
+
+            // Re-enable button
+            submitBtn.disabled = false;
+            submitBtn.querySelector('#submit-btn-text').textContent = 'Save Cost Item';
+            
+            resetItemForm(); 
+            await loadAllData(); 
+            document.getElementById('project-filter').value = item.projectId; // Keep the selected project
+            loadItems();
+        };
+
+        /**
+         * Generic function to save a record (add or put).
+         * Returns the key (id) of the saved record.
+         */
+        async function saveRecord(storeName, record) {
+            const mode = record.id ? 'update' : 'create';
+            let key = record.id;
+            try {
+                const store = getStore(storeName, 'readwrite');
+                const request = store.put(record); 
+
+                await new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        key = request.result; // Capture the auto-generated key on creation
+                        resolve();
+                    }
+                    request.onerror = () => reject(request.error);
+                });
+                showToast(`${storeName.slice(0, -1)} ${mode}d successfully!`, 'success');
+                return key;
+            } catch (error) {
+                console.error(`Error ${mode} record in ${storeName}:`, error);
+                showToast(`Failed to ${mode} record in ${storeName}.`, 'danger');
+                return null;
+            }
+        }
+        
+        /**
+         * Generic function to delete a record.
+         */
+        async function deleteRecord(storeName, id) {
+             try {
+                const store = getStore(storeName, 'readwrite');
+                const request = store.delete(id);
+
+                await new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+                showToast(`${storeName.slice(0, -1)} deleted successfully.`, 'success');
+            } catch (error) {
+                console.error("Error deleting record:", error);
+                showToast(`Failed to delete record from ${storeName}.`, 'danger');
+            }
+        }
+
+        /**
+         * Filters the cached list of cost items based on the search input.
+         */
+        function filterItems() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const selectedProjectId = document.getElementById('project-filter').value;
+            
+            // Start with the list filtered by project
+            let filtered = allItems.filter(item => 
+                selectedProjectId === 'all' || selectedProjectId === '' || item.projectId === parseInt(selectedProjectId)
+            );
+            
+            if (searchTerm) {
+                // Apply search filter
+                filtered = filtered.filter(item => 
+                    item.title.toLowerCase().includes(searchTerm) || 
+                    item.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            renderItems(filtered);
+        }
+
+        // =================================================================
+        //                       UI & HELPER FUNCTIONS
+        // =================================================================
+
+        /**
+         * Populates the project selection dropdowns.
+         */
+        function populateProjectSelectors() {
+            const selectors = [
+                document.getElementById('project-filter'), 
+                document.getElementById('dashboard-project-filter'),
+                document.getElementById('item-project-id')
+            ];
+
+            selectors.forEach(select => {
+                const isItemForm = select.id === 'item-project-id';
+                const currentFilterValue = select.value; // Preserve current value
+
+                // Clear all existing options
+                Array.from(select.options).forEach(opt => opt.remove());
+
+                // Add "All Projects" option for filters
+                if (!isItemForm) {
+                    const allOption = document.createElement('option');
+                    allOption.value = 'all';
+                    allOption.textContent = 'All Projects Summary';
+                    select.appendChild(allOption);
+                }
+                
+                // Add project options
+                allProjects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    select.appendChild(option);
+                });
+
+                // If no projects, add placeholder and disable
+                if (allProjects.length === 0) {
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = isItemForm ? '--- Add a Project First ---' : 'No Projects Found';
+                    select.appendChild(placeholder);
+                    select.disabled = isItemForm;
+                } else {
+                    select.disabled = false;
+                }
+                
+                // Restore previous selection if valid, otherwise select first available
+                if (Array.from(select.options).some(opt => opt.value === currentFilterValue)) {
+                    select.value = currentFilterValue;
+                } else if (allProjects.length > 0 && isItemForm) {
+                    // Default for item form: select the first project
+                    select.value = allProjects[0].id;
+                } else if (allProjects.length > 0 && !isItemForm) {
+                    // Default for filters: keep 'all' if possible, otherwise select the first project
+                    select.value = 'all';
+                }
+            });
+            
+            // Ensure the item form defaults to the currently filtered project
+            const currentFilteredProject = document.getElementById('project-filter').value;
+            if (currentFilteredProject !== 'all' && currentFilteredProject !== '') {
+                document.getElementById('item-project-id').value = currentFilteredProject;
+            }
+        }
+
+        /**
+         * Renders the list of cost items in a professional table format.
+         */
+        function renderItems(items) {
+            const listBody = document.getElementById('items-list');
+            listBody.innerHTML = '';
+            
+            document.getElementById('empty-state').classList.toggle('hidden', items.length > 0);
+
+            items.forEach(item => {
+                listBody.appendChild(createItemRow(item));
+            });
+
+            lucide.createIcons();
+        }
+
+        /**
+         * Creates a DOM table row element for a single cost item.
+         */
+        function createItemRow(item) {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-700 transition duration-150';
+            
+            // Ensure values are numbers before calculation
+            const rate = parseFloat(item.rate) || 0;
+            const plannedQty = parseFloat(item.plannedQty) || 0;
+            const actualQty = parseFloat(item.actualQty) || 0;
+
+            const plannedCost = rate * plannedQty;
+            const actualCost = rate * actualQty;
+            const variance = actualCost - plannedCost;
+            
+            const varianceColor = variance > 0 ? 'text-red-400 font-bold' : (variance < 0 ? 'text-green-400' : 'text-gray-400');
+            const varianceSign = variance > 0 ? '+' : '';
+
+            const project = projectMap[item.projectId]?.name || 'Unknown Project';
+
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm font-medium text-white">
+                    <p>${item.title}</p>
+                    <p class="text-xs text-gray-400">${CATEGORY_MAP[item.page] || item.page} | ${project}</p>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-300">
+                    <p>${CURRENCY_FORMAT.format(item.rate)} / ${item.description || 'Unit'}</p>
+                    <p class="text-xs text-gray-400">Planned: ${item.plannedQty} | Actual: ${item.actualQty}</p>
+                </td>
+                <td class="px-4 py-3 text-right text-sm text-blue-300">${CURRENCY_FORMAT.format(plannedCost)}</td>
+                <td class="px-4 py-3 text-right text-sm text-emerald-300">${CURRENCY_FORMAT.format(actualCost)}</td>
+                <td class="px-4 py-3 text-right text-sm ${varianceColor}">${varianceSign}${CURRENCY_FORMAT.format(variance)}</td>
+                <td class="px-4 py-3 text-right whitespace-nowrap text-sm font-medium">
+                    <button onclick="fillFormForEdit(${item.id})" title="Edit"
+                        class="text-green-500 hover:text-green-400 p-1 transition transform hover:scale-110">
+                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="duplicateItem(${item.id})" title="Duplicate"
+                        class="text-yellow-500 hover:text-yellow-400 p-1 transition transform hover:scale-110">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="confirmDeleteItem(${item.id}, '${item.title.replace(/'/g, "\\'")}')" title="Delete"
+                        class="text-red-500 hover:text-red-400 p-1 transition transform hover:scale-110">
+                        <i data-lucide="trash" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            `;
+            return row;
+        }
+
+        /**
+         * Populates the cost item form for editing.
+         */
+        function fillFormForEdit(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('item-project-id').value = item.projectId;
+            document.getElementById('title').value = item.title;
+            document.getElementById('description').value = item.description;
+            document.getElementById('rate').value = item.rate;
+            document.getElementById('planned-qty').value = item.plannedQty;
+            document.getElementById('actual-qty').value = item.actualQty;
+            document.getElementById('item-page').value = item.page;
+            
+            document.getElementById('form-title').textContent = `Editing Item ID: ${item.id}`;
+            document.getElementById('submit-btn-text').textContent = 'Update Item';
+            document.getElementById('submit-btn').classList.replace('bg-blue-600', 'bg-green-600');
+            document.getElementById('submit-btn').classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+            document.getElementById('reset-btn').classList.remove('hidden');
+
+            document.getElementById('title').focus();
+        }
+
+        /**
+         * Clears and resets the cost item form to the creation state.
+         */
+        function resetItemForm() {
+            document.getElementById('item-form').reset();
+            document.getElementById('item-id').value = '';
+            
+            document.getElementById('form-title').textContent = 'Add Cost Item';
+            document.getElementById('submit-btn-text').textContent = 'Save Cost Item';
+            document.getElementById('submit-btn').classList.replace('bg-green-600', 'bg-blue-600');
+            document.getElementById('submit-btn').classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+            document.getElementById('reset-btn').classList.add('hidden');
+            document.getElementById('title-error').classList.add('hidden');
+            
+            // Re-select the currently filtered project
+            const currentFilteredProject = document.getElementById('project-filter').value;
+            if (currentFilteredProject !== 'all' && currentFilteredProject !== '') {
+                document.getElementById('item-project-id').value = currentFilteredProject;
+            }
+        }
+
+        /**
+         * Creates a duplicate of an existing item and saves it as new.
+         */
+        async function duplicateItem(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) return;
+
+            const newItem = {
+                projectId: item.projectId,
+                title: `${item.title} (COPY)`,
+                description: item.description,
+                rate: item.rate,
+                plannedQty: item.plannedQty,
+                actualQty: 0, // Reset actual qty to 0 for a fresh start
+                page: item.page,
+                timestamp: new Date().toISOString() // New timestamp
+            };
+
+            await saveRecord(STORE_ITEMS, newItem); 
+            await loadAllData();
+            loadItems();
+        }
+
+        /**
+         * Opens the delete confirmation modal for a cost item.
+         */
+        function confirmDeleteItem(id, title) {
+            openDeleteModal(id, title, async () => {
+                await deleteRecord(STORE_ITEMS, id);
+                await loadAllData();
+                loadItems();
+                closeDeleteModal();
+            });
+        }
+        
+        /**
+         * Generic Modal Functions
+         */
+        function openDeleteModal(id, title, confirmAction) {
+            const modal = document.getElementById('delete-modal');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+
+            document.getElementById('item-title-to-delete').textContent = title;
+            confirmBtn.onclick = confirmAction; // Bind the action
+            
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+        
+        /**
+         * Toast Notification (Unchanged from previous version - reliable UX feedback)
+         */
+        function showToast(message, type) {
+            const toastContainer = document.getElementById('toast-container');
+            const iconMap = {
+                success: { icon: 'check-circle', color: 'bg-green-600' },
+                danger: { icon: 'x-circle', color: 'bg-red-600' },
+                warning: { icon: 'alert-triangle', color: 'bg-yellow-600' }
+            };
+            const { icon, color } = iconMap[type] || iconMap.warning;
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 flex items-center shadow-lg rounded-lg text-white ${color} bg-opacity-95 transition-all duration-300 transform translate-x-full opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5 mr-3"></i><span class="font-medium">${message}</span>`;
+
+            toastContainer.prepend(toast); 
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-full', 'opacity-0');
+                
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 3000);
+        }
+
+        // =================================================================
+        //                 DATA RECOVERY (EXPORT/IMPORT)
+        // =================================================================
+
+        /**
+         * Exports all data (Projects and Items) to a JSON file.
+         */
+        async function exportData() {
+            if (allProjects.length === 0 && allItems.length === 0) {
+                showToast('No data to export.', 'warning');
+                return;
+            }
+
+            const data = {
+                projects: allProjects,
+                items: allItems,
+                exportTimestamp: new Date().toISOString()
+            };
+
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            const timestamp = new Date().toISOString().slice(0, 10); 
+            a.download = `project_cost_data_ALL_${timestamp}.json`;
+            a.href = url;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('All data exported successfully!', 'success');
+        }
+
+        /**
+         * Handles importing data from a JSON file (non-destructive merge).
+         */
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData.projects) || !Array.isArray(importedData.items)) {
+                        throw new Error("Invalid structure: file must contain 'projects' and 'items' arrays.");
+                    }
+
+                    let projectsAdded = 0;
+                    let itemsAdded = 0;
+
+                    const projectsStore = getStore(STORE_PROJECTS, 'readwrite');
+                    const itemsStore = getStore(STORE_ITEMS, 'readwrite');
+                    
+                    // --- 1. Import Projects ---
+                    for (const record of importedData.projects) {
+                        const newRecord = { ...record, timestamp: new Date().toISOString() };
+                        delete newRecord.id; // Force new ID
+                        const request = projectsStore.add(newRecord);
+                        await new Promise((resolve) => {
+                             request.onsuccess = () => { projectsAdded++; resolve(); };
+                             request.onerror = () => { resolve(); }; // Skip on error
+                        });
+                    }
+
+                    // --- 2. Import Items ---
+                    for (const record of importedData.items) {
+                        const newRecord = { ...record, timestamp: new Date().toISOString() };
+                        delete newRecord.id; // Force new ID
+                        const request = itemsStore.add(newRecord);
+                        await new Promise((resolve) => {
+                             request.onsuccess = () => { itemsAdded++; resolve(); };
+                             request.onerror = () => { resolve(); }; // Skip on error
+                        });
+                    }
+
+                    showToast(`Import complete: ${projectsAdded} projects and ${itemsAdded} cost items added.`, 'success');
+                    await loadAllData();
+                } catch (error) {
+                    console.error("Import failed:", error);
+                    showToast(`Import failed. File error or invalid format.`, 'danger');
+                } finally {
+                    event.target.value = ''; 
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // =================================================================
+        //                     INITIALIZATION AND START
+        // =================================================================
+        
+        (async function appInit() {
+            await initDB();
+            await loadAllData();
+            lucide.createIcons();
+        })();
+
+    </script>
+</body>
+</html>

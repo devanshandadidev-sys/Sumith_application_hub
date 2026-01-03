@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Resource Allocator Tool (SPA)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <style>
+        /* Instruction 2.1: CSS Styling using Variables */
+        :root {
+            --primary-color: #005A9C;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --text-color: #333;
+            --card-bg: #fff;
+            --border-color: #ddd;
+            --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: var(--card-bg);
+            padding: 20px 40px;
+            box-shadow: var(--shadow-medium);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+
+        /* Instruction 2.2: Component DNA - Card */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow-light);
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-medium);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Instruction 2.2: Component DNA - Tabbed Navigation */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-link {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 3px solid transparent;
+            transition: border-bottom-color 0.3s, color 0.3s;
+        }
+
+        .tab-link:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-link.active {
+            border-bottom-color: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Forms and Inputs */
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 90, 156, 0.1);
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s, opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--card-bg);
+        }
+
+        .btn-primary:hover {
+            background-color: #004a80;
+        }
+
+        .btn-accent {
+            background-color: var(--accent-color);
+            color: var(--card-bg);
+        }
+
+        .btn-accent:hover {
+            background-color: #d16b1e;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: var(--card-bg);
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 10px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--bg-color);
+            font-weight: 600;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
+
+        /* Instruction 2.2: Component DNA - Cost Header */
+        .cost-header {
+            text-align: right !important;
+        }
+
+        .total-row td {
+            font-weight: 700;
+            border-top: 2px solid var(--primary-color);
+        }
+
+        .text-right {
+            text-align: right !important;
+        }
+
+        /* Instruction 2.3: Layouts - Financial Forecasting Grid */
+        #forecasting-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .forecasting-controls {
+            display: grid;
+            gap: 15px;
+            align-content: start;
+        }
+
+        .forecasting-output .output-box {
+            background-color: #e6f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .forecasting-output .output-box p {
+            margin: 5px 0;
+            font-size: 1.1em;
+        }
+
+        .forecasting-output .output-box strong {
+            color: var(--accent-color);
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-container input {
+            flex-grow: 1;
+        }
+
+        /* Utilities */
+        .mt-20 { margin-top: 20px; }
+        .mb-20 { margin-bottom: 20px; }
+        .grid-col-2 { grid-column: span 2; }
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Project Resource Allocator Tool</h1>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <span class="tab-link active" data-tab="projects">Projects</span>
+            <span class="tab-link" data-tab="resources">Resources</span>
+            <span class="tab-link" data-tab="allocations">Allocations</span>
+            <span class="tab-link" data-tab="forecasting">Cost Forecasting</span>
+            <span class="tab-link" data-tab="data-mgmt">Data Management</span>
+        </div>
+
+        <div id="projects" class="tab-content active">
+            <div class="card">
+                <h2>Add/Edit Project</h2>
+                <form id="project-form">
+                    <input type="hidden" id="project-id">
+                    <div>
+                        <label for="project-name">Project Name:</label>
+                        <input type="text" id="project-name" required>
+                    </div>
+                    <div>
+                        <label for="project-budget">Total Budget (INR ₹):</label>
+                        <input type="number" id="project-budget" min="0" step="1" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Project</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Project List</h2>
+                <table id="projects-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th class="cost-header">Total Budget (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="resources" class="tab-content">
+            <div class="card">
+                <h2>Add/Edit Resource</h2>
+                <form id="resource-form">
+                    <input type="hidden" id="resource-id">
+                    <div>
+                        <label for="resource-name">Name:</label>
+                        <input type="text" id="resource-name" required>
+                    </div>
+                    <div>
+                        <label for="resource-employee-id">Employee ID (Unique):</label>
+                        <input type="text" id="resource-employee-id" required>
+                    </div>
+                    <div>
+                        <label for="resource-cost-per-hour">Cost Per Hour (INR ₹):</label>
+                        <input type="number" id="resource-cost-per-hour" min="0" step="0.01" required>
+                    </div>
+                    <div>
+                        <label for="resource-skill-set">Skill Set:</label>
+                        <textarea id="resource-skill-set" rows="2"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Resource</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Resource List (360 Search)</h2>
+                <div class="search-container">
+                    <label for="resource-search">Search:</label>
+                    <input type="text" id="resource-search" placeholder="Search Name, ID, or Skill Set...">
+                </div>
+                <table id="resources-table" class="mt-20">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Employee ID</th>
+                            <th>Skill Set</th>
+                            <th class="cost-header">Cost/Hour (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="allocations" class="tab-content">
+            <div class="card">
+                <h2>Resource Allocation to Project</h2>
+                <form id="allocation-form">
+                    <input type="hidden" id="allocation-id">
+                    <div>
+                        <label for="allocation-project-select">Select Project:</label>
+                        <select id="allocation-project-select" required></select>
+                    </div>
+                    <div>
+                        <label for="allocation-resource-select">Select Resource:</label>
+                        <select id="allocation-resource-select" required></select>
+                    </div>
+                    <div>
+                        <label for="allocation-hours">Total Hours Allocated:</label>
+                        <input type="number" id="allocation-hours" min="1" step="0.5" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Allocation</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Project Allocation Summary & Cost</h2>
+                <div class="mb-20">
+                    <label for="summary-project-select">View Summary for Project:</label>
+                    <select id="summary-project-select"></select>
+                </div>
+                <p><strong>Total Project Resource Cost:</strong> <span id="total-resource-cost" style="color: var(--accent-color);">₹ 0.00</span></p>
+                <table id="allocations-table" class="mt-20">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Resource</th>
+                            <th>Hours</th>
+                            <th class="cost-header">Cost/Hour (₹)</th>
+                            <th class="cost-header">Total Cost (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="forecasting" class="tab-content">
+            <div class="card">
+                <h2>Project Cost Forecasting Model</h2>
+                <div id="forecasting-grid">
+                    <div class="forecasting-controls">
+                        <h3>1. Project Selection & Baseline</h3>
+                        <label for="forecast-project-select">Select Project for Forecast:</label>
+                        <select id="forecast-project-select"></select>
+                        <p><strong>Total Project Budget (A):</strong> <span id="budget-a">₹ 0.00</span></p>
+                        <hr>
+
+                        <h3>2. Inputs (Local Storage Persisted)</h3>
+                        <label for="forecast-fixed-cost">Fixed Overhead Cost (B) (INR ₹):</label>
+                        <input type="number" id="forecast-fixed-cost" min="0" step="1">
+
+                        <label for="forecast-contingency-pct">Contingency % (C):</label>
+                        <input type="number" id="forecast-contingency-pct" min="0" max="100" step="0.1" value="10">
+
+                        <label for="forecast-markup-pct">Profit Markup % (D):</label>
+                        <input type="number" id="forecast-markup-pct" min="0" max="100" step="0.1" value="15">
+                    </div>
+
+                    <div class="forecasting-output">
+                        <h3>3. Calculations & Results</h3>
+                        <div class="output-box">
+                            <p>Project Resource Cost (E): <strong id="output-resource-cost">₹ 0.00</strong></p>
+                        </div>
+                        <div class="output-box">
+                            <p>Total Base Cost (A+B+E): <strong id="output-base-cost">₹ 0.00</strong></p>
+                        </div>
+                        <div class="output-box">
+                            <p>Contingency Cost (C% of Base Cost): <strong id="output-contingency-cost">₹ 0.00</strong></p>
+                        </div>
+                        <div class="output-box" style="border-left-color: var(--accent-color);">
+                            <p>Project Estimated Cost (Base + Contingency): <strong id="output-estimated-cost">₹ 0.00</strong></p>
+                        </div>
+                        <div class="output-box">
+                            <p>Profit Markup (D% of Estimated Cost): <strong id="output-markup-amount">₹ 0.00</strong></p>
+                        </div>
+                        <div class="output-box" style="background-color: #ffefd5; border-left-color: #E87722;">
+                            <p><strong>Final Client Quote Price:</strong> <strong id="output-final-price" style="font-size: 1.5em;">₹ 0.00</strong></p>
+                        </div>
+                        <canvas id="cost-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="data-mgmt" class="tab-content">
+            <div class="card">
+                <h2>Data Backup and Restore</h2>
+                <p>Use these functions to export all application data (Projects, Resources, Allocations) to a JSON file for backup, or restore data from a previously backed-up file.</p>
+                <div class="form-actions" style="justify-content: flex-start;">
+                    <button id="backup-btn" class="btn-primary">Backup Data (Export JSON)</button>
+                    <label class="btn-accent" style="padding: 10px 15px; border-radius: 4px; cursor: pointer;">
+                        Restore Data (Import JSON)
+                        <input type="file" id="restore-input" accept="application/json" style="display: none;">
+                    </label>
+                </div>
+                <hr class="mt-20">
+                <h2>Database Status</h2>
+                <p>Database Name: <code>ResourceAllocatorDB_v1</code></p>
+                <p>Total Projects: <span id="db-status-projects">0</span></p>
+                <p>Total Resources: <span id="db-status-resources">0</span></p>
+                <p>Total Allocations: <span id="db-status-allocations">0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Instruction 1.1 & 1.2: IndexedDB Setup and Promise-based Helpers
+        const DB_NAME = 'ResourceAllocatorDB_v1';
+        const DB_VERSION = 1;
+        const STORE_PROJECTS = 'projects';
+        const STORE_RESOURCES = 'resources';
+        const STORE_ALLOCATIONS = 'allocations';
+
+        let db;
+
+        /**
+         * Opens the IndexedDB connection and initializes the schema.
+         * @returns {Promise<IDBDatabase>}
+         */
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (db) {
+                    resolve(db);
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // Instruction 1.1: IndexedDB Schema - projects
+                    if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
+                        const projectsStore = db.createObjectStore(STORE_PROJECTS, { keyPath: 'id', autoIncrement: true });
+                        projectsStore.createIndex('name', 'name', { unique: true });
+                    }
+
+                    // Instruction 1.1: IndexedDB Schema - resources
+                    if (!db.objectStoreNames.contains(STORE_RESOURCES)) {
+                        const resourcesStore = db.createObjectStore(STORE_RESOURCES, { keyPath: 'id', autoIncrement: true });
+                        resourcesStore.createIndex('employeeId', 'employeeId', { unique: true });
+                    }
+
+                    // Instruction 1.1: IndexedDB Schema - allocations
+                    if (!db.objectStoreNames.contains(STORE_ALLOCATIONS)) {
+                        db.createObjectStore(STORE_ALLOCATIONS, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.errorCode);
+                    reject(new Error("Failed to open IndexedDB"));
+                };
+            });
+        }
+
+        /**
+         * Instruction 1.2: Generic Promise-based asynchronous helper functions
+         * @param {string} storeName
+         * @param {string} mode ('readonly' or 'readwrite')
+         * @returns {IDBObjectStore}
+         */
+        function getStore(storeName, mode) {
+            const transaction = db.transaction(storeName, mode);
+            return transaction.objectStore(storeName);
+        }
+
+        function executeRequest(request) {
+            return new Promise((resolve, reject) => {
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Instruction 1.2: Helper Function: getAll
+        async function getAll(storeName) {
+            await openDB();
+            const store = getStore(storeName, 'readonly');
+            return executeRequest(store.getAll());
+        }
+
+        // Instruction 1.2: Helper Function: getById
+        async function getById(storeName, id) {
+            await openDB();
+            const store = getStore(storeName, 'readonly');
+            return executeRequest(store.get(id));
+        }
+
+        // Instruction 1.2: Helper Function: update/put (for both add and edit)
+        async function save(storeName, item) {
+            await openDB();
+            const store = getStore(storeName, 'readwrite');
+            // IDB uses 'put' for both insert (no key) and update (with key)
+            return executeRequest(store.put(item));
+        }
+
+        async function remove(storeName, id) {
+            await openDB();
+            const store = getStore(storeName, 'readwrite');
+            return executeRequest(store.delete(id));
+        }
+
+        // --- Formatting and Utility Functions ---
+
+        /**
+         * Formats a number as an Indian Rupee currency string.
+         * @param {number} amount
+         * @returns {string}
+         */
+        function formatINR(amount) {
+            if (typeof amount !== 'number' || isNaN(amount)) return '₹ 0.00';
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        // --- Tab Management ---
+        document.querySelectorAll('.tab-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const targetTab = e.target.getAttribute('data-tab');
+
+                document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                e.target.classList.add('active');
+                document.getElementById(targetTab).classList.add('active');
+
+                // Re-render relevant tables/data when switching tabs
+                if (targetTab === 'projects') renderProjects();
+                if (targetTab === 'resources') renderResources();
+                if (targetTab === 'allocations') {
+                    populateProjectSelects();
+                    populateResourceSelects();
+                    renderAllocations(); // Renders all allocations initially
+                }
+                if (targetTab === 'forecasting') {
+                    populateForecastProjectSelect();
+                    loadForecastInputs();
+                    calculateAndRenderForecast();
+                }
+                if (targetTab === 'data-mgmt') updateDBStatus();
+            });
+        });
+
+        // --- Projects Module ---
+
+        const projectForm = document.getElementById('project-form');
+        const projectsTableBody = document.querySelector('#projects-table tbody');
+
+        async function renderProjects() {
+            const projects = await getAll(STORE_PROJECTS);
+            projectsTableBody.innerHTML = '';
+
+            projects.forEach(p => {
+                const row = projectsTableBody.insertRow();
+                row.insertCell().textContent = p.id;
+                row.insertCell().textContent = p.name;
+                row.insertCell().classList.add('text-right');
+                row.cells[2].textContent = formatINR(p.totalBudget);
+
+                const actionsCell = row.insertCell();
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-accent';
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => editProject(p.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-danger';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteProject(p.id);
+
+                actionsCell.append(editBtn, deleteBtn);
+            });
+        }
+
+        projectForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('project-id').value;
+            const project = {
+                name: document.getElementById('project-name').value,
+                totalBudget: parseFloat(document.getElementById('project-budget').value),
+            };
+
+            if (id) project.id = parseInt(id);
+
+            await save(STORE_PROJECTS, project);
+            projectForm.reset();
+            document.getElementById('project-id').value = '';
+            await renderProjects();
+            alert(`Project ${id ? 'updated' : 'added'} successfully.`);
+        });
+
+        async function editProject(id) {
+            const project = await getById(STORE_PROJECTS, id);
+            document.getElementById('project-id').value = project.id;
+            document.getElementById('project-name').value = project.name;
+            document.getElementById('project-budget').value = project.totalBudget;
+        }
+
+        async function deleteProject(id) {
+            if (!confirm("Are you sure you want to delete this project? All associated allocations will be lost.")) return;
+            
+            // Delete associated allocations
+            const allocations = await getAll(STORE_ALLOCATIONS);
+            const projectAllocations = allocations.filter(a => a.projectId === id);
+            for (const a of projectAllocations) {
+                await remove(STORE_ALLOCATIONS, a.id);
+            }
+
+            await remove(STORE_PROJECTS, id);
+            await renderProjects();
+            alert('Project and its allocations deleted.');
+        }
+
+        // --- Resources Module ---
+
+        const resourceForm = document.getElementById('resource-form');
+        const resourcesTableBody = document.querySelector('#resources-table tbody');
+        const resourceSearchInput = document.getElementById('resource-search');
+
+        async function renderResources(filter = '') {
+            const resources = await getAll(STORE_RESOURCES);
+            resourcesTableBody.innerHTML = '';
+            const lowerCaseFilter = filter.toLowerCase();
+
+            // Instruction 3.2: 360 Search Logic
+            const filteredResources = resources.filter(r => {
+                return (
+                    r.name.toLowerCase().includes(lowerCaseFilter) ||
+                    r.employeeId.toLowerCase().includes(lowerCaseFilter) ||
+                    r.skillSet.toLowerCase().includes(lowerCaseFilter)
+                );
+            });
+
+            filteredResources.forEach(r => {
+                const row = resourcesTableBody.insertRow();
+                row.insertCell().textContent = r.id;
+                row.insertCell().textContent = r.name;
+                row.insertCell().textContent = r.employeeId;
+                row.insertCell().textContent = r.skillSet.substring(0, 50) + (r.skillSet.length > 50 ? '...' : '');
+                row.insertCell().classList.add('text-right');
+                row.cells[4].textContent = formatINR(r.costPerHour);
+
+                const actionsCell = row.insertCell();
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-accent';
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => editResource(r.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-danger';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteResource(r.id);
+
+                actionsCell.append(editBtn, deleteBtn);
+            });
+        }
+
+        resourceSearchInput.addEventListener('input', () => {
+            renderResources(resourceSearchInput.value);
+        });
+
+        resourceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('resource-id').value;
+            const resource = {
+                name: document.getElementById('resource-name').value,
+                employeeId: document.getElementById('resource-employee-id').value,
+                costPerHour: parseFloat(document.getElementById('resource-cost-per-hour').value),
+                skillSet: document.getElementById('resource-skill-set').value,
+            };
+
+            if (id) resource.id = parseInt(id);
+
+            try {
+                await save(STORE_RESOURCES, resource);
+                resourceForm.reset();
+                document.getElementById('resource-id').value = '';
+                await renderResources();
+                alert(`Resource ${id ? 'updated' : 'added'} successfully.`);
+            } catch (error) {
+                alert('Error saving resource. Employee ID might already exist.');
+                console.error(error);
+            }
+        });
+
+        async function editResource(id) {
+            const resource = await getById(STORE_RESOURCES, id);
+            document.getElementById('resource-id').value = resource.id;
+            document.getElementById('resource-name').value = resource.name;
+            document.getElementById('resource-employee-id').value = resource.employeeId;
+            document.getElementById('resource-cost-per-hour').value = resource.costPerHour;
+            document.getElementById('resource-skill-set').value = resource.skillSet;
+        }
+
+        async function deleteResource(id) {
+            if (!confirm("Are you sure you want to delete this resource? All associated allocations will be lost.")) return;
+            
+            // Delete associated allocations
+            const allocations = await getAll(STORE_ALLOCATIONS);
+            const resourceAllocations = allocations.filter(a => a.resourceId === id);
+            for (const a of resourceAllocations) {
+                await remove(STORE_ALLOCATIONS, a.id);
+            }
+
+            await remove(STORE_RESOURCES, id);
+            await renderResources();
+            alert('Resource and its allocations deleted.');
+        }
+
+        // --- Allocations Module ---
+
+        const allocationForm = document.getElementById('allocation-form');
+        const allocationProjectSelect = document.getElementById('allocation-project-select');
+        const allocationResourceSelect = document.getElementById('allocation-resource-select');
+        const summaryProjectSelect = document.getElementById('summary-project-select');
+        const allocationsTableBody = document.querySelector('#allocations-table tbody');
+        const totalResourceCostSpan = document.getElementById('total-resource-cost');
+
+        async function populateProjectSelects() {
+            const projects = await getAll(STORE_PROJECTS);
+            [allocationProjectSelect, summaryProjectSelect].forEach(select => {
+                select.innerHTML = '<option value="">-- Select Project --</option>';
+                projects.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.id;
+                    option.textContent = p.name;
+                    select.appendChild(option);
+                });
+            });
+            // Auto-select for summary if possible
+            if (projects.length > 0 && !summaryProjectSelect.value) {
+                summaryProjectSelect.value = projects[0].id;
+            }
+            // Trigger summary update
+            if (summaryProjectSelect.value) {
+                await renderAllocations(parseInt(summaryProjectSelect.value));
+            } else {
+                totalResourceCostSpan.textContent = formatINR(0);
+                allocationsTableBody.innerHTML = '';
+            }
+        }
+
+        async function populateResourceSelects() {
+            const resources = await getAll(STORE_RESOURCES);
+            allocationResourceSelect.innerHTML = '<option value="">-- Select Resource --</option>';
+            resources.forEach(r => {
+                const option = document.createElement('option');
+                option.value = r.id;
+                option.textContent = `${r.name} (₹ ${r.costPerHour}/hr)`;
+                allocationResourceSelect.appendChild(option);
+            });
+        }
+
+        async function renderAllocations(projectId = null) {
+            let allocations = await getAll(STORE_ALLOCATIONS);
+            const projects = await getAll(STORE_PROJECTS);
+            const resources = await getAll(STORE_RESOURCES);
+
+            const projectMap = new Map(projects.map(p => [p.id, p]));
+            const resourceMap = new Map(resources.map(r => [r.id, r]));
+
+            if (projectId) {
+                allocations = allocations.filter(a => a.projectId === projectId);
+            }
+
+            allocationsTableBody.innerHTML = '';
+            let totalCost = 0;
+
+            allocations.forEach(a => {
+                const project = projectMap.get(a.projectId);
+                const resource = resourceMap.get(a.resourceId);
+
+                const costPerHour = resource ? resource.costPerHour : 0;
+                const totalResourceCost = costPerHour * a.totalHoursAllocated;
+                totalCost += totalResourceCost;
+
+                const row = allocationsTableBody.insertRow();
+                row.insertCell().textContent = project ? project.name : 'N/A';
+                row.insertCell().textContent = resource ? resource.name : 'N/A';
+                row.insertCell().textContent = a.totalHoursAllocated.toFixed(1);
+                row.insertCell().classList.add('text-right');
+                row.cells[3].textContent = formatINR(costPerHour);
+                row.insertCell().classList.add('text-right');
+                row.cells[4].textContent = formatINR(totalResourceCost);
+
+                const actionsCell = row.insertCell();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-danger';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteAllocation(a.id);
+
+                actionsCell.append(deleteBtn);
+            });
+
+            // Update Total Cost
+            totalResourceCostSpan.textContent = formatINR(totalCost);
+            // Store the calculated cost for the forecasting module
+            localStorage.setItem(`resource_cost_${projectId}`, totalCost.toFixed(2));
+            if (document.getElementById('forecasting').classList.contains('active')) {
+                calculateAndRenderForecast();
+            }
+        }
+
+        allocationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const allocation = {
+                projectId: parseInt(allocationProjectSelect.value),
+                resourceId: parseInt(allocationResourceSelect.value),
+                totalHoursAllocated: parseFloat(document.getElementById('allocation-hours').value),
+            };
+
+            await save(STORE_ALLOCATIONS, allocation);
+            allocationForm.reset();
+            // Re-render the summary for the currently selected project
+            await renderAllocations(parseInt(summaryProjectSelect.value));
+            alert('Allocation added successfully.');
+        });
+
+        summaryProjectSelect.addEventListener('change', async (e) => {
+            const projectId = parseInt(e.target.value);
+            if (projectId) {
+                await renderAllocations(projectId);
+            } else {
+                totalResourceCostSpan.textContent = formatINR(0);
+                allocationsTableBody.innerHTML = '';
+            }
+        });
+
+        async function deleteAllocation(id) {
+            if (!confirm("Are you sure you want to delete this allocation?")) return;
+            await remove(STORE_ALLOCATIONS, id);
+            await renderAllocations(parseInt(summaryProjectSelect.value));
+            alert('Allocation deleted.');
+        }
+
+
+        // --- Forecasting Module (Instruction 3.1) ---
+
+        const forecastProjectSelect = document.getElementById('forecast-project-select');
+        const budgetASpan = document.getElementById('budget-a');
+        const fixedCostInput = document.getElementById('forecast-fixed-cost');
+        const contingencyPctInput = document.getElementById('forecast-contingency-pct');
+        const markupPctInput = document.getElementById('forecast-markup-pct');
+        const outputResourceCostSpan = document.getElementById('output-resource-cost');
+        const outputBaseCostSpan = document.getElementById('output-base-cost');
+        const outputContingencyCostSpan = document.getElementById('output-contingency-cost');
+        const outputEstimatedCostSpan = document.getElementById('output-estimated-cost');
+        const outputMarkupAmountSpan = document.getElementById('output-markup-amount');
+        const outputFinalPriceSpan = document.getElementById('output-final-price');
+        const costChartCanvas = document.getElementById('cost-chart');
+        let costChartInstance = null;
+
+        async function populateForecastProjectSelect() {
+            const projects = await getAll(STORE_PROJECTS);
+            forecastProjectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+            projects.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                forecastProjectSelect.appendChild(option);
+            });
+            // Auto-select the first project
+            if (projects.length > 0 && !forecastProjectSelect.value) {
+                 forecastProjectSelect.value = projects[0].id;
+            }
+        }
+
+        // Instruction 3.1: Local Storage Persistence
+        function saveForecastInputs() {
+            localStorage.setItem('forecast_fixed_cost', fixedCostInput.value);
+            localStorage.setItem('forecast_contingency_pct', contingencyPctInput.value);
+            localStorage.setItem('forecast_markup_pct', markupPctInput.value);
+        }
+
+        function loadForecastInputs() {
+            fixedCostInput.value = localStorage.getItem('forecast_fixed_cost') || 0;
+            contingencyPctInput.value = localStorage.getItem('forecast_contingency_pct') || 10;
+            markupPctInput.value = localStorage.getItem('forecast_markup_pct') || 15;
+        }
+
+        async function calculateAndRenderForecast() {
+            const projectId = parseInt(forecastProjectSelect.value);
+            let totalProjectBudget = 0;
+            let totalResourceCost = 0;
+
+            if (projectId) {
+                const project = await getById(STORE_PROJECTS, projectId);
+                totalProjectBudget = project ? project.totalBudget : 0;
+                // Get resource cost calculated in the Allocations module
+                totalResourceCost = parseFloat(localStorage.getItem(`resource_cost_${projectId}`) || 0);
+            }
+
+            // Step 1: Base Inputs
+            const A = totalProjectBudget; // Total Project Budget
+            const B = parseFloat(fixedCostInput.value) || 0; // Fixed Overhead Cost
+            const E = totalResourceCost; // Project Resource Cost
+
+            // Step 2: Intermediate Calculations
+            const totalBaseCost = A + B + E; // A + B + E
+            
+            const contingencyPct = parseFloat(contingencyPctInput.value) / 100;
+            const contingencyCost = totalBaseCost * contingencyPct; // C% of Base Cost
+            
+            const estimatedCost = totalBaseCost + contingencyCost; // Base Cost + Contingency
+
+            const markupPct = parseFloat(markupPctInput.value) / 100;
+            const markupAmount = estimatedCost * markupPct; // D% of Estimated Cost
+
+            const finalPrice = estimatedCost + markupAmount; // Estimated Cost + Markup
+
+            // Step 3: Update UI
+            budgetASpan.textContent = formatINR(A);
+            outputResourceCostSpan.textContent = formatINR(E);
+            outputBaseCostSpan.textContent = formatINR(totalBaseCost);
+            outputContingencyCostSpan.textContent = formatINR(contingencyCost);
+            outputEstimatedCostSpan.textContent = formatINR(estimatedCost);
+            outputMarkupAmountSpan.textContent = formatINR(markupAmount);
+            outputFinalPriceSpan.textContent = formatINR(finalPrice);
+
+            updateCostChart(totalBaseCost, contingencyCost, markupAmount);
+        }
+
+        function updateCostChart(baseCost, contingency, markup) {
+            if (costChartInstance) {
+                costChartInstance.destroy();
+            }
+
+            const data = {
+                labels: ['Base Cost (A+B+E)', 'Contingency', 'Profit Markup'],
+                datasets: [{
+                    label: 'Cost Breakdown',
+                    data: [baseCost, contingency, markup],
+                    backgroundColor: [
+                        'rgba(0, 90, 156, 0.7)',  // Primary Color
+                        'rgba(232, 119, 34, 0.7)', // Accent Color
+                        'rgba(60, 179, 113, 0.7)'  // Green for Profit
+                    ],
+                    borderColor: [
+                        'var(--primary-color)',
+                        'var(--accent-color)',
+                        '#3cb371'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            costChartInstance = new Chart(costChartCanvas, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Final Quote Price Composition'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Attach event listeners for real-time recalculation and persistence
+        [forecastProjectSelect, fixedCostInput, contingencyPctInput, markupPctInput].forEach(el => {
+            el.addEventListener('change', calculateAndRenderForecast);
+            el.addEventListener('input', calculateAndRenderForecast);
+            el.addEventListener('change', saveForecastInputs); // Persist all inputs on change
+        });
+
+        // --- Data Management Module (Instruction 3.3) ---
+
+        const backupBtn = document.getElementById('backup-btn');
+        const restoreInput = document.getElementById('restore-input');
+
+        async function updateDBStatus() {
+            const projects = await getAll(STORE_PROJECTS);
+            const resources = await getAll(STORE_RESOURCES);
+            const allocations = await getAll(STORE_ALLOCATIONS);
+
+            document.getElementById('db-status-projects').textContent = projects.length;
+            document.getElementById('db-status-resources').textContent = resources.length;
+            document.getElementById('db-status-allocations').textContent = allocations.length;
+        }
+
+        // Backup Data (JSON Export)
+        backupBtn.addEventListener('click', async () => {
+            try {
+                const projects = await getAll(STORE_PROJECTS);
+                const resources = await getAll(STORE_RESOURCES);
+                const allocations = await getAll(STORE_ALLOCATIONS);
+
+                const data = {
+                    version: DB_VERSION,
+                    timestamp: new Date().toISOString(),
+                    projects: projects,
+                    resources: resources,
+                    allocations: allocations
+                };
+
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ResourceAllocatorDB_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert('Database successfully backed up!');
+            } catch (error) {
+                console.error('Backup failed:', error);
+                alert('Backup failed. See console for details.');
+            }
+        });
+
+        // Restore Data (JSON Import)
+        restoreInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!confirm("WARNING: Restoring data will overwrite all existing data in the database. Are you sure you want to continue?")) {
+                restoreInput.value = ''; // Clear file input
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    if (!data.projects || !data.resources || !data.allocations) {
+                        throw new Error("Invalid backup file structure.");
+                    }
+
+                    // A full clear and reload is the safest method for restore
+                    await clearAndLoadDB(data.projects, STORE_PROJECTS);
+                    await clearAndLoadDB(data.resources, STORE_RESOURCES);
+                    await clearAndLoadDB(data.allocations, STORE_ALLOCATIONS);
+
+                    alert('Database restored successfully! Please refresh the page.');
+                    window.location.reload(); // Hard reload to re-initialize UI with new data
+
+                } catch (error) {
+                    console.error('Restore failed:', error);
+                    alert('Restore failed. Invalid file format or structure.');
+                }
+                restoreInput.value = ''; // Clear file input after attempt
+            };
+            reader.readAsText(file);
+        });
+
+        async function clearAndLoadDB(items, storeName) {
+            await openDB();
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+
+            // 1. Clear existing data
+            await executeRequest(store.clear());
+
+            // 2. Load new data
+            for (const item of items) {
+                // Remove ID so IndexedDB can generate new auto-increment keys on the client
+                // NOTE: To preserve relationships, we keep the original ID and use put()
+                // A more robust app would map old IDs to new IDs, but for simplicity, we use the original
+                // IDs and rely on the save function (which is a put) to handle updates/inserts.
+                // However, since we cleared, we must put the items back with their IDs.
+                await executeRequest(store.put(item)); 
+            }
+
+            return new Promise(resolve => {
+                transaction.oncomplete = resolve;
+                transaction.onerror = (e) => console.error(`Failed to load ${storeName}:`, e);
+            });
+        }
+
+
+        // --- Initialization ---
+
+        async function init() {
+            try {
+                await openDB();
+                await renderProjects();
+                await renderResources();
+                
+                // Initialize Allocation and Forecasting tabs
+                await populateProjectSelects();
+                await populateResourceSelects();
+                await populateForecastProjectSelect();
+                loadForecastInputs();
+                await calculateAndRenderForecast(); // Calculate initial forecast
+            } catch (error) {
+                document.body.innerHTML = `<h1>Initialization Error</h1><p>The application could not start due to a database error. Please check your browser console.</p><p>Details: ${error.message}</p>`;
+                console.error("Initialization failed:", error);
+            }
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

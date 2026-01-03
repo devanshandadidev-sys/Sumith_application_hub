@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telematics Requirement Breakdown Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Base styles and dark theme setup */
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Instruction 3: Deep dark palette */
+        body {
+            background-color: #111827; /* bg-gray-900 */
+            color: #E5E7EB; /* text-gray-200 */
+        }
+        /* Custom scrollbar for a dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1F2937; /* bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151; /* bg-gray-700 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4B5563; /* bg-gray-600 */
+        }
+
+        /* Modal transitions (Instruction 3) */
+        .modal-enter-active, .modal-leave-active {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal-enter-from, .modal-leave-to {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col antialiased">
+
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-3 w-full max-w-xs pointer-events-none">
+        </div>
+
+    <div id="delete-modal" class="fixed inset-0 z-40 bg-gray-900 bg-opacity-75 hidden modal-leave-to" aria-hidden="true">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-sm transform transition-all modal-leave-to" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+                <div class="text-center">
+                    <i data-lucide="alert-triangle" class="w-10 h-10 mx-auto text-red-500"></i>
+                    <h3 id="modal-title" class="mt-2 text-lg font-medium text-gray-100">Confirm Deletion</h3>
+                    <div class="mt-2">
+                        <p class="text-sm text-gray-400">Are you sure you want to delete the requirement: "<span id="delete-item-title" class="font-semibold text-white"></span>"? This action cannot be undone.</p>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end space-x-3">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition">
+                        Cancel
+                    </button>
+                    <button type="button" id="confirm-delete-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition hover:scale-105">
+                        <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-grow container mx-auto p-4 md:p-8">
+        <h1 class="text-3xl font-extrabold mb-8 text-blue-400">Telematics Requirement Breakdown</h1>
+
+        <div class="md:grid md:grid-cols-3 md:gap-8 lg:grid-cols-4">
+
+            <div class="md:col-span-1 mb-8 md:mb-0">
+                <div class="bg-gray-800 p-6 rounded-xl shadow-2xl sticky top-8">
+                    <h2 class="text-xl font-semibold mb-4 text-white" id="form-title">Add New Requirement</h2>
+
+                    <form id="req-form">
+                        <input type="hidden" id="item-id" value="">
+
+                        <div class="mb-4">
+                            <label for="title" class="block text-sm font-medium text-gray-300 mb-1">Requirement Title (Max 100)</label>
+                            <input type="text" id="title" maxlength="100" placeholder="e.g., GPS data logging capability"
+                                class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-blue-500 focus:border-blue-500 transition">
+                            <p id="title-error" class="text-sm text-red-400 mt-1 hidden">Title cannot be empty.</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="type" class="block text-sm font-medium text-gray-300 mb-1">Breakdown Category</label>
+                            <select id="type" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-blue-500 focus:border-blue-500 transition">
+                                <option value="Hardware">Hardware</option>
+                                <option value="Software">Software</option>
+                                <option value="Firmware">Firmware</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-6">
+                            <label for="description" class="block text-sm font-medium text-gray-300 mb-1">Detailed Description</label>
+                            <textarea id="description" rows="4" placeholder="Describe the specific functionality or constraint."
+                                class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                        </div>
+
+                        <button type="submit" id="save-btn"
+                            class="w-full flex items-center justify-center p-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition duration-200 hover:scale-[1.02] active:scale-95 disabled:bg-blue-800 disabled:text-blue-400">
+                            <i data-lucide="save" class="w-5 h-5 mr-2" id="save-icon"></i>
+                            <span id="save-text">Save Requirement</span>
+                        </button>
+                    </form>
+
+                    <div class="mt-6 pt-6 border-t border-gray-700 space-y-3">
+                        <h3 class="text-md font-semibold text-gray-300">Data Management</h3>
+                        <button onclick="exportData()" class="w-full flex items-center justify-center p-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition hover:scale-105">
+                            <i data-lucide="download" class="w-4 h-4 mr-2"></i> Export All Data (JSON)
+                        </button>
+                        <label for="import-file" class="w-full flex items-center justify-center p-2 text-sm font-medium text-white bg-yellow-600 rounded-lg cursor-pointer hover:bg-yellow-700 transition hover:scale-105">
+                            <i data-lucide="upload" class="w-4 h-4 mr-2"></i> Import Data (Append)
+                            <input type="file" id="import-file" accept=".json" class="hidden">
+                        </label>
+                        <button onclick="resetForm()" class="w-full flex items-center justify-center p-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition hover:scale-105">
+                            <i data-lucide="square-x" class="w-4 h-4 mr-2"></i> Clear Form
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="md:col-span-2 lg:col-span-3">
+                <div class="mb-6 sticky top-0 md:top-8 z-10 bg-gray-900 pt-1 pb-4 rounded-lg">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-input" placeholder="Search requirements by Title or Description..."
+                            class="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-xl text-white focus:ring-blue-500 focus:border-blue-500 text-lg transition shadow-xl">
+                    </div>
+                </div>
+
+                <div id="items-list" class="grid grid-cols-1 gap-6">
+                    <p id="empty-state" class="text-center text-lg text-gray-500 mt-10 hidden">No requirements found. Start by adding one!</p>
+                    </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="p-4 text-center text-sm text-gray-500 mt-8 border-t border-gray-800">
+        Engineered by HTML App Maker | IndexedDB & Tailwind CSS
+    </footer>
+
+    <script>
+        // --- Globals ---
+        const DB_NAME = 'TelematicsReqDB'; // User defined Database name
+        const STORE_NAME = 'items';
+        let db;
+        let allItems = []; // Instruction 4: Local cache for filtering/sorting
+
+        // --- Instruction 2: DB Setup ---
+
+        /**
+         * Initializes the IndexedDB connection and creates the object store.
+         */
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    // Instruction 2: Configuration
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve();
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.errorCode);
+                    showToast('Critical database error. Check console.', 'danger');
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // --- Instruction 2 & 4: CRUD Operations ---
+
+        /**
+         * Generic IndexedDB transaction wrapper for all CRUD operations.
+         */
+        function executeTransaction(mode, operation) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const transaction = db.transaction([STORE_NAME], mode);
+                    const store = transaction.objectStore(STORE_NAME);
+
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = (event) => {
+                        console.error(`Transaction failed (${mode}):`, event.target.error);
+                        showToast('Database operation failed.', 'danger');
+                        reject(event.target.error);
+                    };
+
+                    operation(store, resolve, reject);
+
+                } catch (error) {
+                    console.error("Transaction setup error:", error);
+                    showToast('Failed to start DB transaction.', 'danger');
+                    reject(error);
+                }
+            });
+        }
+
+        /**
+         * Reads all items from the database. (Instruction 4: Read)
+         */
+        async function getItems() {
+            return executeTransaction('readonly', (store, resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Saves or updates an item in the database. (Instruction 4: Create/Update)
+         */
+        async function saveItem(item) {
+            const isUpdate = item.id;
+            return executeTransaction('readwrite', (store, resolve, reject) => {
+                const request = isUpdate ? store.put(item) : store.add(item);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Deletes an item by ID. (Instruction 2: Delete)
+         */
+        async function deleteItem(id) {
+            return executeTransaction('readwrite', (store, resolve, reject) => {
+                const request = store.delete(Number(id));
+                request.onsuccess = () => resolve();
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        // --- Instruction 4: Data Flow & UI Logic ---
+
+        /**
+         * Loads, sorts, and renders all items. (Instruction 4: Read & Sorting)
+         */
+        async function loadItems() {
+            try {
+                const rawItems = await getItems();
+
+                // Sort by timestamp descending (newest first)
+                allItems = rawItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                // Apply current filter (if any)
+                filterAndRenderItems(document.getElementById('search-input').value);
+
+                // Re-initialize Lucide Icons for the newly rendered list
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error("Failed to load items:", error);
+                showToast('Failed to load requirements from local storage.', 'danger');
+            }
+        }
+
+        /**
+         * Filters the allItems array and updates the DOM. (Instruction 4: Search/Filtering)
+         */
+        function filterAndRenderItems(searchTerm) {
+            const listElement = document.getElementById('items-list');
+            const emptyState = document.getElementById('empty-state');
+            const term = searchTerm ? searchTerm.toLowerCase().trim() : '';
+
+            const filteredItems = term
+                ? allItems.filter(item =>
+                    item.title.toLowerCase().includes(term) ||
+                    item.description.toLowerCase().includes(term)
+                )
+                : allItems;
+
+            listElement.innerHTML = filteredItems.map(item => createItemCard(item)).join('');
+            emptyState.classList.toggle('hidden', allItems.length > 0);
+        }
+
+
+        /**
+         * Generates the HTML for a single requirement card. (Instruction 3: List Rendering)
+         */
+        function createItemCard(item) {
+            const timestamp = new Date(item.timestamp).toLocaleString();
+            const descriptionSnippet = item.description.length > 150
+                ? item.description.substring(0, 147) + '...'
+                : item.description;
+
+            let typeColor = 'bg-blue-600'; // Default
+            if (item.type === 'Software') typeColor = 'bg-purple-600';
+            else if (item.type === 'Hardware') typeColor = 'bg-red-600';
+            else if (item.type === 'Firmware') typeColor = 'bg-yellow-600';
+
+            return `
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 ${typeColor} transition duration-300 hover:shadow-blue-500/30">
+                    <div class="flex justify-between items-start mb-3">
+                        <h3 class="text-xl font-bold text-white leading-snug break-words pr-4">${item.title}</h3>
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full text-white ${typeColor} whitespace-nowrap">${item.type}</span>
+                    </div>
+
+                    <p class="text-gray-400 mb-3 text-sm italic">Created: ${timestamp} (ID: ${item.id})</p>
+
+                    <p class="text-gray-300 mb-4 whitespace-pre-wrap">${descriptionSnippet}</p>
+
+                    <div class="flex space-x-3 justify-end">
+                        <button onclick="editItem(${item.id})" title="Edit"
+                            class="p-2 text-sm text-yellow-400 bg-gray-700 rounded-lg hover:bg-gray-600 transition hover:scale-105 active:scale-95">
+                            <i data-lucide="square-pen" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="duplicateItem(${item.id})" title="Duplicate"
+                            class="p-2 text-sm text-indigo-400 bg-gray-700 rounded-lg hover:bg-gray-600 transition hover:scale-105 active:scale-95">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="openDeleteModal(${item.id}, '${item.title.replace(/'/g, "\\'")}')" title="Delete"
+                            class="p-2 text-sm text-red-500 bg-gray-700 rounded-lg hover:bg-gray-600 transition hover:scale-105 active:scale-95">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Handles the form submission for creation and updates. (Instruction 4: Add/Create & Edit/Update)
+         */
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const itemIdInput = document.getElementById('item-id');
+            const titleInput = document.getElementById('title');
+            const descInput = document.getElementById('description');
+            const typeInput = document.getElementById('type');
+            const saveBtn = document.getElementById('save-btn');
+            const saveText = document.getElementById('save-text');
+
+            // Instruction 4: Client-side validation
+            const title = titleInput.value.trim();
+            if (!title) {
+                document.getElementById('title-error').classList.remove('hidden');
+                titleInput.focus();
+                return;
+            }
+            document.getElementById('title-error').classList.add('hidden');
+
+            const isUpdate = !!itemIdInput.value;
+            const originalSaveText = isUpdate ? 'Update Requirement' : 'Save Requirement';
+
+            // Instruction 4: Action Feedback - Disable button
+            saveBtn.disabled = true;
+            saveText.textContent = isUpdate ? 'Updating...' : 'Saving...';
+            document.getElementById('save-icon').setAttribute('data-lucide', 'loader-circle');
+            lucide.createIcons(); // Re-render icon
+
+            try {
+                const item = {
+                    title: title, // Instruction 4: .trim() already applied
+                    description: descInput.value.trim(),
+                    type: typeInput.value,
+                    timestamp: new Date().toISOString()
+                };
+
+                if (isUpdate) {
+                    item.id = Number(itemIdInput.value);
+                    // Preserve original timestamp during update for accurate sorting
+                    const originalItem = allItems.find(i => i.id === item.id);
+                    if (originalItem) {
+                        item.timestamp = originalItem.timestamp;
+                    }
+                }
+
+                await saveItem(item);
+                await loadItems(); // Reload and re-render the list
+
+                showToast(`Requirement successfully ${isUpdate ? 'updated' : 'added'}.`, 'success');
+                resetForm();
+
+            } catch (error) {
+                console.error("Save/Update failed:", error);
+                showToast(`Failed to ${isUpdate ? 'update' : 'add'} requirement.`, 'danger');
+            } finally {
+                // Instruction 4: Action Feedback - Re-enable button
+                saveBtn.disabled = false;
+                saveText.textContent = originalSaveText;
+                document.getElementById('save-icon').setAttribute('data-lucide', isUpdate ? 'save' : 'save');
+                lucide.createIcons();
+            }
+        }
+
+        /**
+         * Populates the form for editing an existing item. (Instruction 4: Edit/Update)
+         */
+        function editItem(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) {
+                showToast('Item not found for editing.', 'danger');
+                return;
+            }
+
+            // Instruction 4: Update form appearance
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('title').value = item.title;
+            document.getElementById('description').value = item.description;
+            document.getElementById('type').value = item.type;
+            document.getElementById('form-title').textContent = `Editing Requirement ID: ${item.id}`;
+
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            saveBtn.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            document.getElementById('save-text').textContent = 'Update Requirement';
+            document.getElementById('save-icon').setAttribute('data-lucide', 'save');
+            lucide.createIcons();
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to form
+        }
+
+        /**
+         * Creates a copy of an item and populates the form.
+         */
+        function duplicateItem(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) {
+                showToast('Item not found for duplication.', 'warning');
+                return;
+            }
+
+            resetForm(); // Ensure we are in 'Create' mode
+
+            document.getElementById('title').value = `Copy of ${item.title}`;
+            document.getElementById('description').value = item.description;
+            document.getElementById('type').value = item.type;
+
+            showToast('Item duplicated to form.', 'warning');
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to form
+        }
+
+        /**
+         * Clears the form and resets it to 'Create' mode.
+         */
+        function resetForm() {
+            document.getElementById('req-form').reset();
+            document.getElementById('item-id').value = '';
+            document.getElementById('form-title').textContent = 'Add New Requirement';
+            document.getElementById('title-error').classList.add('hidden');
+
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+            saveBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            document.getElementById('save-text').textContent = 'Save Requirement';
+            document.getElementById('save-icon').setAttribute('data-lucide', 'save');
+            lucide.createIcons();
+        }
+
+        // --- Instruction 3: Modal Logic ---
+
+        let deleteId = null;
+
+        function openDeleteModal(id, title) {
+            deleteId = id;
+            document.getElementById('delete-item-title').textContent = title;
+
+            const modal = document.getElementById('delete-modal');
+            const modalContent = modal.querySelector('div:last-child'); // The inner div
+            modal.classList.remove('hidden', 'modal-leave-to');
+            modalContent.classList.remove('modal-leave-to');
+
+            // Instruction 3: Prevent background scrolling
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            const modalContent = modal.querySelector('div:last-child');
+
+            // Apply exit transition classes
+            modal.classList.add('modal-leave-to');
+            modalContent.classList.add('modal-leave-to');
+
+            // Wait for transition to finish before hiding
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }, 300);
+
+            deleteId = null;
+        }
+
+        async function handleDeleteConfirm() {
+            if (deleteId === null) return;
+
+            try {
+                await deleteItem(deleteId);
+                await loadItems();
+                showToast('Requirement successfully deleted.', 'success');
+            } catch (error) {
+                console.error("Delete failed:", error);
+                showToast('Failed to delete requirement.', 'danger');
+            } finally {
+                closeDeleteModal();
+            }
+        }
+
+        // --- Instruction 4: Data Recovery (Export/Import) ---
+
+        /**
+         * Exports all data as a JSON file.
+         */
+        async function exportData() {
+            try {
+                const data = await getItems();
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `TelematicsReqDB_Export_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Data exported successfully.', 'success');
+            } catch (error) {
+                console.error("Export failed:", error);
+                showToast('Failed to export data.', 'danger');
+            }
+        }
+
+        /**
+         * Imports data from a JSON file, performing a non-destructive merge (append).
+         */
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedItems = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedItems)) {
+                        throw new Error('JSON file format is invalid. Expected an array.');
+                    }
+
+                    // Instruction 4: Non-destructive merge (append)
+                    const itemsToSave = importedItems.map(item => ({
+                        title: item.title || 'Untitled Import',
+                        description: item.description || '',
+                        type: item.type || 'Software',
+                        // Assign a NEW timestamp to ensure newest sort order
+                        timestamp: new Date().toISOString()
+                        // ID is intentionally omitted to force IndexedDB to auto-increment a new one
+                    }));
+
+                    let successCount = 0;
+                    for (const item of itemsToSave) {
+                        try {
+                            await saveItem(item);
+                            successCount++;
+                        } catch (saveError) {
+                            console.error("Import single item failed:", saveError);
+                        }
+                    }
+
+                    await loadItems();
+                    showToast(`Import complete. ${successCount} of ${itemsToSave.length} requirements successfully added.`, 'success');
+
+                } catch (error) {
+                    console.error("Import failed:", error);
+                    showToast(`Import failed: ${error.message || 'Check console for details.'}`, 'danger');
+                } finally {
+                    event.target.value = ''; // Clear file input
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- UX Feedback: Toast Notifications ---
+
+        /**
+         * Displays a temporary toast notification. (Instruction 4: UX Feedback)
+         */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            let colorClass = 'bg-green-600'; // Success (Green)
+            if (type === 'danger') colorClass = 'bg-red-600'; // Danger (Red)
+            else if (type === 'warning') colorClass = 'bg-yellow-600'; // Warning (Yellow)
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-lg text-white shadow-xl flex items-center transition-all duration-300 transform translate-x-full opacity-0 pointer-events-auto ${colorClass}`;
+            toast.innerHTML = `
+                <i data-lucide="${type === 'success' ? 'check-circle' : type === 'danger' ? 'x-circle' : 'alert-triangle'}" class="w-5 h-5 mr-3 flex-shrink-0"></i>
+                <span class="text-sm font-medium">${message}</span>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons(); // Render icon in toast
+
+            // Show animation
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            }, 10);
+
+            // Hide animation and removal after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300); // Remove after transition
+            }, 3000);
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        window.onload = async () => {
+            await initDB(); // Initialize DB
+            await loadItems(); // Instruction 4: Load on initialization
+
+            // Attach event listeners
+            document.getElementById('req-form').addEventListener('submit', handleFormSubmit);
+            document.getElementById('confirm-delete-btn').addEventListener('click', handleDeleteConfirm);
+            document.getElementById('search-input').addEventListener('input', (e) => filterAndRenderItems(e.target.value));
+            document.getElementById('import-file').addEventListener('change', importData);
+
+            // Hide the modal element initially (redundant with CSS but good practice)
+            document.getElementById('delete-modal').classList.add('hidden');
+
+            // Initial icon rendering
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>

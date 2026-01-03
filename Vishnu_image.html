@@ -1,0 +1,312 @@
+<html>
+<head>
+<style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #fff8fa; 
+      color: #34001e; 
+      margin: 0;
+      padding: 0;
+    }
+    .header-bar {
+      background: #800029; 
+      height: 65px; /* Reduced from approx 95px */
+      padding: 8px 20px 8px 0;
+      display: flex;
+      align-items: center;
+      border-bottom: 3px solid #a83757;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      box-sizing: border-box;
+    }
+    .logo-wrap {
+      width: 65px; 
+      height: 65px; 
+      display: flex; 
+      align-items: flex-start; 
+      justify-content: flex-start;
+      margin-left: 16px;
+      margin-right: 16px;
+      flex-shrink: 0;
+    }
+    .logo-wrap img {
+      width: 60px; 
+      height: 60px; 
+      margin-top: 0;
+      display: block;
+    }
+    .header-title {
+      color: #fff; 
+      font-size: 28px; /* Slightly smaller font */
+      font-weight: bold; 
+      margin: 0;
+      padding-left: 16px;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    .doc-ref {
+      position: absolute;
+      top: 18px;
+      right: 48px;
+      font-weight: bold;
+      font-size: 14px;
+      color: #800029;
+      background: #fff8fa;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    h2, h3 {
+      color: #800029;
+      text-align: left;
+      margin-top: 0;
+    }
+    h2 {
+      font-size: 26px; 
+      font-weight: bold; 
+      margin: 0 0 10px 0;
+    }
+    h3 {
+      font-size: 19px; 
+      margin: 16px 0 8px 0; 
+    }
+    .content-wrapper {
+      padding-top: 80px; /* Offset for fixed header */
+    }
+    .section {
+      margin: 24px 30px 24px 30px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+.new-page-offset {
+  page-break-before: always;
+  padding-top: 80px;
+}
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      background: #fcf7f9; 
+      margin-bottom: 16px; 
+      table-layout: fixed;
+      word-break: break-word;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    th, td { 
+      border: 1.6px solid #800029; 
+      padding: 8px 10px; 
+      font-size: 15px; 
+      vertical-align: top;
+    }
+    th { 
+      background-color: #e8cfd6; 
+      color: #34001e; 
+      text-align: left; 
+      font-weight: bold;
+      font-size: 16px;
+    }
+    ul {
+      margin: 7px 0 7px 20px;
+    }
+    tr {
+      page-break-inside: avoid;
+    }
+    .banking-table, .banking-info-section, .contact-info-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .signature-table th, .signature-table td {
+      text-align: center;
+    }
+</style>
+</head>
+<body>
+<div class="header-bar">
+<div class="logo-wrap">
+<img src="/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAEBAQEBAQEBAQEBAQEBAQIBAQEBAQIBAQECAgICAgICAgIDAwQDAwMDAwICAwQDAwQEBAQEAgMFBQQEBQQEBAT/2wBDAQEBAQEBAQIBAQIEAwIDBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAT/wAARCAGyA7IDASIAAhEBAxEB/8QAHwABAQACAgMBAQEAAAAAAAAAAAkHCgIIBQYLBAMB/8QAahAAAAQFAQIKBQkDBwQMCwUJAAIDBAEFBgcICRIYERMUGVhpmKfU1RUXWajlChYhKVJWkpelIjY5IyQxeYi0tzIzeLYaNDU3OEFRd5Wz0tYlJicoOkJhdXaptSpDYnGRR1NXZHSBhbGy/8QAHQEBAAICAwEBAAAAAAAAAAAAAAIDBAUBBgcICf/EAFsRAAEDAgIEBwsKAggCBwYHAAEAAgMEEQUSBhMhMQcWIlFUo9IUFzJBVVaRkpOU1BUjJ1JTYWRl0eJCcQgzNDZ0gbO1JSIYN0NGhLLTRKGxxNXwNWNyc4KktP/aAAwDAQACEQMRAD8A1Wds/wBo34oj7QXzYpr7vSP/AKJb/wDYHxex9qAVx+NfeX9NtjGcWcgA/tu7/wAIvB/Nimvu9I/+iW//AGA+bFNfd6R/9Et/+wPOALF8GrwfzYpr7vSP/olv/wBgPmxTX3ekf/RLf/sDzgAi8H82Ka+70j/6Jb/9gPmxTX3ekf8A0S3/AOwPOACLwfzYpr7vSP8A6Jb/APYD5sU193pH/wBEt/8AsDzgAi+el8q6ZM5dqIWaQl7RswRPhfTqpkWSBGqRjRri4sImiUsIQjHgKWHD/TwFh/yDWO2z/aN+KI2evlY38RWzH+hXTn+vNxxrBil/hFfsTwERRHggwAlov3O3xD6zly2z/aN+KIbZ/tG/FEcQEV63qYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2jfiiOIAmph+oPQFy2z/aN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/aN+KI4gCamH6g9AXLbP8AaN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/AGjfiiOIAmph+oPQFy2z/aN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/aN+KI4gCamH6g9AXLbP9o34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP9o34ojiAJqYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2jfiiOIAmph+oPQFy2z/AGjfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/wBo34ojiAJqYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tm/wD1iG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2zfiiOIAmph+oPQFy2z/AGjfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/wBo34ojiAJqYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2jfiiOIAmph+oPQFy2z/aN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/aN+KI4gCamH6g9AXLbP9o34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP9o34ojiAJqYfqD0Bcts/wBo34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP8AaN+KI4gCamH6g9AXLbP9o34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP9o34ojiAJqYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2jfiiOIAmph+oPQFy2z/aN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/aN+KI4gCamH6g9AXLbP8AaN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/AGjfiiOIAmph+oPQFy2z/aN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/aN+KI4gCamH6g9AXLbP9o34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP9o34ojiAJqYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2jfiiOIAmph+oPQFy2z/AGjfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/wBo34ojiAJqYfqD0Bcts/2jfiiG2f7RvxRHEATUw/UHoC5bZ/tG/FENs/2jfiiOIAmph+oPQFy2z/aN+KIbZ/tG/FEcQBNTD9QegLltn+0b8UQ2z/aN+KI4gCamH6g9AXLbP9o34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP9o34ojiAJqYfqD0Bcts/wBo34ohtn+0b8URxAE1MP1B6AuW2f7RvxRDbP8AaN+KI4gCamH6g9AXLbP9o34ohtn+0b8URxAE1MP1B6AuW2f7RvxRAcQBNTD9QegIPtQD4r4+1ALI/Gvg/wDpu/8Adj/xv/yiAACxfBaAAAiAAAiAAAi+e38rG/iK2Y/0K6c/15uONYMbPnysb+IrZj/Qrpz/AF5uONYMUv8ACK/Y3gH/AOp/R/8Aw7f/ADOQAARXraAAAiAN3DSO0r9LrUS03pTcGc2CTl2SUqaT+0Fwa+ll4a7TcyWqWaZ4yyfQlMJ1CXQOo1eyiYRb8l5LFRRQnExJCJRpfXBoWpbX17W1tazYGlVX29q2Y0RVMsOeChpfMZU8WYvUdqH0G2FkFC7UOGEeDhh9A5q2uo8QOGzDl5Q8H+F7T42+M7CxxuBsezxkgee6E8JWFZuIYni+C4dDNDVYbNqZ45msa7Nd7Q5mSSQOYTG6zrjxG1nNJ9QAbt2mfo36fDfS2luaGflmHNc1LN6LqLIOaTh7dGsKKSpijmSCy8paoNZPNGaB4LspfCYFOqmosY822NuJSpkLpX1VMZNOKoqSb05Tzekaemk+eTGQ0o1mDmbNaYZLuFFWsuTdOTncLEbJGIjBVc51TwSgY5jGjGMVUO5MSdhb9sjWhzrbm5tgaSbHNcOabAgFjtti0uaD8JOB8IFdi1JgMM2roJjA+V7WCKV4LwdS5sj3PaMuYlzWcl7CPC2eBAAHC9CQAAEQAAEQBuyI6RmnofQxNmKbH3hyOhgupeOFxfWvW8P8AxkLITPYTH0R6Z9F/56ED8n5LxH/FxWz9A0mwm+Yr5cOf4cdiSN21z27PHvYfENlv8vP+D/hHwPhIpa6rwOKVjaWd1O/WtY0l7ACS3JJJdu0WJLT/AMoQAAF6AgAAIgANhr5O1gziznVf6/tE5U2u9aVMUVaBpVFMSz57VFRHox+rOW7Q6/HSh+zVU4UlDk2FTnJDh4YF4eCIyaWlkq5TDEQCGvdt5mMc88+2zTb77XtvXUdPNNML4PNFKrTDGo5H01Pq8zYg10h1krIm5Q97Gmzngm7hyQSLmwOvKA3ush8d/kqWKd3qrsPfyj/mFdaiORfOilfnBkdVHoz0gwbTNn/Ppc5cs1OMbPGyn8ksfZ4zZNsmgYsMh0foy6FOozYaqKowImz6lHrNY8paXJt7cmtZ/N6OmvFca2QntL1U6WWIip+ycyCqDVVZLaikunHgULi8p8DqiBpka0XOWx2XtvuBvIG/fs3ryGT+ktovRU9NiOOYFitHQz5MlTPRhkBbIA5jw8SuLmuaQ9pjDy5u1oOxaAQDLl/bLVljle261hrhN029Z2jr2Z0DUEUCKEZPVpa6UbQdtYnKUxm7khCOEFIwhtpLpm4OAwxGK4ZoqiFlRAbscA4HnBFwf8wvomKSOaNs0TgWOAII2gg7QR9xCAAC1TQAAEQBsVaan+x/90l9ziv/AAqPnfPeRf79X+5PFN/Qn7s/+CP8vj/8r+U//efRwDXVEpmamfUXDuSx1xtbyxfLf6zdzx/Cdm1dU0d0q4w4hiWH/JtXTdxymLPUQ6qOeznt1lM7M7WxHJmD7N5LmG3K2AABFdrQBtG6H+htaPOS0z7LjJKuZxMrXyer5rSMgslRii1PvaocypFsdZxPJ4WMF0WsTOIlg1l8CLH2Cn5Yl9KRtX+ZIpt5i/QSLsJIvVUUicMTbJSqGKWHDH6Y8EIQ/pE6hjqaobSy/wBYWNktzNeLtud1yCDYXsDY2NwuoaNacaPaXYtjOD4FIXyYZJHDUEtLWiWQzDIwna4xmB4ebBoJblLtuX8QAAgu3oAACIA2SNCfRZtjqMyasMgb9XBnbOz9r7kxt6vaejkzSqo68foS+WTY5ns7jGMWjDipikkYjVOLlWMVNldrEhTnh9celreUPljXlFPmUZbaej8h5pSzyXRcvnsZfTsvqVdoohxxTHeKbDNGJdspjLm2eGBonjwx4c6NmLUmDSuDZZ2OeCTZrGsdC0l7vFfXNcLZrNDs2UgA9Hw7hC0fxjG8Z0fwnWTVOGNYZw1h8J4kIjjuQXyfNm9hlu5oDicwb14AbAGrNzEvqJt7zWn+/b62W/z9/wB+L91vQ044/wDe7+Yf7f8ARP8Atf8AnH/J/J8aNf8AEWvzOe2xGU2udx2A3HONtr84I8S2miekfGvBY8a7gqaPOXDVVcWpnblJF3R5nWDrXab7RYoAAJrsiAAAiAAAiANyH5PppVYD5vYXXDu3lHYf1nV/IsjpzQcsqD1oVnRfJZQ0pylH6DTkkom7RsbYXmT1TjTpRVjx3BE8SlIUvurhD5Hq1cLtVycWu2WMgsTayhNsHIaJTQ4YRjCPBGEfph9Aza+hkw6pbSTvaXujik2H+GWNkjd4BuGvAdstmuASNp8IrOHzCIcfxLR7DNH8VrZaCXVTOpaRs8bXnNlu5s12h+R5Zna0uDXWHJNtKkBdbVz5kz5hWd5qj9+PnfMfW1/vtf7k8iS9H/vf/N/9scb/ALT/AJT7f7PAIUjVwz66SWPI5uR2W5Fg7ktdmafG3lZb/Wa4eJes6MY9xmwODG+4qik1mb5mqj1U7Mr3M5ceZ2XNlzN2m7HNd47IAAL1vkAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEH2oB8V8fagFkfjXwX/AE3f+7H/AI3/AOUQAAWL4LQAAEQAAEQAAEXz2/lY38RWzH+hXTn+vNxxrBjZ8+VjfxFbMf6FdOf683HGsGKX+EV+xvAP/wBT+j/+Hb/5nIAAIr1tAAARbWfyVDK41vMo7sYn1BMyI07kDRPzyots7f8AFpEqeliqLKt2qEfoio8lTmYqqGLGBolkaMOCMIfs+sa1Wm9UlSa09sqGoCVuW1P5/wA+kNSS58wbJwbyaYGcJSmtFyl+iBotU2hpyvGP/FMYx+mI188U7+VDi1klZHIelzL+lrRXIldZmatlIJKTZo2ck9Iy+Jo/RAjxoZ01P/8AgcmH1ij2ushkXVuMWWSTGWVTN7aU5MqyshV6RSOCoMa4kjZu4cIqQ/pKuzMlGHBww/a4RtZoo6l2GY29ocad5jlG8vZYua1xO4P5LQCCMtPsvuHwzww45XcCHC5V6cYUy0OM4fNHsFwKyJjWsflJtZr20xcRYlskxAJJzQO+UnZC07ijp2Wzw3tkZKnXV8nUutxKJLK14sVJNQ1FosF3yaZSQ/zR1CSFgZOMYFOi7XL9MIGgPSdH7DrF3Tn01Y6nmQ9AMq0uzO7XOb8r1GtJG9T1JQ1NqkUjT8mpRJzsJNnkxbKtVFXEDJHUVmkElHEEEixhrxfKFMtS5Saj9zJPIprGYW/xxaJ2CpMqDo6svVeSlZdWpHRU4wgUqhpq4fNTHLw7actb/tGhAvBue4J3tulcTRTsJXmFbG3lcX5oPGOT0LRlI3Gg4dUfMqno5q2ks0ksyKg9ZKpnXjLXSaJouUSlO5bKHNFKMYG1FDUTSYDiukjXkVkz2lr8pkcIi2WzgAQTmyRvLNji6R7RbM5p6zpfo7iXB9wKaHaJvLo6fEatkteDKYGvdMGvEM01napoisx7iHWMGsLTkyjrjhdqS4X69UuvXirevFpOQzCn6ZXqplR1ezlnXRJ7ITO05d6ak84RbtnUsmjRV2xMfk5SnbmeJGRdrbJzF0/H+K6+FGtXa/GM0zczuW2uzkt4zpidPYQ5fNpJMKlp6byNdzEpCEi4MwfsuPimWBOOgrswgWEBsoUJqNfKaLjEqtSn9L6xsvLRj48vnEK7tlVFrTvFCRjCJpSWdVyzjNEv2Y8C0sg5TNDgjA8YRhw65tX3pyMyA1r7K3MyytnJbPZAzDLe0kjuHbin6fmNLyumlpRM6VlbMhGT548ckiq0aNFzGO4UKeK8TkjAhilhkU4h+XKCSnGVxAzjMPnDnZllDbX2Ns3YSLuJBALWt79wX4JX4BLphQ0UlPBgr6GR8dFDiDa91PUBrW77NexkkbpXOc5tyWxtJdZpG8/qzZW4n4GUNavLu/tjmd9Lr0jUL+3eOMiOzZqTWUTSdtSPZq5avnSaqUsLFvJUSrTFNFVwQuykkSMF1Cm9ftfXWMmu5pxzmrqzs0WSSasWU+oxSQVaiyqKp7SVNLkTpEmMhnMESx4xAyzZwg8STRMcimwoiWEVEhKH5XKqrCwOHyEFFIIqXhqBVRGB4wSOYklbwIaJf6IxLA54Qj/TCBzf8sRmz5Kz/DVvV/pX1P8A6m0QMGgi+WcM0jiqzyKRl4wPFc0uYi1rEuqHuvtILWkEG68IfohSYJwDaO8K+GTysxllZlbJrHkMiE1S0RMZmyMaHsEpIbcuc8OuH7NYzQmwJojOvO9nRN4ZStPbP2ao97dq4cgJxqUsq4zB6xl0tkrlwSJYkScu36SqhIRgZVuxckhwQiYxdrrUK1wsQtN27UlwbluL0brU7TlOy5ndilaLjJKLt7bSTzNnBdrKWEmUaqN5i55Go1WOwPBm2gk9RhyqJttMkIfkt14KVoTUKu5bWonzKWzG9NmJpKKLWePCtzzSaSabspsaXIJxh/KKKMk5m4hCEeGBZcfghHh4Ye2a7mk3m9crUera9Vh7DXAvfb/JGNPupJPaAlEJ0ypKaMZCwkbyXT1QpuCWpljKSOCvn/EtIkeplgvE5FCl2eISSiiwmCMfNTMc6QAZg+TWSNDXWGzMwAbduwNBBeL+86eYTozpX/SXxbRnhRqjFhNFRh9E19QYGF14i6QODmjO0unJ2gu1QLiWR5Vs1ZhTqy1S6IOQNTY5SxhJbE1Ng5O6ktPJZZLYyWXyaRzCQKvGLRFjH/apUU1oJQaw4II8XxcIQgSEIamXydHS8tvm9d24V98hadRq+x+PrmXy6WUBM0iq07ciqH5VXCKE0LtcKrKXt0SOFmhi7DhR60KeJkirIq7Rl7LEVPjF8n7uhYGtnTN3Wdq9P+a0rVysudxfy1OZpSBZR+i2XjCHGIpLqKpJn4IbREyx4IcIlD8kivpRcaCyqxrdTBqzuChWctvZJpa4ckI7qGUuWCEjmCrVLh2zwYrspfBY0IcBfS7f6f2vovgjjj0oxN1JZxjhaY
+" alt="Transight Logo" />
+</div>
+<div>
+<span class="header-title">Vendor Registration Form</span>
+</div>
+<div class="doc-ref">TSPL/F/09</div>
+</div>
+<div class="content-wrapper">
+<div class="section">
+<h3>Company Information</h3>
+<table>
+<tr>
+<th>Company Name</th>
+<td>@{outputs('Get_response_details')?['body/r021df9f36da84c69859bac4510867945']}</td>
+</tr>
+<tr>
+<th>Registered Address</th>
+<td>@{outputs('Get_response_details')?['body/r6ba99f6094a54df890f7180d83cdcfb5']}</td>
+</tr>
+<tr>
+<th>Corporate Branch Address</th>
+<td>@{outputs('Get_response_details')?['body/rf4b7538e1fbb487986b0c239ed2413f4']}</td>
+</tr>
+<tr>
+<th>Type of Company</th>
+<td>@{outputs('Get_response_details')?['body/rf567f2035a404655a4030307b55ee611']}</td>
+</tr>
+<tr>
+<th>Year of Establishment</th>
+<td>@{outputs('Get_response_details')?['body/r251abe2e22014e93a1bcf8dfadf0c3d7']}</td>
+</tr>
+<tr>
+<th>Company Turn over</th>
+<td>@{outputs('Get_response_details')?['body/r3012809e7d5a4c0d8ef415e76e3e73c4']}</td>
+</tr>
+<tr>
+<th>No. of Employees</th>
+<td>@{outputs('Get_response_details')?['body/r7dbe0803d9cf41cba169cadea5c1393a']}</td>
+</tr>
+<tr>
+<th>Domestic/International</th>
+<td>@{outputs('Get_response_details')?['body/r6539b611744548439be04c2f742816a0']}</td>
+</tr>
+<tr>
+<th>GST Number</th>
+<td>@{outputs('Get_response_details')?['body/rcb120ad2d24345e79cf64138b6f1b503']}</td>
+</tr>
+<tr>
+<th>MSME Udyam Registration No.</th>
+<td>@{outputs('Get_response_details')?['body/r2d079b710158468483895ee2b302d4be']}</td>
+</tr>
+</table>
+</div>
+ 
+    <div class="section">
+<h3>Compliance Information</h3>
+<table>
+<tr>
+<th>Certifications Obtained</th>
+<td>
+<ul>
+<li>@{join(split(replace(replace(replace(outputs('Get_response_details')?['body/rcece0eba619a4881b85f397425c503d8'],'\"',''),'[',''),']',''),','),'</li><li>')}</li>
+</ul>
+</td>
+</tr>
+</table>
+</div>
+ 
+    <div class="section contact-info-section">
+<h3>Contact Information</h3>
+<table>
+<tr>
+<th></th>
+<th>Name</th>
+<th>Designation</th>
+<th>Email</th>
+<th>Phone no.</th>
+</tr>
+<tr>
+<td>Immediate Point of Contact</td>
+<td>@{outputs('Get_response_details')?['body/r6df556beb7454b208891535718f11243']}</td>
+<td>@{outputs('Get_response_details')?['body/r6896c4a9af7f4c038904de716c1d0767']}</td>
+<td>@{outputs('Get_response_details')?['body/r8702ee7225a3472ba3b9527688e2a773']}</td>
+<td>@{outputs('Get_response_details')?['body/r4ff333cd5c9c49ff86170b7476246b3f']}</td>
+</tr>
+<tr>
+<td>Escalation 1</td>
+<td>@{outputs('Get_response_details')?['body/r4fe64c04e4e04c70b696b24c28b0711d']}</td>
+<td>@{outputs('Get_response_details')?['body/r3163d9f4f36045fba7cf359fbe23894a']}</td>
+<td>@{outputs('Get_response_details')?['body/re41bd7f5efa943cdacd98c41340acddb']}</td>
+<td>@{outputs('Get_response_details')?['body/r7f7187cfd61348dc8b5ccf5e81ea983c']}</td>
+</tr>
+<tr>
+<td>Escalation 2</td>
+<td>@{outputs('Get_response_details')?['body/r91c75aa67ded4ae980125a89018301be']}</td>
+<td>@{outputs('Get_response_details')?['body/r8bb4bf82e97e48129363905e82ffe405']}</td>
+<td>@{outputs('Get_response_details')?['body/r3acb8a6d04204179ae3514609da102dd']}</td>
+<td>@{outputs('Get_response_details')?['body/r0bc1890c101341949ca5696a22794d59']}</td>
+</tr>
+<tr>
+<td>Accounts</td>
+<td>@{outputs('Get_response_details')?['body/r03475ac8421f4d52bb295ff91996206e']}</td>
+<td>@{outputs('Get_response_details')?['body/r29d947b621244709a25c2567bb125578']}</td>
+<td>@{outputs('Get_response_details')?['body/re003c41089b8409f9af42c08b19953b6']}</td>
+<td>@{outputs('Get_response_details')?['body/red4c9d1ed2414272b551db3c72212a71']}</td>
+</tr>
+</table>
+</div>
+ 
+    <div class="new-page-offset section banking-info-section">
+<h3>Banking Information</h3>
+<table class="banking-table">
+<tr>
+<th>Bank Name</th>
+<td>@{outputs('Get_response_details')?['body/r9c1d26d95a694019bd7c1482a9c4cf8c']}</td>
+</tr>
+<tr>
+<th>Bank Branch Address</th>
+<td>@{outputs('Get_response_details')?['body/r244284bdbbc240719989ced94a742b0b']}</td>
+</tr>
+<tr>
+<th>Account Number</th>
+<td>@{outputs('Get_response_details')?['body/r4feb62771d8144c7bba714cc563ff4f9']}</td>
+</tr>
+<tr>
+<th>IFSC Code</th>
+<td>@{outputs('Get_response_details')?['body/rf714a00971c143049b064c058621f9d1']}</td>
+</tr>
+<tr>
+<th>SWIFT Code</th>
+<td>@{outputs('Get_response_details')?['body/r0238b8ea3db34b279852357a8a0e2494']}</td>
+</tr>
+</table>
+</div>
+ 
+    <div class="section">
+<h3>Products and Customers</h3>
+<table>
+<tr>
+<th>Product Categories / Scope of Work</th>
+<td>@{outputs('Get_response_details')?['body/r3c2fef81e3c14bd7ab81edd1d7fd9ae7']}</td>
+</tr>
+<tr>
+<th>Key Customers / Reference Clients</th>
+<td>@{outputs('Get_response_details')?['body/rebd607d580ab48fab2fd7557daf82e13']}</td>
+</tr>
+</table>
+</div>
+ 
+    <div class="section">
+<h3>Filled by Authority</h3>
+<table>
+<tr>
+<th>Authority Name</th>
+<td>@{outputs('Get_response_details')?['body/rbad8c9522f4f45fca68e1a0fb7710bca']}</td>
+</tr>
+<tr>
+<th>Designation</th>
+<td>@{outputs('Get_response_details')?['body/r3d3854d29341457c8a1ea04deb17ffff']}</td>
+</tr>
+<tr>
+<th>E-Mail</th>
+<td>@{outputs('Get_response_details')?['body/re434f4134954415581b4cb9e885149cf']}</td>
+</tr>
+</table>
+</div>
+ 
+    <div class="section">
+<table class="signature-table" style="width:100%; margin-top:40px; table-layout:fixed;">
+<tr>
+<th style="width:33%;">Signature</th>
+<th style="width:33%;">Date</th>
+<th style="width:34%;">Seal</th>
+</tr>
+<tr>
+<td style="height:80px;"></td>
+<td></td>
+<td></td>
+</tr>
+</table>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindMap Outline Maker - Standalone App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom styles for dark mode and transitions */
+        :root {
+            --body-bg: #111827; /* gray-900 */
+            --card-bg: #1f2937; /* gray-800 */
+            --text-color: #f3f4f6; /* gray-100 */
+            --accent-color: #3b82f6; /* blue-500 */
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --line-color: #374151; /* gray-700 */
+        }
+
+        .dark {
+            color-scheme: dark;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--body-bg);
+            color: var(--text-color);
+        }
+
+        /* Scrollbar styling for better dark-mode UX */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background-color: #1f2937; /* gray-800 */
+        }
+
+        /* Modal transitions */
+        .modal-enter-active, .modal-leave-active {
+            transition: opacity 0.3s ease;
+        }
+        .modal-enter-from, .modal-leave-to {
+            opacity: 0;
+        }
+        .modal-enter-active .modal-content, .modal-leave-active .modal-content {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .modal-enter-from .modal-content, .modal-leave-to .modal-content {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+
+        /* * --- Mind Map Visualization Styles --- */
+        .mindmap-node {
+            position: relative;
+            padding-left: 3.5rem; 
+        }
+
+        .mindmap-children > .mindmap-node:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 1.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: var(--line-color);
+        }
+
+        .mindmap-node::after {
+            content: '';
+            position: absolute;
+            left: 1.5rem;
+            top: 25px;
+            height: 2px;
+            width: 1.5rem;
+            background-color: var(--line-color);
+            z-index: 10;
+        }
+        
+        .mindmap-node-dot {
+            position: absolute;
+            left: 1.15rem;
+            top: 22px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            z-index: 20;
+            box-shadow: 0 0 0 3px var(--body-bg);
+        }
+
+        .mindmap-list-root > .mindmap-node {
+            padding-left: 0;
+        }
+        .mindmap-list-root > .mindmap-node::after,
+        .mindmap-list-root > .mindmap-node .mindmap-node-dot {
+            display: none;
+        }
+        
+        /* Style for contenteditable areas */
+        .description-editable:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 2px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="h-full dark overflow-hidden">
+
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+
+    <div id="delete-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-70 modal-container" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="modal-content transform transition-all max-w-lg w-full bg-gray-800 rounded-lg shadow-2xl p-6 border border-red-700">
+                <h3 class="text-xl font-bold text-red-400 mb-4 flex items-center">
+                    <i data-lucide="alert-triangle" class="w-6 h-6 mr-2"></i> Confirm Deletion
+                </h3>
+                <p class="text-gray-300 mb-6">Are you sure you want to delete the item: <span id="delete-item-title" class="font-semibold text-red-200"></span>? This action is permanent and will also delete all its child nodes.</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-sm font-medium text-gray-200 bg-gray-700 rounded-md hover:bg-gray-600 transition duration-150">
+                        Cancel
+                    </button>
+                    <button type="button" id="confirm-delete-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-150 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i> Delete Permanently
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="h-full flex flex-col md:flex-row">
+        
+        <aside id="sidebar" class="md:w-96 p-6 bg-gray-900 border-r border-gray-700 flex-shrink-0 h-auto md:h-full overflow-y-auto">
+            <h1 class="text-3xl font-extrabold text-blue-400 mb-6 border-b border-gray-700 pb-2">MindMap Node Creator</h1>
+            
+            <form id="mindmap-form" class="space-y-4">
+                <input type="hidden" id="item-id">
+                
+                <div class="space-y-1">
+                    <label for="title" class="text-sm font-medium text-gray-300 flex justify-between items-center">
+                        Node Title <span id="edit-indicator" class="text-xs font-mono bg-yellow-900 text-yellow-300 px-2 py-0.5 rounded hidden">EDITING: #<span id="editing-id"></span></span>
+                    </label>
+                    <input type="text" id="title" maxlength="100" placeholder="e.g., Main Topic 1" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-400" required>
+                    <p id="title-error" class="text-xs text-red-400 mt-1 h-3"></p>
+                </div>
+                
+                <div class="space-y-1">
+                    <label for="parent-id" class="text-sm font-medium text-gray-300">Parent Node (Optional)</label>
+                    <select id="parent-id" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-100">
+                        <option value="">-- No Parent (Top Level) --</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1">
+                    <label for="description" class="text-sm font-medium text-gray-300">Details / Notes</label>
+                    <textarea id="description" rows="5" placeholder="Add detailed notes or sub-points here..." class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-400"></textarea>
+                </div>
+                
+                <div class="flex justify-between space-x-2">
+                    <button type="submit" id="submit-btn" class="flex-1 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition duration-150 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-[1.01]">
+                        <i data-lucide="plus-circle" class="w-5 h-5 inline mr-2" id="submit-icon"></i> <span id="submit-text">Add Node</span>
+                    </button>
+                    <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="px-4 py-2 font-semibold text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition duration-150 hidden">
+                        <i data-lucide="x" class="w-5 h-5 inline"></i> Cancel
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-8 pt-4 border-t border-gray-700 space-y-3">
+                <h2 class="text-xl font-bold text-gray-300">Data Management</h2>
+                <button onclick="exportData()" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition duration-150 transform hover:scale-[1.01]">
+                    <i data-lucide="download" class="w-4 h-4 mr-2"></i> Export Data (JSON)
+                </button>
+                <button onclick="document.getElementById('import-file').click()" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition duration-150 transform hover:scale-[1.01]">
+                    <i data-lucide="upload" class="w-4 h-4 mr-2"></i> Import Data (Append)
+                </button>
+                <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+
+                <button onclick="exportToWordDoc()" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition duration-150 transform hover:scale-[1.01]">
+                    <i data-lucide="file-text" class="w-4 h-4 mr-2"></i> Export to DOC/Outline
+                </button>
+            </div>
+        </aside>
+
+        <section class="flex-1 p-6 overflow-y-auto">
+            <h2 class="text-3xl font-extrabold text-white mb-4">Visual Mind Map Outline</h2>
+
+            <div class="mb-6 flex items-center space-x-4">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                    <input type="text" id="search-input" placeholder="Search nodes by title or details..." class="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-400" oninput="loadItems()">
+                </div>
+            </div>
+
+            <div id="mindmap-list" class="space-y-4 mindmap-list-root">
+                </div>
+
+            <p id="empty-state" class="text-gray-500 text-center py-10 text-lg hidden">
+                <i data-lucide="wand-2" class="w-8 h-8 mx-auto mb-2"></i>
+                Start by creating your first mind map node!
+            </p>
+        </section>
+
+    </main>
+
+    <script>
+        // --- Configuration & Initialization ---
+        const DB_NAME = 'MindMapDB';
+        const STORE_NAME = 'items';
+        let db = null;
+        // Cache for full data set. Fields: id, title, description, parentId, timestamp, orderIndex
+        let allItems = []; 
+        const MAX_SELECT_TITLE_LENGTH = 30; // Max title length for the sidebar select options
+
+        // Utility: Toast Notification
+        function showToast(message, type = 'success') {
+            const colorMap = {
+                success: 'bg-green-600 border-green-700',
+                danger: 'bg-red-600 border-red-700',
+                warning: 'bg-yellow-600 border-yellow-700'
+            };
+            const iconMap = {
+                success: 'check-circle',
+                danger: 'bomb',
+                warning: 'alert-triangle'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 text-sm font-medium text-white rounded-lg shadow-xl border ${colorMap[type]} transition duration-300 transform translate-x-full opacity-0`;
+            toast.innerHTML = `<div class="flex items-center"><i data-lucide="${iconMap[type]}" class="w-5 h-5 mr-2"></i>${message}</div>`;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            lucide.createIcons(); 
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+        }
+
+        // Utility: Get a short snippet
+        function getSnippet(text) {
+            return text.length > 80 ? text.substring(0, 80) + '...' : text;
+        }
+        
+        // Utility: Truncate for form select field usability (NEW)
+        function truncateTitle(text) {
+            return text.length > MAX_SELECT_TITLE_LENGTH 
+                ? text.substring(0, MAX_SELECT_TITLE_LENGTH - 3) + '...' 
+                : text;
+        }
+
+
+        // --- IndexedDB Setup ---
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.error);
+                    showToast("Critical DB Error: Cannot open database.", 'danger');
+                    reject(event.target.error);
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log("DB opened successfully.");
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db_upgrade = event.target.result;
+                    if (!db_upgrade.objectStoreNames.contains(STORE_NAME)) {
+                        db_upgrade.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                    console.log("DB upgraded/created.");
+                };
+            });
+        }
+
+        // --- CRUD Operations ---
+
+        function getStore(storeName, mode) {
+            const transaction = db.transaction(storeName, mode);
+            transaction.onerror = (e) => {
+                console.error(`Transaction failed (${mode}):`, e.target.error);
+                showToast("Database operation failed.", 'danger');
+            };
+            return transaction.objectStore(storeName);
+        }
+
+        async function saveItem(item) {
+            const isUpdate = item.id;
+            const action = isUpdate ? 'Update' : 'Add';
+            const submitBtn = document.getElementById('submit-btn');
+            const submitText = document.getElementById('submit-text');
+            const originalText = submitText.textContent;
+            
+            // Only show loading state if saving from the main form
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitText.textContent = isUpdate ? 'Saving Changes...' : 'Saving Node...';
+            }
+
+            try {
+                const store = getStore(STORE_NAME, 'readwrite');
+                const request = store.put(item);
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        // Show toast only for main form submissions
+                        if (submitBtn) showToast(`Node ${action}d successfully.`, 'success');
+                        resolve(request.result);
+                    };
+                    request.onerror = (e) => {
+                        console.error(`${action} failed:`, e.target.error);
+                        showToast(`Failed to ${action.toLowerCase()} node.`, 'danger');
+                        reject(e.target.error);
+                    };
+                });
+            } catch (e) {
+                console.error("Save transaction error:", e);
+                showToast("A critical error occurred during save.", 'danger');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitText.textContent = originalText;
+                }
+            }
+        }
+        
+        async function saveItems(items) {
+            if (!items || items.length === 0) return;
+            try {
+                const store = getStore(STORE_NAME, 'readwrite');
+                const promises = items.map(item => {
+                    return new Promise((resolve, reject) => {
+                        const request = store.put(item);
+                        request.onsuccess = resolve;
+                        request.onerror = (e) => {
+                            console.error("Batch save failed:", e.target.error);
+                            reject(e.target.error);
+                        };
+                    });
+                });
+                await Promise.all(promises);
+                return true;
+            } catch (e) {
+                console.error("Batch save transaction error:", e);
+                showToast("Batch save failed during reordering.", 'danger');
+                return false;
+            }
+        }
+        
+        // NEW: Inline Update for Description
+        async function updateDescriptionInline(id, newDescription) {
+            const itemToUpdate = allItems.find(i => i.id === id);
+            if (!itemToUpdate) return;
+            
+            const trimmedDescription = newDescription.trim();
+            if (itemToUpdate.description === trimmedDescription) return; // No change
+            
+            itemToUpdate.description = trimmedDescription;
+
+            // Use a transaction specifically for this quick update
+            try {
+                const store = getStore(STORE_NAME, 'readwrite');
+                const request = store.put(itemToUpdate);
+
+                await new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        // No general toast, as it's a silent, quick save
+                        resolve();
+                    };
+                    request.onerror = (e) => {
+                        console.error("Inline update failed:", e.target.error);
+                        showToast(`Failed to save notes for ID: ${id}.`, 'danger');
+                        reject(e.target.error);
+                    };
+                });
+            } catch (e) {
+                console.error("Inline update transaction error:", e);
+                showToast("A critical error occurred during inline save.", 'danger');
+            }
+        }
+
+        async function loadItems() {
+            if (!db) return;
+
+            try {
+                const store = getStore(STORE_NAME, 'readonly');
+                const request = store.getAll();
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        const items = request.result;
+                        
+                        // Sort by parentId (to group siblings) then by orderIndex
+                        allItems = items.sort((a, b) => {
+                            const parentA = a.parentId || 0;
+                            const parentB = b.parentId || 0;
+                            if (parentA !== parentB) {
+                                return parentA - parentB;
+                            }
+                            // Primary sort: orderIndex (Ascending)
+                            const orderA = a.orderIndex !== undefined ? a.orderIndex : 0;
+                            const orderB = b.orderIndex !== undefined ? b.orderIndex : 0;
+                            if (orderA !== orderB) {
+                                return orderA - orderB;
+                            }
+                            // Secondary sort: timestamp (Descending - newest first for ties)
+                            return new Date(b.timestamp) - new Date(a.timestamp);
+                        });
+                        
+                        // Ensure all new items without orderIndex get assigned a default high index
+                        const maxOrder = allItems.reduce((max, item) => Math.max(max, item.orderIndex || 0), 0);
+                        let needsSave = false;
+                        allItems.forEach(item => {
+                            if (item.orderIndex === undefined) {
+                                item.orderIndex = maxOrder + 1; // Assign a high index to keep new items visible
+                                needsSave = true;
+                            }
+                        });
+                        if (needsSave) {
+                           saveItems(allItems).then(() => renderList(allItems));
+                        }
+                        
+                        renderList(allItems);
+                        updateParentOptions(allItems);
+                        resolve(allItems);
+                    };
+                    request.onerror = (e) => {
+                        console.error("Load failed:", e.target.error);
+                        showToast("Failed to load nodes.", 'danger');
+                        reject(e.target.error);
+                    };
+                });
+            } catch (e) {
+                console.error("Load transaction error:", e);
+            }
+        }
+
+        function editItem(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) {
+                showToast("Node not found.", 'warning');
+                return;
+            }
+
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('title').value = item.title;
+            document.getElementById('description').value = item.description;
+            const select = document.getElementById('parent-id');
+            select.value = item.parentId || '';
+
+            document.getElementById('submit-text').textContent = 'Update Node';
+            document.getElementById('submit-icon').setAttribute('data-lucide', 'save');
+            document.getElementById('submit-btn').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            document.getElementById('submit-btn').classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            document.getElementById('edit-indicator').classList.remove('hidden');
+            document.getElementById('editing-id').textContent = item.id;
+
+            lucide.createIcons();
+            document.getElementById('sidebar').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteItem(id, title) {
+            let deletedCount = 0;
+            const itemsToDelete = getChildrenRecursively(id);
+            itemsToDelete.push(id); 
+
+            const store = getStore(STORE_NAME, 'readwrite');
+            
+            for (const itemId of itemsToDelete) {
+                const request = store.delete(itemId);
+                await new Promise((resolve) => {
+                    request.onsuccess = () => {
+                        deletedCount++;
+                        resolve();
+                    };
+                    request.onerror = (e) => {
+                        console.error("Delete failed:", e.target.error);
+                        resolve(); 
+                    };
+                });
+            }
+            
+            closeDeleteModal();
+            showToast(`Successfully deleted ${deletedCount} node(s) including children.`, 'success');
+            await loadItems();
+        }
+
+        async function duplicateItem(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) {
+                showToast("Source node not found.", 'warning');
+                return;
+            }
+            
+            const siblings = allItems.filter(i => (i.parentId || null) === (item.parentId || null));
+            const newOrderIndex = siblings.length > 0 ? Math.max(...siblings.map(i => i.orderIndex || 0)) + 1 : 1;
+
+            const newItem = {
+                title: `${item.title} (Copy)`,
+                description: item.description,
+                parentId: item.parentId,
+                timestamp: new Date().toISOString(),
+                orderIndex: newOrderIndex
+            };
+
+            await saveItem(newItem);
+            await loadItems();
+        }
+        
+        // --- Reordering Logic (Up/Down/Left/Right) ---
+
+        async function moveItemOrder(id, direction) {
+            const itemToMove = allItems.find(i => i.id === id);
+            if (!itemToMove) return;
+
+            const siblings = allItems
+                .filter(i => (i.parentId || null) === (itemToMove.parentId || null))
+                .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)); 
+            
+            const currentIndex = siblings.findIndex(i => i.id === id);
+            
+            let targetIndex = -1;
+            if (direction === 'up' && currentIndex > 0) {
+                targetIndex = currentIndex - 1;
+            } else if (direction === 'down' && currentIndex < siblings.length - 1) {
+                targetIndex = currentIndex + 1;
+            }
+            
+            if (targetIndex === -1) {
+                // showToast(`Cannot move ${direction}.`, 'warning');
+                return; 
+            }
+
+            const targetItem = siblings[targetIndex];
+            
+            // Swap orderIndex values
+            const tempOrder = itemToMove.orderIndex;
+            itemToMove.orderIndex = targetItem.orderIndex;
+            targetItem.orderIndex = tempOrder;
+
+            await saveItems([itemToMove, targetItem]);
+            await loadItems(); 
+            showToast(`Node moved ${direction}.`, 'success');
+        }
+
+        async function moveItemRight(id) {
+            const itemToMove = allItems.find(i => i.id === id);
+            if (!itemToMove) return;
+
+            const siblings = allItems
+                .filter(i => (i.parentId || null) === (itemToMove.parentId || null))
+                .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)); 
+
+            const currentIndex = siblings.findIndex(i => i.id === id);
+
+            if (currentIndex === 0) {
+                // showToast("Cannot indent: Node must have a preceding sibling.", 'warning');
+                return;
+            }
+
+            const newParent = siblings[currentIndex - 1];
+            
+            // Find the highest order index among the new parent's existing children
+            const newSiblings = allItems.filter(i => i.parentId === newParent.id);
+            const newOrderIndex = newSiblings.length > 0 ? Math.max(...newSiblings.map(i => i.orderIndex || 0)) + 1 : 1;
+
+            // 1. Update the item's parentId and assign the new high orderIndex
+            itemToMove.parentId = newParent.id;
+            itemToMove.orderIndex = newOrderIndex;
+            
+            // 2. Re-index remaining original siblings to fill the gap
+            const remainingSiblings = siblings.filter((_, index) => index !== currentIndex);
+            let indexToUpdate = 1;
+            const updates = [itemToMove];
+
+            remainingSiblings.forEach(item => {
+                const requiredIndex = indexToUpdate++;
+                if (item.orderIndex !== requiredIndex) {
+                    item.orderIndex = requiredIndex;
+                    updates.push(item);
+                }
+            });
+
+            await saveItems(updates);
+            await loadItems();
+            showToast(`Node indented under '${truncateTitle(newParent.title)}'.`, 'success');
+        }
+
+        async function moveItemLeft(id) {
+            const itemToMove = allItems.find(i => i.id === id);
+            if (!itemToMove) return;
+            if (!itemToMove.parentId) {
+                // showToast("Cannot outdent: Node is already top-level.", 'warning');
+                return;
+            }
+
+            const currentParent = allItems.find(i => i.id === itemToMove.parentId);
+            if (!currentParent) {
+                 showToast("Error finding current parent.", 'danger');
+                 return;
+            }
+            
+            // 1. Determine the new parentId and new orderIndex (should be adjacent to the old parent)
+            const newParentId = currentParent.parentId || null;
+            
+            // Set the new order index to be slightly after the old parent's index
+            const newOrderIndex = (currentParent.orderIndex || 0) + 0.5; // Use a float for immediate placement
+            
+            // 2. Update the item
+            itemToMove.parentId = newParentId;
+            itemToMove.orderIndex = newOrderIndex;
+
+            await saveItem(itemToMove);
+            
+            // 3. Re-index all siblings (including the one just moved) to fix the float orderIndex
+            await reIndexSiblings((itemToMove.parentId || null));
+            await loadItems();
+            showToast(`Node outdented.`, 'success');
+        }
+        
+        async function reIndexSiblings(parentId) {
+             const siblings = allItems
+                .filter(i => (i.parentId || null) === parentId)
+                .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)); 
+            
+            const updates = [];
+            siblings.forEach((item, index) => {
+                const requiredIndex = index + 1;
+                if (item.orderIndex !== requiredIndex) {
+                    item.orderIndex = requiredIndex;
+                    updates.push(item);
+                }
+            });
+            
+            if (updates.length > 0) {
+                await saveItems(updates);
+            }
+        }
+
+        // --- UI Rendering & Helpers ---
+
+        function getChildrenRecursively(parentId) {
+            const children = allItems.filter(item => item.parentId === parentId);
+            let descendants = [...children];
+            for (const child of children) {
+                descendants = descendants.concat(getChildrenRecursively(child.id));
+            }
+            return descendants.map(d => d.id);
+        }
+        
+        function buildTree(items, parentId = null) {
+            const children = items
+                .filter(item => (item.parentId || null) === parentId)
+                .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)); 
+
+            let html = '';
+
+            if (children.length > 0) {
+                html += `<ul class="mindmap-children space-y-4 ${parentId ? 'pt-4' : ''}">`; 
+            }
+
+            children.forEach((item, index) => {
+                const description = item.description || 'Click to add notes...';
+                const timestamp = new Date(item.timestamp).toLocaleString();
+                
+                const siblings = items.filter(i => (i.parentId || null) === (item.parentId || null));
+                const isTopSibling = index === 0;
+                const isBottomSibling = index === children.length - 1;
+                const isTopLevel = parentId === null;
+                
+                const disableLeft = isTopLevel ? 'disabled' : '';
+                const disableRight = isTopSibling ? 'disabled' : '';
+                const disableUp = isTopSibling ? 'disabled' : '';
+                const disableDown = isBottomSibling ? 'disabled' : '';
+
+
+                html += `
+                    <li id="node-${item.id}" class="mindmap-node">
+                        <div class="mindmap-node-dot"></div>
+                        <div class="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700 transition duration-300 hover:shadow-blue-500/30">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-xl font-bold text-blue-400 break-words">${item.title}</h3>
+                                    <p class="text-sm text-gray-400 mt-1">ID: ${item.id} | Order: ${item.orderIndex} | Created: ${timestamp}</p>
+                                </div>
+                                <div class="flex space-x-2 mt-3 sm:mt-0 flex-shrink-0 ml-0 sm:ml-4">
+                                    
+                                    <button onclick="moveItemOrder(${item.id}, 'up')" title="Move Up" class="text-gray-400 hover:text-white p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105 ${disableUp}">
+                                        <i data-lucide="chevron-up" class="w-5 h-5"></i>
+                                    </button>
+                                    <button onclick="moveItemOrder(${item.id}, 'down')" title="Move Down" class="text-gray-400 hover:text-white p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105 ${disableDown}">
+                                        <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                                    </button>
+                                    <button onclick="moveItemLeft(${item.id})" title="Outdent (Left)" class="text-purple-400 hover:text-purple-300 p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105 ${disableLeft}">
+                                        <i data-lucide="chevrons-left" class="w-5 h-5"></i>
+                                    </button>
+                                    <button onclick="moveItemRight(${item.id})" title="Indent (Right)" class="text-purple-400 hover:text-purple-300 p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105 ${disableRight}">
+                                        <i data-lucide="chevrons-right" class="w-5 h-5"></i>
+                                    </button>
+
+                                    <button onclick="editItem(${item.id})" title="Edit Title/Parent" class="text-yellow-400 hover:text-yellow-300 p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105">
+                                        <i data-lucide="pencil" class="w-5 h-5"></i>
+                                    </button>
+                                    <button onclick="duplicateItem(${item.id})" title="Duplicate" class="text-indigo-400 hover:text-indigo-300 p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105">
+                                        <i data-lucide="copy" class="w-5 h-5"></i>
+                                    </button>
+                                    <button onclick="openDeleteModal(${item.id}, '${item.title.replace(/'/g, "\\'")}')" title="Delete" class="text-red-400 hover:text-red-300 p-1.5 rounded-full hover:bg-gray-700 transition transform hover:scale-105">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div 
+                                id="desc-${item.id}"
+                                contenteditable="true" 
+                                class="description-editable text-gray-300 mt-3 whitespace-pre-wrap min-h-[1.25rem] p-0"
+                                onblur="updateDescriptionInline(${item.id}, this.textContent)"
+                                >${description}</div>
+                        </div>
+                        ${buildTree(items, item.id)}
+                    </li>
+                `;
+            });
+
+            if (children.length > 0) {
+                html += '</ul>';
+            }
+
+            return html;
+        }
+
+
+        function renderList(items) {
+            const listContainer = document.getElementById('mindmap-list');
+            const searchInput = document.getElementById('search-input').value.toLowerCase().trim();
+
+            let filteredItems = items;
+
+            if (searchInput) {
+                filteredItems = items.filter(item => 
+                    item.title.toLowerCase().includes(searchInput) || 
+                    (item.description || '').toLowerCase().includes(searchInput)
+                );
+            }
+            
+            const filteredIds = new Set(filteredItems.map(item => item.id));
+            
+            filteredItems.forEach(item => {
+                let current = item;
+                while(current && current.parentId) {
+                    filteredIds.add(current.parentId);
+                    current = items.find(i => i.id === current.parentId);
+                }
+            });
+
+            const visibleItems = items.filter(item => filteredIds.has(item.id));
+            
+            listContainer.innerHTML = buildTree(visibleItems, null);
+
+            document.getElementById('empty-state').classList.toggle('hidden', items.length > 0);
+            
+            lucide.createIcons(); 
+        }
+
+        // Updated to use truncateTitle for better sidebar usability (NEW)
+        function updateParentOptions(items) {
+            const select = document.getElementById('parent-id');
+            const currentEditId = parseInt(document.getElementById('item-id').value);
+            const currentParentId = select.value;
+
+            let descendants = [];
+            if (currentEditId) {
+                descendants = getChildrenRecursively(currentEditId).map(id => parseInt(id));
+            }
+
+            select.innerHTML = '<option value="">-- No Parent (Top Level) --</option>';
+
+            items.forEach(item => {
+                if (item.id !== currentEditId && !descendants.includes(item.id)) {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    // Use truncated title here
+                    option.textContent = truncateTitle(item.title); 
+                    if (item.id === parseInt(currentParentId)) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                }
+            });
+
+            if (currentEditId) {
+                 select.value = currentParentId;
+            }
+        }
+        
+        // --- Form and Modal Functions ---
+        
+        function resetForm() {
+            document.getElementById('mindmap-form').reset();
+            document.getElementById('item-id').value = '';
+            document.getElementById('title-error').textContent = '';
+            
+            document.getElementById('submit-text').textContent = 'Add Node';
+            document.getElementById('submit-icon').setAttribute('data-lucide', 'plus-circle');
+            document.getElementById('submit-btn').classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+            document.getElementById('submit-btn').classList.add('bg-blue-600', 'hover:bg-blue-700');
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+            document.getElementById('edit-indicator').classList.add('hidden');
+            
+            lucide.createIcons();
+            updateParentOptions(allItems); 
+        }
+
+        let deleteItemId = null;
+        function openDeleteModal(id, title) {
+            deleteItemId = id;
+            document.getElementById('delete-item-title').textContent = title;
+            document.getElementById('delete-modal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeDeleteModal() {
+            deleteItemId = null;
+            document.getElementById('delete-modal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        document.getElementById('confirm-delete-btn').onclick = () => {
+            if (deleteItemId !== null) {
+                const title = document.getElementById('delete-item-title').textContent;
+                deleteItem(deleteItemId, title);
+            }
+        };
+
+        // --- Data Flow: Submit Handler ---
+        document.getElementById('mindmap-form').onsubmit = async (e) => {
+            e.preventDefault();
+
+            const idInput = document.getElementById('item-id');
+            const titleInput = document.getElementById('title');
+            const descInput = document.getElementById('description');
+            const parentIdInput = document.getElementById('parent-id');
+            const titleError = document.getElementById('title-error');
+
+            const title = titleInput.value.trim();
+            const description = descInput.value.trim();
+            const parentId = parentIdInput.value ? parseInt(parentIdInput.value) : null;
+            
+            // Validation
+            if (!title) {
+                titleError.textContent = "Title is required.";
+                titleInput.focus();
+                return;
+            }
+            titleError.textContent = ''; 
+
+            const isUpdate = idInput.value && parseInt(idInput.value);
+            
+            let orderIndex = 1;
+            if (!isUpdate) {
+                const siblings = allItems.filter(i => (i.parentId || null) === parentId);
+                orderIndex = siblings.length > 0 ? Math.max(...siblings.map(i => i.orderIndex || 0)) + 1 : 1;
+            } else {
+                const existingItem = allItems.find(i => i.id === parseInt(idInput.value));
+                orderIndex = existingItem.orderIndex || 1;
+            }
+            
+            let item = {
+                title: title,
+                description: description,
+                parentId: parentId,
+                timestamp: new Date().toISOString(),
+                orderIndex: orderIndex
+            };
+            
+            if (isUpdate) {
+                item.id = parseInt(idInput.value);
+            }
+            
+            await saveItem(item);
+            resetForm();
+            await loadItems();
+        };
+
+        // --- Export/Import Logic (Unchanged) ---
+
+        function exportData() {
+            if (!allItems.length) {
+                showToast("No data to export.", 'warning');
+                return;
+            }
+            try {
+                const json = JSON.stringify(allItems, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mindmap_backup_${new Date().toISOString().substring(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("Data exported successfully.", 'success');
+            } catch(e) {
+                console.error("Export failed:", e);
+                showToast("Export failed. See console for details.", 'danger');
+            }
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData)) throw new Error("File content is not an array.");
+
+                    const store = getStore(STORE_NAME, 'readwrite');
+                    let newRecords = 0;
+                    
+                    const maxOrder = allItems.filter(i => !i.parentId).reduce((max, item) => Math.max(max, item.orderIndex || 0), 0);
+                    let baseOrderIndex = maxOrder + 1;
+
+                    for (const item of importedData) {
+                        const newItem = {
+                            title: item.title,
+                            description: item.description,
+                            parentId: item.parentId || null,
+                            timestamp: new Date().toISOString(),
+                            orderIndex: item.parentId ? (item.orderIndex || 1) : baseOrderIndex++
+                        };
+
+                        const request = store.add(newItem);
+                        await new Promise((resolve) => {
+                            request.onsuccess = () => {
+                                newRecords++;
+                                resolve();
+                            };
+                            request.onerror = (e) => {
+                                console.warn("Skipping record due to import error:", e.target.error);
+                                resolve(); 
+                            };
+                        });
+                    }
+
+                    await loadItems();
+                    showToast(`Successfully imported and appended ${newRecords} records.`, 'success');
+
+                } catch (e) {
+                    console.error("Import failed:", e);
+                    showToast(`Import failed: ${e.message || 'Invalid file format.'}`, 'danger');
+                } finally {
+                    event.target.value = null;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportToWordDoc() {
+            if (!allItems.length) {
+                showToast("No mind map data to export.", 'warning');
+                return;
+            }
+
+            function generateOutline(items, parentId = null, indent = 0) {
+                const children = items
+                    .filter(item => (item.parentId || null) === parentId)
+                    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)); 
+
+                let outline = '';
+                const tab = '\t';
+                
+                for (const item of children) {
+                    outline += tab.repeat(indent) + item.title + '\n';
+                    
+                    if (item.description) {
+                        const lines = item.description.split('\n');
+                        lines.forEach(line => {
+                            if (line.trim()) {
+                                outline += tab.repeat(indent + 1) + line.trim() + '\n';
+                            }
+                        });
+                    }
+                    
+                    outline += generateOutline(items, item.id, indent + 1);
+                }
+                return outline;
+            }
+
+            const outlineText = generateOutline(allItems);
+
+            try {
+                const content = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                    <head>
+                        <title>Mind Map Outline</title>
+                        <style>
+                            body { font-family: 'Inter', sans-serif; }
+                            p { margin: 0; line-height: 1.5; }
+                            .h1 { font-size: 18pt; font-weight: bold; margin-bottom: 10pt; }
+                            .h2 { font-size: 14pt; margin-top: 10pt; margin-bottom: 5pt; }
+                            .h3 { font-size: 12pt; margin-top: 5pt; }
+                            .p { margin-left: 20pt; font-size: 10pt; }
+                        </style>
+                        </head>
+                    <body>
+                        <pre style="font-family:'Inter', sans-serif; white-space: pre-wrap;">${outlineText}</pre>
+                        <p style="margin-top: 20px;">--- End of Mind Map Outline ---</p>
+                    </body>
+                </html>`;
+                
+                const filename = `MindMap_Outline_${new Date().toISOString().substring(0, 10)}.doc`;
+                const blob = new Blob([content], { type: 'application/msword;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast("Outline exported as Word Document (.doc).", 'success');
+
+            } catch(e) {
+                console.error("Word Export failed:", e);
+                showToast("Word export failed. See console for details.", 'danger');
+            }
+        }
+
+
+        // --- Main Execution ---
+        window.onload = async () => {
+            await initDB();
+            await loadItems();
+            
+            document.getElementById('search-input').addEventListener('input', () => {
+                if (window.searchTimer) clearTimeout(window.searchTimer);
+                window.searchTimer = setTimeout(loadItems, 200);
+            });
+        };
+
+    </script>
+</body>
+</html>

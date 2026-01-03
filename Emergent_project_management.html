@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Resource Allocator Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+        /* Instruction 2.1: CSS Styling using Variables */
+        :root {
+            --primary-color: #005A9C;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --text-color: #333;
+            --border-color: #ddd;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        /* Instruction 2.2: Component DNA - Card Class */
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        /* Instruction 2.2: Component DNA - Tabbed Navigation */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-link {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: var(--text-color);
+            text-decoration: none;
+            position: relative;
+            transition: color 0.3s;
+            font-weight: 600;
+        }
+
+        .tab-link:hover {
+            color: var(--accent-color);
+        }
+
+        .tab-link.active {
+            color: var(--primary-color);
+        }
+
+        .tab-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--accent-color); /* Highlight with accent color */
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #004d85;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* Instruction 2.2: Component DNA - Cost Header */
+        .cost-header {
+            text-align: right !important;
+            min-width: 120px;
+        }
+
+        td:last-child {
+            text-align: right;
+        }
+
+        /* Instruction 2.3: Layouts - Financial Forecasting Grid */
+        #forecasting-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .result-box {
+            background-color: #e0f7fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 5px solid var(--accent-color);
+            margin-top: 10px;
+        }
+
+        .result-box strong {
+            display: block;
+            font-size: 1.5em;
+            color: var(--primary-color);
+            margin-top: 5px;
+        }
+
+        .search-bar {
+            margin-bottom: 15px;
+        }
+
+        .search-bar input {
+            width: 100%;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            background-color: #ffecb3;
+            color: #664c00;
+            border-left: 5px solid #ffc107;
+            font-weight: 500;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Project Resource Allocator Tool</h1>
+        <p>Expert Project Management & Financial Forecasting</p>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <a href="#" class="tab-link active" data-tab="projects">Projects</a>
+            <a href="#" class="tab-link" data-tab="resources">Resources</a>
+            <a href="#" class="tab-link" data-tab="allocations">Allocations</a>
+            <a href="#" class="tab-link" data-tab="forecasting">Cost Forecasting</a>
+            <a href="#" class="tab-link" data-tab="data-mgt">Data Management</a>
+        </div>
+
+        <div id="projects" class="tab-content active">
+            <div class="card">
+                <h2>Add New Project</h2>
+                <form id="project-form">
+                    <div class="form-group">
+                        <label for="projectName">Project Name:</label>
+                        <input type="text" id="projectName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="projectBudget">Total Budget (INR ₹):</label>
+                        <input type="number" id="projectBudget" step="0.01" required>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / 3;">
+                        <button type="submit">Save Project</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Project List</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th class="cost-header">Total Budget (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projects-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="resources" class="tab-content">
+            <div class="card">
+                <h2>Add New Resource</h2>
+                <form id="resource-form">
+                    <div class="form-group">
+                        <label for="resourceName">Resource Name:</label>
+                        <input type="text" id="resourceName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="employeeId">Employee ID (Unique):</label>
+                        <input type="text" id="employeeId" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="costPerHour">Cost Per Hour (INR ₹):</label>
+                        <input type="number" id="costPerHour" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="skillSet">Skill Set:</label>
+                        <input type="text" id="skillSet" placeholder="e.g., Frontend, DevOps, Architect" required>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / 3;">
+                        <button type="submit">Save Resource</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Resource List</h2>
+                <div class="search-bar">
+                    <input type="text" id="resource-search" placeholder="360 Search: Name, Employee ID, or Skill Set" onkeyup="searchResources()">
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Employee ID</th>
+                            <th>Skill Set</th>
+                            <th class="cost-header">Cost/Hour (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resources-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="allocations" class="tab-content">
+            <div class="card">
+                <h2>Resource Allocation</h2>
+                <form id="allocation-form">
+                    <div class="form-group">
+                        <label for="allocationProject">Select Project:</label>
+                        <select id="allocationProject" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="allocationResource">Select Resource:</label>
+                        <select id="allocationResource" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="totalHoursAllocated">Total Hours Allocated:</label>
+                        <input type="number" id="totalHoursAllocated" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Calculated Cost (₹):</label>
+                        <span id="calculatedCost" style="font-weight: bold; color: var(--accent-color);">0.00</span>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / 3;">
+                        <button type="submit">Save Allocation</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Project Allocation Summary</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Project</th>
+                            <th>Resource</th>
+                            <th>Hours</th>
+                            <th class="cost-header">Cost/Hour (₹)</th>
+                            <th class="cost-header">Total Cost (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocations-table-body">
+                        </tbody>
+                </table>
+                <div class="result-box">
+                    <span>Total Project Resource Cost (Selected Project):</span>
+                    <strong id="total-resource-cost-display">₹ 0.00</strong>
+                </div>
+            </div>
+        </div>
+
+        <div id="forecasting" class="tab-content">
+            <div class="card">
+                <h2>Project Cost Forecasting Model</h2>
+                <div id="forecasting-grid">
+                    <div>
+                        <div class="form-group">
+                            <label for="forecastProject">Select Project:</label>
+                            <select id="forecastProject" onchange="loadProjectBudget()"></select>
+                        </div>
+                        <div class="result-box">
+                            <span>1. Total Project Budget (A):</span>
+                            <strong id="budget-A">₹ 0.00</strong>
+                        </div>
+                        <hr>
+                        <div class="form-group">
+                            <label for="percentage-B">2. Contingency/Buffer (%) - (B):</label>
+                            <input type="number" id="percentage-B" step="0.1" min="0" value="10" oninput="calculateForecast()">
+                        </div>
+                        <div class="result-box">
+                            <span>3. Budget after Buffer (A + A*B):</span>
+                            <strong id="result-C">₹ 0.00</strong>
+                        </div>
+                        <hr>
+                        <div class="form-group">
+                            <label for="percentage-D">4. Overhead Cost (%) - (D):</label>
+                            <input type="number" id="percentage-D" step="0.1" min="0" value="5" oninput="calculateForecast()">
+                        </div>
+                        <div class="result-box">
+                            <span>5. Budget with Overhead (C + C*D):</span>
+                            <strong id="result-E">₹ 0.00</strong>
+                        </div>
+                        <hr>
+                        <div class="form-group">
+                            <label for="fixed-F">6. Fixed Licensing Cost (₹) - (F):</label>
+                            <input type="number" id="fixed-F" step="0.01" min="0" value="50000" oninput="calculateForecast()">
+                        </div>
+                        <div class="result-box">
+                            <span>7. **FINAL FORECASTED COST (E + F):**</span>
+                            <strong id="final-cost-G" style="color: red; font-size: 1.8em;">₹ 0.00</strong>
+                        </div>
+                    </div>
+                    <div>
+                        <h3>Forecast Breakdown</h3>
+                        <canvas id="forecastChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="data-mgt" class="tab-content">
+            <div class="card">
+                <h2>Data Backup & Restore</h2>
+                <p>Use these tools to export or import your application data (Projects, Resources, Allocations).</p>
+                <div style="display: flex; gap: 20px;">
+                    <button onclick="backupData()">💾 Export Full Backup (JSON)</button>
+                    
+                    <div class="form-group" style="flex-grow: 1;">
+                        <input type="file" id="restoreFile" accept=".json" style="display: none;">
+                        <button onclick="document.getElementById('restoreFile').click();">📥 Import Restore (JSON)</button>
+                        <div class="alert" id="restoreAlert"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Instruction 1.1: IndexedDB Setup
+        const DB_NAME = 'EmergentDB_v1';
+        const DB_VERSION = 1;
+        let db;
+
+        const OBJECT_STORES = {
+            projects: { keyPath: 'id', autoIncrement: true, indexes: [{ name: 'name', unique: true }] },
+            resources: { keyPath: 'id', autoIncrement: true, indexes: [{ name: 'employeeId', unique: true }] },
+            allocations: { keyPath: 'id', autoIncrement: true, indexes: [] }
+        };
+
+        // Instruction 1.2: Promise-based IndexedDB Helpers
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (db) {
+                    resolve(db);
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    for (const storeName in OBJECT_STORES) {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            const storeConfig = OBJECT_STORES[storeName];
+                            const store = db.createObjectStore(storeName, { keyPath: storeConfig.keyPath, autoIncrement: storeConfig.autoIncrement });
+                            storeConfig.indexes.forEach(index => {
+                                try {
+                                    store.createIndex(index.name, index.name, { unique: index.unique });
+                                } catch (e) {
+                                    console.error(`Error creating index ${index.name} on store ${storeName}:`, e);
+                                }
+                            });
+                        }
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    reject('Error opening database: ' + event.target.error);
+                };
+            });
+        }
+
+        function transaction(storeName, mode, callback) {
+            return openDB().then(db => {
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, mode);
+                    const store = tx.objectStore(storeName);
+
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                    tx.onabort = () => reject(new Error('Transaction aborted'));
+
+                    // Execute the main operation and wrap its result (if any)
+                    try {
+                        const result = callback(store);
+                        if (result instanceof IDBRequest) {
+                            result.onsuccess = () => resolve(result.result);
+                            result.onerror = () => reject(result.error);
+                        } else {
+                            resolve(result); // For operations without IDBRequest return (like put/add)
+                        }
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+        }
+
+        // Instruction 1.2: getAll
+        function getAll(storeName) {
+            return transaction(storeName, 'readonly', (store) => {
+                return store.getAll();
+            });
+        }
+
+        // Instruction 1.2: getById
+        function getById(storeName, id) {
+             return transaction(storeName, 'readonly', (store) => {
+                return store.get(id);
+            });
+        }
+
+        // Instruction 1.2: update (used for add/put)
+        function update(storeName, item) {
+            return transaction(storeName, 'readwrite', (store) => {
+                return store.put(item);
+            });
+        }
+
+        // --- Core Application Logic ---
+
+        // 1. Project Management
+        document.getElementById('project-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('projectName').value;
+            const budget = parseFloat(document.getElementById('projectBudget').value);
+
+            const project = { name, totalBudget: budget };
+            try {
+                await update('projects', project);
+                alert('Project saved successfully!');
+                e.target.reset();
+                loadProjects(); // Refresh UI
+                loadProjectSelects(); // Refresh dropdowns
+            } catch (error) {
+                alert(`Error saving project: ${error.message || error}`);
+            }
+        });
+
+        async function loadProjects() {
+            const tableBody = document.getElementById('projects-table-body');
+            tableBody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            try {
+                const projects = await getAll('projects');
+                tableBody.innerHTML = projects.map(p => `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.name}</td>
+                        <td class="cost-header">₹ ${p.totalBudget.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                `).join('');
+                if (projects.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3">No projects added yet.</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                tableBody.innerHTML = '<tr><td colspan="3" style="color:red;">Failed to load projects.</td></tr>';
+            }
+        }
+        
+        // 2. Resource Management
+        document.getElementById('resource-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('resourceName').value;
+            const employeeId = document.getElementById('employeeId').value;
+            const costPerHour = parseFloat(document.getElementById('costPerHour').value);
+            const skillSet = document.getElementById('skillSet').value;
+
+            const resource = { name, employeeId, costPerHour, skillSet };
+            try {
+                await update('resources', resource);
+                alert('Resource saved successfully!');
+                e.target.reset();
+                loadResources(); // Refresh UI
+                loadResourceSelects(); // Refresh dropdowns
+            } catch (error) {
+                alert(`Error saving resource: Employee ID must be unique.`);
+            }
+        });
+
+        async function loadResources(filter = '') {
+            const tableBody = document.getElementById('resources-table-body');
+            tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+            try {
+                const resources = await getAll('resources');
+                
+                // Instruction 3.2: 360 Search Logic
+                const lowerCaseFilter = filter.toLowerCase();
+                const filteredResources = resources.filter(r => 
+                    r.name.toLowerCase().includes(lowerCaseFilter) ||
+                    r.employeeId.toLowerCase().includes(lowerCaseFilter) ||
+                    r.skillSet.toLowerCase().includes(lowerCaseFilter)
+                );
+                
+                tableBody.innerHTML = filteredResources.map(r => `
+                    <tr>
+                        <td>${r.id}</td>
+                        <td>${r.name}</td>
+                        <td>${r.employeeId}</td>
+                        <td>${r.skillSet}</td>
+                        <td class="cost-header">₹ ${r.costPerHour.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                `).join('');
+                if (resources.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5">No resources added yet.</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading resources:', error);
+                tableBody.innerHTML = '<tr><td colspan="5" style="color:red;">Failed to load resources.</td></tr>';
+            }
+        }
+        
+        function searchResources() {
+            const filter = document.getElementById('resource-search').value;
+            loadResources(filter);
+        }
+        
+        // 3. Resource Allocation
+        async function loadProjectSelects() {
+            const projects = await getAll('projects');
+            const selects = [document.getElementById('allocationProject'), document.getElementById('forecastProject')];
+            
+            selects.forEach(select => {
+                select.innerHTML = '<option value="">Select a Project...</option>';
+                projects.forEach(p => {
+                    select.innerHTML += `<option value="${p.id}" data-budget="${p.totalBudget}">${p.name} (₹ ${p.totalBudget.toLocaleString('en-IN')})</option>`;
+                });
+            });
+            
+            // Trigger load for forecasting and total cost
+            document.getElementById('allocationProject').dispatchEvent(new Event('change'));
+            document.getElementById('forecastProject').dispatchEvent(new Event('change'));
+        }
+
+        async function loadResourceSelects() {
+            const resources = await getAll('resources');
+            const select = document.getElementById('allocationResource');
+            select.innerHTML = '<option value="">Select a Resource...</option>';
+            resources.forEach(r => {
+                select.innerHTML += `<option value="${r.id}" data-cost="${r.costPerHour}">${r.name} (₹ ${r.costPerHour}/hr)</option>`;
+            });
+            // Trigger calculation on load
+            document.getElementById('allocationResource').dispatchEvent(new Event('change'));
+            document.getElementById('totalHoursAllocated').dispatchEvent(new Event('input'));
+        }
+        
+        // Real-time calculated cost display
+        document.getElementById('allocationResource').addEventListener('change', calculateAllocationCostDisplay);
+        document.getElementById('totalHoursAllocated').addEventListener('input', calculateAllocationCostDisplay);
+
+        function calculateAllocationCostDisplay() {
+            const hours = parseFloat(document.getElementById('totalHoursAllocated').value) || 0;
+            const resourceSelect = document.getElementById('allocationResource');
+            const costPerHour = parseFloat(resourceSelect.options[resourceSelect.selectedIndex]?.dataset.cost) || 0;
+            
+            const totalCost = hours * costPerHour;
+            document.getElementById('calculatedCost').textContent = `₹ ${totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        }
+        
+        document.getElementById('allocation-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const projectId = parseInt(document.getElementById('allocationProject').value);
+            const resourceId = parseInt(document.getElementById('allocationResource').value);
+            const totalHoursAllocated = parseFloat(document.getElementById('totalHoursAllocated').value);
+            
+            const resourceSelect = document.getElementById('allocationResource');
+            const costPerHour = parseFloat(resourceSelect.options[resourceSelect.selectedIndex].dataset.cost);
+            
+            const allocation = { 
+                projectId, 
+                resourceId, 
+                totalHoursAllocated, 
+                costPerHour, // Store cost at time of allocation for stability
+                totalCost: totalHoursAllocated * costPerHour
+            };
+            
+            try {
+                await update('allocations', allocation);
+                alert('Allocation saved successfully!');
+                e.target.reset();
+                calculateAllocationCostDisplay(); // Reset cost display
+                loadAllocations(); // Refresh UI
+            } catch (error) {
+                alert(`Error saving allocation: ${error.message || error}`);
+            }
+        });
+        
+        async function loadAllocations() {
+            const tableBody = document.getElementById('allocations-table-body');
+            tableBody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+
+            const projectId = parseInt(document.getElementById('allocationProject').value);
+            if (!projectId) {
+                 tableBody.innerHTML = '<tr><td colspan="6">Select a project to view its allocations.</td></tr>';
+                 document.getElementById('total-resource-cost-display').textContent = '₹ 0.00';
+                 return;
+            }
+
+            try {
+                const [allocations, projects, resources] = await Promise.all([
+                    getAll('allocations'),
+                    getAll('projects'),
+                    getAll('resources')
+                ]);
+
+                const projectMap = new Map(projects.map(p => [p.id, p.name]));
+                const resourceMap = new Map(resources.map(r => [r.id, r]));
+
+                let totalResourceCost = 0;
+                
+                const filteredAllocations = allocations.filter(a => a.projectId === projectId);
+
+                tableBody.innerHTML = filteredAllocations.map(a => {
+                    const resource = resourceMap.get(a.resourceId) || { name: 'Unknown', costPerHour: 0 };
+                    totalResourceCost += a.totalCost;
+                    
+                    return `
+                        <tr>
+                            <td>${a.id}</td>
+                            <td>${projectMap.get(a.projectId) || 'Unknown Project'}</td>
+                            <td>${resource.name}</td>
+                            <td>${a.totalHoursAllocated}</td>
+                            <td class="cost-header">₹ ${a.costPerHour.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td class="cost-header">₹ ${a.totalCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                if (filteredAllocations.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6">No allocations for this project.</td></tr>';
+                }
+                
+                document.getElementById('total-resource-cost-display').textContent = `₹ ${totalResourceCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+            } catch (error) {
+                console.error('Error loading allocations:', error);
+                tableBody.innerHTML = '<tr><td colspan="6" style="color:red;">Failed to load allocations.</td></tr>';
+            }
+        }
+        
+        // Listen for project change to recalculate total resource cost
+        document.getElementById('allocationProject').addEventListener('change', loadAllocations);
+
+        // 4. Financial Forecasting (Instruction 3.1)
+        const FORECAST_INPUTS = ['percentage-B', 'percentage-D', 'fixed-F'];
+        let forecastChart;
+
+        // Instruction 3.1: Local Storage Persistence
+        function saveForecastInputs() {
+            FORECAST_INPUTS.forEach(id => {
+                localStorage.setItem(id, document.getElementById(id).value);
+            });
+        }
+        
+        function loadForecastInputs() {
+            FORECAST_INPUTS.forEach(id => {
+                const storedValue = localStorage.getItem(id);
+                if (storedValue !== null) {
+                    document.getElementById(id).value = storedValue;
+                }
+            });
+        }
+
+        function loadProjectBudget() {
+            const select = document.getElementById('forecastProject');
+            const selectedOption = select.options[select.selectedIndex];
+            const budgetA = parseFloat(selectedOption?.dataset.budget) || 0;
+            
+            document.getElementById('budget-A').textContent = `₹ ${budgetA.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+            
+            calculateForecast();
+        }
+        
+        function calculateForecast() {
+            // Save inputs immediately
+            saveForecastInputs(); 
+
+            const budgetA = parseFloat(document.getElementById('forecastProject').options[document.getElementById('forecastProject').selectedIndex]?.dataset.budget) || 0;
+            const percentageB = parseFloat(document.getElementById('percentage-B').value) / 100 || 0;
+            const percentageD = parseFloat(document.getElementById('percentage-D').value) / 100 || 0;
+            const fixedF = parseFloat(document.getElementById('fixed-F').value) || 0;
+
+            // Step 3: Budget after Buffer (C = A + A*B)
+            const resultC = budgetA * (1 + percentageB);
+            document.getElementById('result-C').textContent = `₹ ${resultC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+            // Step 5: Budget with Overhead (E = C + C*D)
+            const resultE = resultC * (1 + percentageD);
+            document.getElementById('result-E').textContent = `₹ ${resultE.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+            // Step 7: FINAL FORECASTED COST (G = E + F)
+            const finalCostG = resultE + fixedF;
+            document.getElementById('final-cost-G').textContent = `₹ ${finalCostG.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+            updateForecastChart(budgetA, resultC - budgetA, resultE - resultC, fixedF);
+        }
+
+        // Initialize Chart.js
+        function initializeChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            forecastChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Initial Budget (A)', 'Contingency (B)', 'Overhead (D)', 'Fixed Licensing (F)'],
+                    datasets: [{
+                        label: 'Cost Breakdown',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            '#005A9C', // Primary
+                            '#E87722', // Accent
+                            '#FFC300', // Yellow
+                            '#900C3F'  // Dark Red
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: false,
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateForecastChart(A, B_cost, D_cost, F) {
+            if (forecastChart) {
+                forecastChart.data.datasets[0].data = [A, B_cost, D_cost, F];
+                forecastChart.update();
+            }
+        }
+        
+        // 5. Data Management (Instruction 3.3)
+        async function backupData() {
+            try {
+                const data = {};
+                for (const storeName in OBJECT_STORES) {
+                    data[storeName] = await getAll(storeName);
+                }
+
+                const dataStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ResourceAllocator_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Backup failed! Check console for details.');
+                console.error('Backup Error:', error);
+            }
+        }
+
+        document.getElementById('restoreFile').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const json = e.target.result;
+                try {
+                    const data = JSON.parse(json);
+                    await restoreData(data);
+                    
+                    const alertDiv = document.getElementById('restoreAlert');
+                    alertDiv.textContent = 'Restore complete! Application reloaded.';
+                    alertDiv.style.backgroundColor = '#d4edda'; // green
+                    alertDiv.style.color = '#155724';
+                    alertDiv.style.display = 'block';
+
+                    // Reinitialize after successful restore
+                    setTimeout(() => window.location.reload(), 1500); 
+
+                } catch (error) {
+                    console.error('Restore Error:', error);
+                    const alertDiv = document.getElementById('restoreAlert');
+                    alertDiv.textContent = `Restore failed: ${error.message}. Check file format.`;
+                    alertDiv.style.backgroundColor = '#f8d7da'; // red
+                    alertDiv.style.color = '#721c24';
+                    alertDiv.style.display = 'block';
+                }
+            };
+            reader.readAsText(file);
+        });
+        
+        async function restoreData(data) {
+            await openDB(); // Ensure DB is open
+            const tx = db.transaction(Object.keys(OBJECT_STORES), 'readwrite');
+            
+            // Clear all existing stores
+            for (const storeName of Object.keys(OBJECT_STORES)) {
+                tx.objectStore(storeName).clear();
+            }
+            await new Promise(resolve => {
+                tx.oncomplete = resolve;
+                tx.onerror = () => { throw tx.error; };
+            });
+
+            // Re-open transaction for adding new data
+            const addTx = db.transaction(Object.keys(OBJECT_STORES), 'readwrite');
+
+            // Insert new data, one store at a time
+            for (const storeName of Object.keys(OBJECT_STORES)) {
+                const storeData = data[storeName] || [];
+                const store = addTx.objectStore(storeName);
+                
+                // IMPORTANT: Use put() to maintain original 'id' values from backup
+                storeData.forEach(item => {
+                    store.put(item);
+                });
+            }
+            
+            return new Promise((resolve, reject) => {
+                addTx.oncomplete = resolve;
+                addTx.onerror = reject;
+            });
+        }
+
+
+        // --- UI/UX & Initialization ---
+        
+        function setupTabs() {
+            const tabLinks = document.querySelectorAll('.tab-link');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetTab = e.target.dataset.tab;
+
+                    // Deactivate all
+                    tabLinks.forEach(l => l.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+
+                    // Activate selected
+                    e.target.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                    
+                    // Specific load functions for active tab
+                    if (targetTab === 'allocations') {
+                        loadAllocations(); // Re-load when switching to allocations
+                    } else if (targetTab === 'forecasting') {
+                        calculateForecast(); // Recalculate when switching to forecasting
+                    }
+                });
+            });
+            
+            // Initial load for first tab
+            document.getElementById('projects').classList.add('active');
+        }
+
+        async function init() {
+            await openDB();
+            loadProjects();
+            loadResources();
+            loadProjectSelects();
+            loadResourceSelects();
+            setupTabs();
+            
+            // Forecasting specific initialization
+            loadForecastInputs();
+            initializeChart();
+            loadProjectBudget(); // Initial calculation
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

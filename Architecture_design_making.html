@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full antialiased dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplified Diagram Component Manager</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script>
+        // Tailwind Configuration for Dark Mode and Custom Colors
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            500: '#3b82f6', // blue-500
+                            600: '#2563eb', // blue-600
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for the Modal transition and layout */
+        .modal-transition {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+
+        /* Prevent background scrolling when modal is active */
+        .modal-open {
+            overflow: hidden;
+        }
+
+        /* Simplified Component Block Style */
+        .component-block {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #1f2937; /* bg-gray-800 */
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Actions hidden by default */
+        .component-block .actions {
+            opacity: 0;
+            transform: translateX(10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        /* Show actions on hover */
+        .component-block:hover .actions {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-gray-100 font-sans min-h-full transition-colors duration-300">
+
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
+        </div>
+
+    <div id="delete-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden justify-center items-center modal-transition" aria-modal="true" role="dialog">
+        <div id="modal-content" class="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-sm transform scale-95 opacity-0 modal-transition">
+            <h3 class="text-xl font-bold text-red-400 mb-4 flex items-center">
+                <i data-lucide="alert-triangle" class="w-5 h-5 mr-2"></i>
+                Confirm Deletion
+            </h3>
+            <p class="text-gray-300 mb-6">Are you sure you want to delete this component? This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 text-sm font-medium rounded-lg text-gray-200 bg-gray-600 hover:bg-gray-700 transition duration-150">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition duration-150 flex items-center">
+                    <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="p-4 md:p-8">
+        <header class="mb-8 border-b border-gray-700 pb-4">
+            <h1 class="text-3xl font-extrabold text-primary-500 flex items-center">
+                <i data-lucide="layers-3" class="w-7 h-7 mr-3"></i>
+                Diagram Component Manager
+            </h1>
+            <p class="text-gray-400 mt-1">Manage components to visualize architecture nodes.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-[20rem_1fr] lg:grid-cols-[24rem_1fr] gap-8">
+
+            <aside class="space-y-6">
+                <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                    <h2 id="form-title" class="text-xl font-bold mb-4 text-gray-100">Add New Component</h2>
+                    <form id="item-form" class="space-y-4">
+                        <input type="hidden" id="item-id">
+                        
+                        <div>
+                            <label for="title" class="block text-sm font-medium text-gray-400">Title (Component Name)</label>
+                            <input type="text" id="title" maxlength="100" placeholder="e.g., Firewall, REST API Gateway" required
+                                class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-primary-500 focus:border-primary-500 transition duration-150">
+                            <p id="title-error" class="text-xs text-red-400 mt-1 hidden">Title is required.</p>
+                        </div>
+                        
+                        <div>
+                            <label for="layer" class="block text-sm font-medium text-gray-400">Layer/Group</label>
+                            <input type="text" id="layer" placeholder="e.g., Kernel, User Space, Frontend" required
+                                class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-primary-500 focus:border-primary-500 transition duration-150">
+                        </div>
+
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-400">Description / Function (Optional)</label>
+                            <textarea id="description" rows="3" placeholder="Brief function of the component."
+                                class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-primary-500 focus:border-primary-500 transition duration-150"></textarea>
+                        </div>
+
+                        <button type="submit" id="submit-btn" class="w-full px-4 py-2 font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-500 transition duration-150 ease-in-out transform hover:scale-[1.01] flex items-center justify-center">
+                            <i data-lucide="plus-circle" class="w-5 h-5 mr-2"></i>
+                            <span id="submit-btn-text">Add Component</span>
+                        </button>
+                        
+                        <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="w-full px-4 py-2 font-medium rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-700 transition duration-150 hidden">
+                            <i data-lucide="x" class="w-5 h-5 mr-2"></i>
+                            Cancel Edit
+                        </button>
+                    </form>
+                </section>
+
+                <section class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 space-y-3">
+                    <h2 class="text-lg font-bold text-gray-100 mb-3">Data Management</h2>
+                    
+                    <button onclick="exportData()" class="w-full px-4 py-2 font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition duration-150 flex items-center justify-center transform hover:scale-[1.01]">
+                        <i data-lucide="download" class="w-5 h-5 mr-2"></i>
+                        Export Data (JSON)
+                    </button>
+                    
+                    <div class="relative">
+                        <input type="file" id="import-file" accept=".json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="importData(event)">
+                        <label for="import-file" class="w-full px-4 py-2 font-medium rounded-lg bg-yellow-600 text-white hover:bg-yellow-700 transition duration-150 flex items-center justify-center transform hover:scale-[1.01] cursor-pointer">
+                            <i data-lucide="upload" class="w-5 h-5 mr-2"></i>
+                            Import & Merge Data (JSON)
+                        </label>
+                    </div>
+                </section>
+            </aside>
+
+            <section class="space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-800 rounded-xl border border-gray-700 shadow-md">
+                    <div class="relative w-full sm:w-80 mb-4 sm:mb-0">
+                        <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-input" placeholder="Search Title or Layer..."
+                            class="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-primary-500 focus:border-primary-500 transition duration-150">
+                    </div>
+                    <div class="text-sm font-medium text-gray-400">
+                        Total Components: <span id="item-count" class="text-primary-400 font-bold">0</span>
+                    </div>
+                </div>
+
+                <div id="items-list" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <p id="empty-state" class="text-center text-gray-500 p-10 hidden col-span-full">
+                        <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-3"></i>
+                        No components found. Start by adding one or check your search filter.
+                    </p>
+                    </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // =================================================================================
+        // GLOBAL CONFIGURATION
+        // =================================================================================
+        const DB_NAME = 'ArchitectureDiagramDB'; 
+        const DB_VERSION = 1;
+        const STORE_NAME = 'items';
+        let db;
+        let allItems = []; // Cache for all items
+
+        // =================================================================================
+        // IndexedDB SETUP and HELPERS
+        // =================================================================================
+
+        /** Initializes the IndexedDB database. */
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    loadItems(); 
+                    resolve(db);
+                };
+                request.onerror = (event) => {
+                    showToast('Critical Database Failure!', 'danger');
+                    reject(new Error(`Database error: ${event.target.errorCode}`));
+                };
+            });
+        }
+
+        /** Get a transaction object for the store. */
+        function getStore(mode) {
+            return db.transaction(STORE_NAME, mode).objectStore(STORE_NAME);
+        }
+
+        /**
+         * Simple string hash function to generate a color for the layer.
+         * @param {string} str - The string (layer name) to hash.
+         * @returns {string} Tailwind color class.
+         */
+        function stringToColorClass(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const colors = [
+                'bg-blue-600', 'bg-green-600', 'bg-purple-600', 'bg-red-600', 
+                'bg-indigo-600', 'bg-pink-600', 'bg-teal-600', 'bg-orange-600'
+            ];
+            // Ensure the result is positive and within the color array bounds
+            const colorIndex = Math.abs(hash) % colors.length; 
+            return colors[colorIndex];
+        }
+
+        // =================================================================================
+        // TOAST NOTIFICATION AND MODAL HELPERS
+        // =================================================================================
+
+        /** Displays a temporary toast notification. */
+        function showToast(message, type) {
+            const container = document.getElementById('toast-container');
+            if (!container) return; 
+
+            const colorMap = {
+                success: 'bg-green-600 border-green-700',
+                danger: 'bg-red-600 border-red-700',
+                warning: 'bg-yellow-600 border-yellow-700'
+            };
+            const iconMap = { success: 'check-circle', danger: 'alert-triangle', warning: 'alert-circle' };
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-lg shadow-xl text-white max-w-xs w-full transition-all duration-300 transform translate-x-full opacity-0 flex items-center border ${colorMap[type]}`;
+            toast.innerHTML = `
+                <i data-lucide="${iconMap[type]}" class="w-5 h-5 mr-3"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            if (window.lucide) lucide.createIcons(); 
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        let itemToDeleteId = null;
+
+        /** Opens the delete confirmation modal. */
+        function openDeleteModal(id) {
+            itemToDeleteId = id;
+            const modal = document.getElementById('delete-modal');
+            const modalContent = document.getElementById('modal-content');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+
+            if (!modal || !modalContent) return; 
+
+            confirmBtn.onclick = () => deleteItem(itemToDeleteId);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('modal-open');
+
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        /** Closes the delete confirmation modal. */
+        function closeDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            if (!modal || !modalContent) return; 
+
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+                itemToDeleteId = null;
+            }, 300); 
+        }
+
+
+        // =================================================================================
+        // CRUD IMPLEMENTATION
+        // =================================================================================
+
+        /** Loads all items from IndexedDB, sorts them, caches them, and renders the list. */
+        function loadItems() {
+            if (!db) return;
+
+            try {
+                const store = getStore('readonly');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    allItems = event.target.result;
+                    allItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                    renderList(allItems);
+                    const itemCount = document.getElementById('item-count');
+                    if (itemCount) itemCount.textContent = allItems.length;
+                };
+
+                request.onerror = (event) => {
+                    showToast('Could not load components.', 'danger');
+                };
+            } catch (error) {
+                showToast('A critical error occurred while accessing data.', 'danger');
+            }
+        }
+
+        /** Saves or Updates an item in IndexedDB. */
+        function saveItem(item) {
+            if (!db) return;
+
+            const isUpdate = item.id !== undefined;
+            const store = getStore('readwrite');
+            const request = store.put(item);
+
+            const submitBtn = document.getElementById('submit-btn');
+            const submitBtnText = document.getElementById('submit-btn-text');
+            const originalText = isUpdate ? 'Save Changes' : 'Add Component';
+            
+            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtnText) submitBtnText.textContent = isUpdate ? 'Saving...' : 'Processing...';
+
+            request.onsuccess = () => {
+                showToast(`Component ${isUpdate ? 'updated' : 'added'} successfully!`, 'success');
+                resetForm();
+                loadItems();
+            };
+
+            request.onerror = (event) => {
+                showToast(`Failed to ${isUpdate ? 'update' : 'add'} component.`, 'danger');
+            };
+
+            const transactionComplete = () => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (submitBtnText) submitBtnText.textContent = originalText;
+            };
+            store.transaction.oncomplete = transactionComplete;
+            store.transaction.onerror = transactionComplete;
+        }
+
+        /** Deletes an item from IndexedDB. */
+        function deleteItem(id) {
+            closeDeleteModal(); 
+            if (!db) return;
+
+            try {
+                const store = getStore('readwrite');
+                const request = store.delete(id);
+
+                request.onsuccess = () => {
+                    showToast('Component deleted.', 'success');
+                    loadItems(); 
+                    resetForm(); 
+                };
+
+                request.onerror = (event) => {
+                    showToast('Failed to delete component.', 'danger');
+                };
+            } catch (error) {
+                showToast('A critical error occurred during deletion.', 'danger');
+            }
+        }
+
+        // =================================================================================
+        // UI HELPERS & LOGIC
+        // =================================================================================
+
+        /** Renders the list of items to the DOM. */
+        function renderList(itemsToRender) {
+            const listContainer = document.getElementById('items-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (!listContainer || !emptyState) return; 
+
+            listContainer.innerHTML = '';
+
+            if (itemsToRender.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            itemsToRender.forEach(item => {
+                const layer = (item.layer || 'N/A').trim();
+                const colorClass = stringToColorClass(layer);
+
+                const block = document.createElement('div');
+                block.id = `item-${item.id}`;
+                block.className = 'component-block border-2 border-gray-700 hover:border-primary-500';
+                
+                block.innerHTML = `
+                    <div class="flex flex-col pr-4">
+                        <h3 class="text-lg font-bold text-gray-50 leading-tight">${item.title}</h3>
+                        <div class="flex items-center mt-1 text-sm text-gray-300">
+                            <span class="w-2 h-2 rounded-full mr-2 ${colorClass}"></span>
+                            <span class="text-gray-400">${layer}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="actions flex space-x-2">
+                        <button onclick="loadForEdit(${item.id})" title="Edit" 
+                            class="p-1 rounded-full text-blue-400 hover:bg-blue-900 transition duration-150">
+                            <i data-lucide="square-pen" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="duplicateItem(${item.id})" title="Duplicate" 
+                            class="p-1 rounded-full text-yellow-400 hover:bg-yellow-900 transition duration-150">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="openDeleteModal(${item.id})" title="Delete" 
+                            class="p-1 rounded-full text-red-400 hover:bg-red-900 transition duration-150">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(block);
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+
+        /** Filters the list of items based on the search input. */
+        function filterItems() {
+            const searchInput = document.getElementById('search-input');
+            if (!searchInput) return;
+
+            const searchTerm = searchInput.value.toLowerCase().trim();
+
+            if (!searchTerm) {
+                renderList(allItems);
+                return;
+            }
+
+            const filtered = allItems.filter(item => {
+                const titleMatch = (item.title || '').toLowerCase().includes(searchTerm);
+                const layerMatch = (item.layer || '').toLowerCase().includes(searchTerm);
+                // Search now excludes description (simplification)
+                return titleMatch || layerMatch;
+            });
+
+            renderList(filtered);
+        }
+
+        /** Populates the form with an item's data for editing. */
+        function loadForEdit(id) {
+            const item = allItems.find(i => i.id === id);
+            if (!item) {
+                showToast('Item not found for editing.', 'danger');
+                return;
+            }
+
+            document.getElementById('item-id').value = item.id;
+            document.getElementById('title').value = item.title;
+            document.getElementById('layer').value = item.layer;
+            document.getElementById('description').value = item.description;
+
+            // Update UI for Edit state
+            document.getElementById('form-title').textContent = `Edit Component (ID: ${item.id})`;
+            document.getElementById('submit-btn-text').textContent = 'Save Changes';
+            document.getElementById('submit-btn').classList.remove('bg-primary-600');
+            document.getElementById('submit-btn').classList.add('bg-amber-600', 'hover:bg-amber-500');
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+            document.getElementById('title').focus();
+        }
+
+        /** Resets the form to the Create state. */
+        function resetForm() {
+            document.getElementById('item-form').reset();
+            document.getElementById('item-id').value = '';
+            const titleError = document.getElementById('title-error');
+            if (titleError) titleError.classList.add('hidden');
+
+            // Reset UI to Add state
+            document.getElementById('form-title').textContent = 'Add New Component';
+            document.getElementById('submit-btn-text').textContent = 'Add Component';
+            document.getElementById('submit-btn').classList.remove('bg-amber-600', 'hover:bg-amber-500');
+            document.getElementById('submit-btn').classList.add('bg-primary-600', 'hover:bg-primary-500');
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+        }
+
+        /** Duplicates an item. */
+        function duplicateItem(id) {
+            const originalItem = allItems.find(i => i.id === id);
+            if (!originalItem) {
+                showToast('Item not found for duplication.', 'danger');
+                return;
+            }
+
+            const newItem = {
+                title: originalItem.title + ' (Copy)',
+                layer: originalItem.layer,
+                description: originalItem.description,
+                timestamp: new Date().toISOString()
+            };
+
+            saveItem(newItem);
+        }
+
+        // =================================================================================
+        // DATA EXPORT/IMPORT
+        // =================================================================================
+
+        /** Exports all data from IndexedDB as a JSON file download. */
+        function exportData() {
+            if (!db) return;
+
+            try {
+                const store = getStore('readonly');
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    const data = event.target.result;
+                    const json = JSON.stringify(data, null, 2);
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `diagram_components_export_${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showToast('Data exported successfully.', 'success');
+                };
+
+                request.onerror = (event) => {
+                    showToast('Failed to export data.', 'danger');
+                };
+            } catch (error) {
+                showToast('A critical error occurred during export.', 'danger');
+            }
+        }
+
+        /** Imports data from a JSON file, performing a non-destructive merge. */
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData)) {
+                        showToast('Import failed: File content is not a valid array of items.', 'danger');
+                        return;
+                    }
+                    performImportMerge(importedData);
+                } catch (error) {
+                    showToast('Import failed: Invalid JSON file format.', 'danger');
+                } finally {
+                    event.target.value = ''; 
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /** Performs the non-destructive append merge. */
+        function performImportMerge(importedItems) {
+            if (!db) return;
+
+            try {
+                const store = getStore('readwrite');
+                let successfulImports = 0;
+                let errorCount = 0;
+
+                importedItems.forEach(item => {
+                    const newItem = {
+                        title: String(item.title || 'Imported Component').trim(),
+                        layer: String(item.layer || '').trim(),
+                        description: String(item.description || '').trim(),
+                        timestamp: new Date().toISOString() 
+                    };
+                    
+                    const request = store.add(newItem);
+                    request.onsuccess = () => { successfulImports++; };
+                    request.onerror = () => { errorCount++; };
+                });
+                
+                store.transaction.oncomplete = () => {
+                    if (errorCount === 0) {
+                        showToast(`${successfulImports} components imported and merged.`, 'success');
+                    } else {
+                        showToast(`Merged ${successfulImports} items. ${errorCount} items failed to import.`, 'warning');
+                    }
+                    loadItems(); 
+                };
+
+                store.transaction.onerror = () => {
+                    showToast('Import process failed due to a database error.', 'danger');
+                };
+
+            } catch (error) {
+                showToast('A critical error occurred during the import process.', 'danger');
+            }
+        }
+
+        // =================================================================================
+        // INITIALIZATION
+        // =================================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDB();
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', filterItems);
+            }
+        });
+    </script>
+</body>
+</html>

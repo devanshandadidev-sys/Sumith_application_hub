@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cost Tracker - Enhanced with Actual Cost Tracking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin: 25px 0 15px 0;
+            font-size: 1.8em;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #34495e;
+            margin: 20px 0 15px 0;
+            font-size: 1.4em;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #2980b9, #1f5f99);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+
+        button.secondary:hover {
+            background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        button.danger:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+        }
+
+        button.success {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+        }
+
+        button.success:hover {
+            background: linear-gradient(135deg, #219a52, #1e8449);
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 14px;
+        }
+
+        .data-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .data-table tr:hover {
+            background-color: #e8f4f8;
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        }
+
+        .section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .summary-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .summary-table th {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .summary-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .summary-table tr:hover {
+            background-color: #f0f8ff;
+        }
+
+        .actual-cost {
+            background-color: #e8f5e8;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .planned-cost {
+            background-color: #f0f8ff;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .variance {
+            font-weight: bold;
+            text-align: center;
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
+
+        .variance.over-budget {
+            background-color: #ffe6e6;
+            color: #e74c3c;
+        }
+
+        .variance.under-budget {
+            background-color: #e6ffe6;
+            color: #27ae60;
+        }
+
+        .variance.on-budget {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-over-budget {
+            background-color: #e74c3c;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .status-under-budget {
+            background-color: #27ae60;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .status-on-budget {
+            background-color: #f39c12;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .month-input {
+            width: 80px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            text-align: center;
+        }
+
+        .month-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+
+        .cost-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .cost-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .cost-card h4 {
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .cost-amount {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .cost-amount.planned {
+            color: #3498db;
+        }
+
+        .cost-amount.actual {
+            color: #27ae60;
+        }
+
+        .export-import-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px dashed #bdc3c7;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper:hover {
+            background: linear-gradient(135deg, #8e44ad, #7d3c98);
+        }
+
+        .file-input-wrapper input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .data-table {
+                font-size: 12px;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 8px 5px;
+            }
+
+            .cost-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .alert {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        @media print {
+            .nav-buttons, .export-import-section, button {
+                display: none;
+            }
+
+            .container {
+                box-shadow: none;
+                max-width: 100%;
+            }
+
+            .data-table {
+                font-size: 10px;
+            }
+
+            .month-input {
+                border: none;
+                background: transparent;
+            }
+        }
+
+        .total-row {
+            background-color: #34495e !important;
+            color: white;
+            font-weight: bold;
+        }
+
+        .total-row td {
+            background-color: #34495e !important;
+            color: white !important;
+            border-top: 2px solid #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Enhanced Cost Tracker</h1>
+
+        <div class="nav-buttons">
+            <button onclick="showSection('projects')">📋 Projects</button>
+            <button onclick="showSection('summary')" class="success">📊 Summary Dashboard</button>
+            <button onclick="showSection('personnel')">👥 Personnel</button>
+            <button onclick="showSection('procurement')">📦 Procurement</button>
+            <button onclick="showSection('services')">🔧 Services</button>
+            <button onclick="showSection('materials')">🧱 Materials</button>
+            <button onclick="showSection('equipment')">⚙️ Equipment</button>
+            <button onclick="showSection('scurve')">📈 S-Curve</button>
+            <button onclick="showSection('import-export')" class="secondary">💾 Import/Export</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div>Loading data...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Projects Section -->
+        <div id="projects" class="section active">
+            <h2>Project Management</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="project-name">Project Name:</label>
+                    <input type="text" id="project-name" placeholder="Enter project name">
+                </div>
+                <div class="form-group">
+                    <label for="project-budget">Budget (₹):</label>
+                    <input type="number" id="project-budget" placeholder="Enter budget amount">
+                </div>
+            </div>
+            <button onclick="addProject()" class="success">Add Project</button>
+            <div id="project-list"></div>
+        </div>
+
+        <!-- Summary Dashboard Section -->
+        <div id="summary" class="section">
+            <h2>Project Cost Summary Dashboard</h2>
+            <div id="project-summary-display"></div>
+            <div id="category-breakdown"></div>
+        </div>
+
+        <!-- Personnel Section -->
+        <div id="personnel" class="section">
+            <h2>Personnel Costs</h2>
+            <div class="form-group">
+                <label for="project-select-personnel">Select Project:</label>
+                <select id="project-select-personnel">
+                    <option value="">Select a project...</option>
+                </select>
+            </div>
+            <div id="personnel-form" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="personnel-role">Role:</label>
+                        <input type="text" id="personnel-role" placeholder="Enter role">
+                    </div>
+                    <div class="form-group">
+                        <label for="personnel-unit">Unit:</label>
+                        <input type="text" id="personnel-unit" placeholder="e.g., Hours/Month">
+                    </div>
+                    <div class="form-group">
+                        <label for="personnel-rate">Rate (₹/Hr):</label>
+                        <input type="number" id="personnel-rate" placeholder="Enter hourly rate" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="personnel-qty">Planned Qty (Months):</label>
+                        <input type="number" id="personnel-qty" placeholder="Enter quantity" step="0.1">
+                    </div>
+                </div>
+                <button onclick="addPersonnel()" class="success">Add Personnel</button>
+            </div>
+            <div id="personnel-display"></div>
+        </div>
+
+        <!-- Procurement Section -->
+        <div id="procurement" class="section">
+            <h2>Procurement Costs</h2>
+            <div class="form-group">
+                <label for="project-select-procurement">Select Project:</label>
+                <select id="project-select-procurement">
+                    <option value="">Select a project...</option>
+                </select>
+            </div>
+            <div id="procurement-form" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="procurement-group">Group:</label>
+                        <input type="text" id="procurement-group" placeholder="Enter group">
+                    </div>
+                    <div class="form-group">
+                        <label for="procurement-item">Item:</label>
+                        <input type="text" id="procurement-item" placeholder="Enter item name">
+                    </div>
+                    <div class="form-group">
+                        <label for="procurement-uom">UoM:</label>
+                        <input type="text" id="procurement-uom" placeholder="Unit of Measure">
+                    </div>
+                    <div class="form-group">
+                        <label for="procurement-rate">Rate (₹):</label>
+                        <input type="number" id="procurement-rate" placeholder="Enter rate" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="procurement-qty">Planned Qty:</label>
+                        <input type="number" id="procurement-qty" placeholder="Enter quantity" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="procurement-gst">GST (%):</label>
+                        <input type="number" id="procurement-gst" placeholder="Enter GST percentage" step="0.1">
+                    </div>
+                </div>
+                <button onclick="addProcurement()" class="success">Add Procurement Item</button>
+            </div>
+            <div id="procurement-display"></div>
+        </div>
+
+        <!-- Services Section -->
+        <div id="services" class="section">
+            <h2>Service Costs</h2>
+            <div class="form-group">
+                <label for="project-select-services">Select Project:</label>
+                <select id="project-select-services">
+                    <option value="">Select a project...</option>
+                </select>
+            </div>
+            <div id="services-form" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="services-group">Group:</label>
+                        <input type="text" id="services-group" placeholder="Enter service group">
+                    </div>
+                    <div class="form-group">
+                        <label for="services-service">Service:</label>
+                        <input type="text" id="services-service" placeholder="Enter service name">
+                    </div>
+                    <div class="form-group">
+                        <label for="services-planned-cost">Planned Cost (₹):</label>
+                        <input type="number" id="services-planned-cost" placeholder="Enter planned cost" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="services-gst">GST (%):</label>
+                        <input type="number" id="services-gst" placeholder="Enter GST percentage" step="0.1">
+                    </div>
+                </div>
+                <button onclick="addService()" class="success">Add Service</button>
+            </div>
+            <div id="services-display"></div>
+        </div>
+
+        <!-- Materials Section -->
+        <div id="materials" class="section">
+            <h2>Material Costs</h2>
+            <div class="form-group">
+                <label for="project-select-materials">Select Project:</label>
+                <select id="project-select-materials">
+                    <option value="">Select a project...</option>
+                </select>
+            </div>
+            <div id="materials-form" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="materials-item">Item:</label>
+                        <input type="text" id="materials-item" placeholder="Enter material name">
+                    </div>
+                    <div class="form-group">
+                        <label for="materials-uom">UoM:</label>
+                        <input type="text" id="materials-uom" placeholder="Unit of Measure">
+                    </div>
+                    <div class="form-group">
+                        <label for="materials-rate">Rate (₹):</label>
+                        <input type="number" id="materials-rate" placeholder="Enter rate" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="materials-qty">Planned Qty:</label>
+                        <input type="number" id="materials-qty" placeholder="Enter quantity" step="0.1">
+                    </div>
+                </div>
+                <button onclick="addMaterial()" class="success">Add Material</button>
+            </div>
+            <div id="materials-display"></div>
+        </div>
+
+        <!-- Equipment Section -->
+        <div id="equipment" class="section">
+            <h2>Equipment Costs</h2>
+            <div class="form-group">
+                <label for="project-select-equipment">Select Project:</label>
+                <select id="project-select-equipment">
+                    <option value="">Select a project...</option>
+                </select>
+            </div>
+            <div id="equipment-form" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="equipment-item">Item:</label>
+                        <input type="text" id="equipment-item" placeholder="Enter equipment name">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-uom">UoM:</label>
+                        <input type="text" id="equipment-uom" placeholder="Unit of Measure">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-rate">Rate (₹):</label>
+                        <input type="number" id="equipment-rate" placeholder="Enter rate" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipment-qty">Planned Qty:</label>
+                        <input type="number" id="equipment-qty" placeholder="Enter quantity" step="0.1">
+                    </div>
+                </div>
+                <button onclick="addEquipment()" class="success">Add Equipment</button>
+            </div>
+            <div id="equipment-display"></div>
+        </div>
+
+        <!-- S-Curve Section -->
+        <div id="scurve" class="section">
+            <h2>S-Curve Analysis</h2>
+            <div class="form-group">
+                <label for="project-select-scurve">Select Project:</label>
+                <select id="project-select-scurve">
+                    <option value="">Select a project...</option>
+                </select>
+            </div>
+            <div id="scurve-display"></div>
+        </div>
+
+        <!-- Import/Export Section -->
+        <div id="import-export" class="section">
+            <h2>Data Import/Export</h2>
+            <div class="export-import-section">
+                <h3>Export Data</h3>
+                <p>Export all application data (projects, cost categories, and S-Curve data) to a JSON file.</p>
+                <button onclick="exportData()" class="success">📤 Export All Data</button>
+
+                <h3 style="margin-top: 30px;">Import Data</h3>
+                <p><strong>⚠️ WARNING:</strong> This will overwrite all existing data. Please ensure you have exported your current data first.</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="import-file" accept=".json" onchange="importData()">
+                    📥 Select JSON File to Import
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables and data structures
+        let currentProject = '';
+        let projects = JSON.parse(localStorage.getItem('projects') || '[]');
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjects();
+            updateProjectSelects();
+            generateProjectSummary();
+        });
+
+        // Section management
+        function showSection(sectionName) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionName).classList.add('active');
+
+            if (sectionName === 'summary') {
+                generateProjectSummary();
+                generateCategoryBreakdown();
+            }
+        }
+
+        // Project management functions
+        function addProject() {
+            const name = document.getElementById('project-name').value.trim();
+            const budget = parseFloat(document.getElementById('project-budget').value) || 0;
+
+            if (!name) {
+                showAlert('Please enter a project name', 'error');
+                return;
+            }
+
+            const project = {
+                id: generateId(),
+                name: name,
+                budget: budget,
+                createdDate: new Date().toISOString()
+            };
+
+            projects.push(project);
+            localStorage.setItem('projects', JSON.stringify(projects));
+
+            document.getElementById('project-name').value = '';
+            document.getElementById('project-budget').value = '';
+
+            loadProjects();
+            updateProjectSelects();
+            showAlert('Project added successfully!', 'success');
+        }
+
+        function loadProjects() {
+            const projectList = document.getElementById('project-list');
+            if (!projectList) return;
+
+            if (projects.length === 0) {
+                projectList.innerHTML = '<p>No projects created yet. Add your first project above.</p>';
+                return;
+            }
+
+            let html = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Budget (₹)</th>
+                            <th>Planned Cost (₹)</th>
+                            <th>Actual Cost (₹)</th>
+                            <th>Variance (₹)</th>
+                            <th>Created Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            projects.forEach(project => {
+                const plannedCost = calculateProjectPlannedCost(project.id);
+                const actualCost = calculateProjectActualCost(project.id);
+                const variance = actualCost - plannedCost;
+                const createdDate = new Date(project.createdDate).toLocaleDateString();
+
+                html += `
+                    <tr data-project-id="${project.id}">
+                        <td><strong>${project.name}</strong></td>
+                        <td>₹${project.budget.toLocaleString('en-IN')}</td>
+                        <td class="planned-cost">₹${plannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">₹${Math.abs(variance).toLocaleString('en-IN')}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button onclick="deleteProject('${project.id}')" class="danger">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            projectList.innerHTML = html;
+        }
+
+        function deleteProject(projectId) {
+            if (!confirm('Are you sure you want to delete this project? This will also delete all associated data.')) {
+                return;
+            }
+
+            // Remove project
+            projects = projects.filter(p => p.id !== projectId);
+            localStorage.setItem('projects', JSON.stringify(projects));
+
+            // Remove associated data
+            localStorage.removeItem(`personnel_${projectId}`);
+            localStorage.removeItem(`procurement_${projectId}`);
+            localStorage.removeItem(`services_${projectId}`);
+            localStorage.removeItem(`materials_${projectId}`);
+            localStorage.removeItem(`equipment_${projectId}`);
+
+            loadProjects();
+            updateProjectSelects();
+            generateProjectSummary();
+            showAlert('Project deleted successfully!', 'success');
+        }
+
+        function updateProjectSelects() {
+            const selects = [
+                'project-select-personnel',
+                'project-select-procurement', 
+                'project-select-services',
+                'project-select-materials',
+                'project-select-equipment',
+                'project-select-scurve'
+            ];
+
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    select.innerHTML = '<option value="">Select a project...</option>';
+                    projects.forEach(project => {
+                        select.innerHTML += `<option value="${project.id}">${project.name}</option>`;
+                    });
+                }
+            });
+        }
+
+        // Cost calculation functions
+        function calculateProjectPlannedCost(projectId) {
+            let totalPlanned = 0;
+
+            // Personnel costs
+            const personnel = JSON.parse(localStorage.getItem(`personnel_${projectId}`) || '[]');
+            personnel.forEach(person => {
+                const rate = parseFloat(person.rate) || 0;
+                const qty = parseFloat(person.qty) || 0;
+                totalPlanned += rate * qty;
+            });
+
+            // Procurement costs
+            const procurement = JSON.parse(localStorage.getItem(`procurement_${projectId}`) || '[]');
+            procurement.forEach(item => {
+                const rate = parseFloat(item.rate) || 0;
+                const qty = parseFloat(item.qty) || 0;
+                const gst = parseFloat(item.gst) || 0;
+                const baseCost = rate * qty;
+                totalPlanned += baseCost + (baseCost * gst / 100);
+            });
+
+            // Service costs
+            const services = JSON.parse(localStorage.getItem(`services_${projectId}`) || '[]');
+            services.forEach(service => {
+                const plannedCost = parseFloat(service.plannedCost) || 0;
+                const gst = parseFloat(service.gst) || 0;
+                totalPlanned += plannedCost + (plannedCost * gst / 100);
+            });
+
+            // Material costs
+            const materials = JSON.parse(localStorage.getItem(`materials_${projectId}`) || '[]');
+            materials.forEach(material => {
+                const rate = parseFloat(material.rate) || 0;
+                const qty = parseFloat(material.qty) || 0;
+                totalPlanned += rate * qty;
+            });
+
+            // Equipment costs
+            const equipment = JSON.parse(localStorage.getItem(`equipment_${projectId}`) || '[]');
+            equipment.forEach(item => {
+                const rate = parseFloat(item.rate) || 0;
+                const qty = parseFloat(item.qty) || 0;
+                totalPlanned += rate * qty;
+            });
+
+            return totalPlanned;
+        }
+
+        function calculateProjectActualCost(projectId) {
+            let totalActual = 0;
+
+            // Personnel actual costs
+            const personnel = JSON.parse(localStorage.getItem(`personnel_${projectId}`) || '[]');
+            personnel.forEach(person => {
+                totalActual += calculatePersonnelActualCost(person);
+            });
+
+            // Procurement actual costs
+            const procurement = JSON.parse(localStorage.getItem(`procurement_${projectId}`) || '[]');
+            procurement.forEach(item => {
+                totalActual += calculateProcurementActualCost(item);
+            });
+
+            // Service actual costs
+            const services = JSON.parse(localStorage.getItem(`services_${projectId}`) || '[]');
+            services.forEach(service => {
+                totalActual += calculateServiceActualCost(service);
+            });
+
+            // Material actual costs
+            const materials = JSON.parse(localStorage.getItem(`materials_${projectId}`) || '[]');
+            materials.forEach(material => {
+                totalActual += calculateMaterialActualCost(material);
+            });
+
+            // Equipment actual costs
+            const equipment = JSON.parse(localStorage.getItem(`equipment_${projectId}`) || '[]');
+            equipment.forEach(item => {
+                totalActual += calculateEquipmentActualCost(item);
+            });
+
+            return totalActual;
+        }
+
+        function calculatePersonnelActualCost(person) {
+            let actualCost = 0;
+            const rate = parseFloat(person.rate) || 0;
+
+            for (let i = 1; i <= 24; i++) {
+                const monthlyQty = parseFloat(person[`month${i}`]) || 0;
+                actualCost += rate * monthlyQty;
+            }
+
+            return actualCost;
+        }
+
+        function calculateProcurementActualCost(item) {
+            let actualCost = 0;
+            const rate = parseFloat(item.rate) || 0;
+            const gst = parseFloat(item.gst) || 0;
+
+            for (let i = 1; i <= 24; i++) {
+                const monthlyQty = parseFloat(item[`month${i}`]) || 0;
+                const baseCost = rate * monthlyQty;
+                actualCost += baseCost + (baseCost * gst / 100);
+            }
+
+            return actualCost;
+        }
+
+        function calculateServiceActualCost(service) {
+            let actualCost = 0;
+            const gst = parseFloat(service.gst) || 0;
+            let totalBookings = 0;
+
+            for (let i = 1; i <= 24; i++) {
+                const monthlyBooking = parseFloat(service[`month${i}`]) || 0;
+                totalBookings += monthlyBooking;
+            }
+
+            if (totalBookings > 0) {
+                actualCost = totalBookings + (totalBookings * gst / 100);
+            }
+
+            return actualCost;
+        }
+
+        function calculateMaterialActualCost(material) {
+            let actualCost = 0;
+            const rate = parseFloat(material.rate) || 0;
+
+            for (let i = 1; i <= 24; i++) {
+                const monthlyQty = parseFloat(material[`month${i}`]) || 0;
+                actualCost += rate * monthlyQty;
+            }
+
+            return actualCost;
+        }
+
+        function calculateEquipmentActualCost(equipment) {
+            let actualCost = 0;
+            const rate = parseFloat(equipment.rate) || 0;
+
+            for (let i = 1; i <= 24; i++) {
+                const monthlyQty = parseFloat(equipment[`month${i}`]) || 0;
+                actualCost += rate * monthlyQty;
+            }
+
+            return actualCost;
+        }
+
+        // Enhanced summary generation
+        function generateProjectSummary() {
+            const summaryDiv = document.getElementById('project-summary-display');
+            if (!summaryDiv) return;
+
+            if (projects.length === 0) {
+                summaryDiv.innerHTML = '<div class="alert alert-warning">No projects available. Please create a project first.</div>';
+                return;
+            }
+
+            let summaryHTML = `
+                <div class="summary-container">
+                    <h3>📊 Project Cost Summary Dashboard</h3>
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>Project Name</th>
+                                <th>Budget (₹)</th>
+                                <th>Planned Cost (₹)</th>
+                                <th>Actual Cost (₹)</th>
+                                <th>Variance (₹)</th>
+                                <th>Variance (%)</th>
+                                <th>Budget Status</th>
+                                <th>Cost Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            let totalBudget = 0;
+            let totalPlanned = 0;
+            let totalActual = 0;
+
+            projects.forEach(project => {
+                const plannedCost = calculateProjectPlannedCost(project.id);
+                const actualCost = calculateProjectActualCost(project.id);
+                const variance = actualCost - plannedCost;
+                const variancePercent = plannedCost > 0 ? ((variance / plannedCost) * 100).toFixed(2) : 0;
+                const budgetVariance = actualCost - project.budget;
+                const budgetStatus = getBudgetStatus(actualCost, project.budget);
+                const costStatus = getCostStatus(variance);
+
+                totalBudget += project.budget;
+                totalPlanned += plannedCost;
+                totalActual += actualCost;
+
+                summaryHTML += `
+                    <tr>
+                        <td><strong>${project.name}</strong></td>
+                        <td>₹${project.budget.toLocaleString('en-IN')}</td>
+                        <td class="planned-cost">₹${plannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${variance.toLocaleString('en-IN')}
+                        </td>
+                        <td class="variance ${getVarianceClass(variance)}">${variancePercent}%</td>
+                        <td class="${budgetStatus.class}">${budgetStatus.text}</td>
+                        <td class="${costStatus.class}">${costStatus.text}</td>
+                    </tr>
+                `;
+            });
+
+            // Add total row
+            const totalVariance = totalActual - totalPlanned;
+            const totalVariancePercent = totalPlanned > 0 ? ((totalVariance / totalPlanned) * 100).toFixed(2) : 0;
+
+            summaryHTML += `
+                    <tr class="total-row">
+                        <td><strong>TOTAL</strong></td>
+                        <td><strong>₹${totalBudget.toLocaleString('en-IN')}</strong></td>
+                        <td><strong>₹${totalPlanned.toLocaleString('en-IN')}</strong></td>
+                        <td><strong>₹${totalActual.toLocaleString('en-IN')}</strong></td>
+                        <td><strong>${totalVariance >= 0 ? '+' : ''}₹${totalVariance.toLocaleString('en-IN')}</strong></td>
+                        <td><strong>${totalVariancePercent}%</strong></td>
+                        <td><strong>${getBudgetStatus(totalActual, totalBudget).text}</strong></td>
+                        <td><strong>${getCostStatus(totalVariance).text}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="cost-comparison">
+            <div class="cost-card">
+                <h4>📋 Total Planned Cost</h4>
+                <div class="cost-amount planned">₹${totalPlanned.toLocaleString('en-IN')}</div>
+                <p>Budgeted project costs</p>
+            </div>
+            <div class="cost-card">
+                <h4>💰 Total Actual Cost</h4>
+                <div class="cost-amount actual">₹${totalActual.toLocaleString('en-IN')}</div>
+                <p>Based on monthly bookings</p>
+            </div>
+        </div>
+            `;
+
+            summaryDiv.innerHTML = summaryHTML;
+        }
+
+        function generateCategoryBreakdown() {
+            const breakdownDiv = document.getElementById('category-breakdown');
+            if (!breakdownDiv) return;
+
+            let breakdownHTML = `
+                <div class="summary-container">
+                    <h3>📊 Category-wise Cost Breakdown</h3>
+            `;
+
+            projects.forEach(project => {
+                const personnelPlanned = calculateCategoryPlannedCost(project.id, 'personnel');
+                const personnelActual = calculateCategoryActualCost(project.id, 'personnel');
+                const procurementPlanned = calculateCategoryPlannedCost(project.id, 'procurement');
+                const procurementActual = calculateCategoryActualCost(project.id, 'procurement');
+                const servicesPlanned = calculateCategoryPlannedCost(project.id, 'services');
+                const servicesActual = calculateCategoryActualCost(project.id, 'services');
+                const materialsPlanned = calculateCategoryPlannedCost(project.id, 'materials');
+                const materialsActual = calculateCategoryActualCost(project.id, 'materials');
+                const equipmentPlanned = calculateCategoryPlannedCost(project.id, 'equipment');
+                const equipmentActual = calculateCategoryActualCost(project.id, 'equipment');
+
+                breakdownHTML += `
+                    <h4>${project.name} - Category Breakdown</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Planned Cost (₹)</th>
+                                <th>Actual Cost (₹)</th>
+                                <th>Variance (₹)</th>
+                                <th>Variance (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>👥 Personnel</td>
+                                <td class="planned-cost">₹${personnelPlanned.toLocaleString('en-IN')}</td>
+                                <td class="actual-cost">₹${personnelActual.toLocaleString('en-IN')}</td>
+                                <td class="variance ${getVarianceClass(personnelActual - personnelPlanned)}">
+                                    ${(personnelActual - personnelPlanned) >= 0 ? '+' : ''}₹${(personnelActual - personnelPlanned).toLocaleString('en-IN')}
+                                </td>
+                                <td>${personnelPlanned > 0 ? (((personnelActual - personnelPlanned) / personnelPlanned) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                            <tr>
+                                <td>📦 Procurement</td>
+                                <td class="planned-cost">₹${procurementPlanned.toLocaleString('en-IN')}</td>
+                                <td class="actual-cost">₹${procurementActual.toLocaleString('en-IN')}</td>
+                                <td class="variance ${getVarianceClass(procurementActual - procurementPlanned)}">
+                                    ${(procurementActual - procurementPlanned) >= 0 ? '+' : ''}₹${(procurementActual - procurementPlanned).toLocaleString('en-IN')}
+                                </td>
+                                <td>${procurementPlanned > 0 ? (((procurementActual - procurementPlanned) / procurementPlanned) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                            <tr>
+                                <td>🔧 Services</td>
+                                <td class="planned-cost">₹${servicesPlanned.toLocaleString('en-IN')}</td>
+                                <td class="actual-cost">₹${servicesActual.toLocaleString('en-IN')}</td>
+                                <td class="variance ${getVarianceClass(servicesActual - servicesPlanned)}">
+                                    ${(servicesActual - servicesPlanned) >= 0 ? '+' : ''}₹${(servicesActual - servicesPlanned).toLocaleString('en-IN')}
+                                </td>
+                                <td>${servicesPlanned > 0 ? (((servicesActual - servicesPlanned) / servicesPlanned) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                            <tr>
+                                <td>🧱 Materials</td>
+                                <td class="planned-cost">₹${materialsPlanned.toLocaleString('en-IN')}</td>
+                                <td class="actual-cost">₹${materialsActual.toLocaleString('en-IN')}</td>
+                                <td class="variance ${getVarianceClass(materialsActual - materialsPlanned)}">
+                                    ${(materialsActual - materialsPlanned) >= 0 ? '+' : ''}₹${(materialsActual - materialsPlanned).toLocaleString('en-IN')}
+                                </td>
+                                <td>${materialsPlanned > 0 ? (((materialsActual - materialsPlanned) / materialsPlanned) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                            <tr>
+                                <td>⚙️ Equipment</td>
+                                <td class="planned-cost">₹${equipmentPlanned.toLocaleString('en-IN')}</td>
+                                <td class="actual-cost">₹${equipmentActual.toLocaleString('en-IN')}</td>
+                                <td class="variance ${getVarianceClass(equipmentActual - equipmentPlanned)}">
+                                    ${(equipmentActual - equipmentPlanned) >= 0 ? '+' : ''}₹${(equipmentActual - equipmentPlanned).toLocaleString('en-IN')}
+                                </td>
+                                <td>${equipmentPlanned > 0 ? (((equipmentActual - equipmentPlanned) / equipmentPlanned) * 100).toFixed(2) : 0}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+            });
+
+            breakdownHTML += '</div>';
+            breakdownDiv.innerHTML = breakdownHTML;
+        }
+
+        function calculateCategoryPlannedCost(projectId, category) {
+            let totalPlanned = 0;
+            const data = JSON.parse(localStorage.getItem(`${category}_${projectId}`) || '[]');
+
+            switch(category) {
+                case 'personnel':
+                    data.forEach(item => {
+                        const rate = parseFloat(item.rate) || 0;
+                        const qty = parseFloat(item.qty) || 0;
+                        totalPlanned += rate * qty;
+                    });
+                    break;
+                case 'procurement':
+                    data.forEach(item => {
+                        const rate = parseFloat(item.rate) || 0;
+                        const qty = parseFloat(item.qty) || 0;
+                        const gst = parseFloat(item.gst) || 0;
+                        const baseCost = rate * qty;
+                        totalPlanned += baseCost + (baseCost * gst / 100);
+                    });
+                    break;
+                case 'services':
+                    data.forEach(item => {
+                        const plannedCost = parseFloat(item.plannedCost) || 0;
+                        const gst = parseFloat(item.gst) || 0;
+                        totalPlanned += plannedCost + (plannedCost * gst / 100);
+                    });
+                    break;
+                case 'materials':
+                case 'equipment':
+                    data.forEach(item => {
+                        const rate = parseFloat(item.rate) || 0;
+                        const qty = parseFloat(item.qty) || 0;
+                        totalPlanned += rate * qty;
+                    });
+                    break;
+            }
+
+            return totalPlanned;
+        }
+
+        function calculateCategoryActualCost(projectId, category) {
+            let totalActual = 0;
+            const data = JSON.parse(localStorage.getItem(`${category}_${projectId}`) || '[]');
+
+            data.forEach(item => {
+                switch(category) {
+                    case 'personnel':
+                        totalActual += calculatePersonnelActualCost(item);
+                        break;
+                    case 'procurement':
+                        totalActual += calculateProcurementActualCost(item);
+                        break;
+                    case 'services':
+                        totalActual += calculateServiceActualCost(item);
+                        break;
+                    case 'materials':
+                        totalActual += calculateMaterialActualCost(item);
+                        break;
+                    case 'equipment':
+                        totalActual += calculateEquipmentActualCost(item);
+                        break;
+                }
+            });
+
+            return totalActual;
+        }
+
+        // Personnel functions
+        function showPersonnelForm() {
+            const projectId = document.getElementById('project-select-personnel').value;
+            const form = document.getElementById('personnel-form');
+            const display = document.getElementById('personnel-display');
+
+            if (projectId) {
+                form.style.display = 'block';
+                currentProject = projectId;
+                displayPersonnelTable(projectId);
+            } else {
+                form.style.display = 'none';
+                display.innerHTML = '';
+            }
+        }
+
+        function addPersonnel() {
+            const projectId = document.getElementById('project-select-personnel').value;
+            const role = document.getElementById('personnel-role').value.trim();
+            const unit = document.getElementById('personnel-unit').value.trim();
+            const rate = parseFloat(document.getElementById('personnel-rate').value) || 0;
+            const qty = parseFloat(document.getElementById('personnel-qty').value) || 0;
+
+            if (!role || !unit || rate <= 0 || qty <= 0) {
+                showAlert('Please fill in all fields with valid values', 'error');
+                return;
+            }
+
+            const personnel = {
+                id: generateId(),
+                role: role,
+                unit: unit,
+                rate: rate,
+                qty: qty
+            };
+
+            // Initialize monthly tracking
+            for (let i = 1; i <= 24; i++) {
+                personnel[`month${i}`] = 0;
+            }
+
+            let personnelList = JSON.parse(localStorage.getItem(`personnel_${projectId}`) || '[]');
+            personnelList.push(personnel);
+            localStorage.setItem(`personnel_${projectId}`, JSON.stringify(personnelList));
+
+            // Clear form
+            document.getElementById('personnel-role').value = '';
+            document.getElementById('personnel-unit').value = '';
+            document.getElementById('personnel-rate').value = '';
+            document.getElementById('personnel-qty').value = '';
+
+            displayPersonnelTable(projectId);
+            generateProjectSummary();
+            showAlert('Personnel added successfully!', 'success');
+        }
+
+        function displayPersonnelTable(projectId) {
+            const personnel = JSON.parse(localStorage.getItem(`personnel_${projectId}`) || '[]');
+            const display = document.getElementById('personnel-display');
+
+            if (personnel.length === 0) {
+                display.innerHTML = '<p>No personnel added yet.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Unit</th>
+                            <th>Rate (₹/Hr)</th>
+                            <th>Planned Qty (Months)</th>
+                            <th>Planned Cost (₹)</th>
+                            <th>Actual Cost (₹)</th>
+                            <th>Variance (₹)</th>
+            `;
+
+            // Add month columns
+            for (let i = 1; i <= 12; i++) {
+                tableHTML += `<th>Month ${i}</th>`;
+            }
+
+            tableHTML += `<th>Actions</th></tr></thead><tbody>`;
+
+            personnel.forEach(person => {
+                const plannedCost = (parseFloat(person.rate) || 0) * (parseFloat(person.qty) || 0);
+                const actualCost = calculatePersonnelActualCost(person);
+                const variance = actualCost - plannedCost;
+
+                tableHTML += `
+                    <tr data-item-id="${person.id}">
+                        <td><strong>${person.role}</strong></td>
+                        <td>${person.unit}</td>
+                        <td>₹${person.rate}</td>
+                        <td>${person.qty}</td>
+                        <td class="planned-cost">₹${plannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${Math.abs(variance).toLocaleString('en-IN')}
+                        </td>
+                `;
+
+                // Monthly quantity columns
+                for (let i = 1; i <= 12; i++) {
+                    const monthValue = person[`month${i}`] || 0;
+                    tableHTML += `
+                        <td>
+                            <input type="number" value="${monthValue}" 
+                                   onchange="updateMonthlyQuantity('${person.id}', 'personnel', ${i}, this.value, '${projectId}')"
+                                   step="0.1" min="0" class="month-input">
+                        </td>
+                    `;
+                }
+
+                tableHTML += `
+                        <td>
+                            <button onclick="deletePersonnel('${person.id}', '${projectId}')" class="danger">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            display.innerHTML = tableHTML;
+        }
+
+        function deletePersonnel(personnelId, projectId) {
+            if (!confirm('Are you sure you want to delete this personnel entry?')) {
+                return;
+            }
+
+            let personnelList = JSON.parse(localStorage.getItem(`personnel_${projectId}`) || '[]');
+            personnelList = personnelList.filter(p => p.id !== personnelId);
+            localStorage.setItem(`personnel_${projectId}`, JSON.stringify(personnelList));
+
+            displayPersonnelTable(projectId);
+            generateProjectSummary();
+            showAlert('Personnel deleted successfully!', 'success');
+        }
+
+        // Monthly quantity update function
+        function updateMonthlyQuantity(itemId, category, month, value, projectId) {
+            const data = JSON.parse(localStorage.getItem(`${category}_${projectId}`) || '[]');
+            const itemIndex = data.findIndex(item => item.id === itemId);
+
+            if (itemIndex !== -1) {
+                data[itemIndex][`month${month}`] = parseFloat(value) || 0;
+                localStorage.setItem(`${category}_${projectId}`, JSON.stringify(data));
+
+                // Update displays
+                setTimeout(() => {
+                    switch(category) {
+                        case 'personnel':
+                            displayPersonnelTable(projectId);
+                            break;
+                        case 'procurement':
+                            displayProcurementTable(projectId);
+                            break;
+                        case 'services':
+                            displayServicesTable(projectId);
+                            break;
+                        case 'materials':
+                            displayMaterialsTable(projectId);
+                            break;
+                        case 'equipment':
+                            displayEquipmentTable(projectId);
+                            break;
+                    }
+                    generateProjectSummary();
+                }, 100);
+            }
+        }
+
+        // Procurement functions
+        function showProcurementForm() {
+            const projectId = document.getElementById('project-select-procurement').value;
+            const form = document.getElementById('procurement-form');
+            const display = document.getElementById('procurement-display');
+
+            if (projectId) {
+                form.style.display = 'block';
+                currentProject = projectId;
+                displayProcurementTable(projectId);
+            } else {
+                form.style.display = 'none';
+                display.innerHTML = '';
+            }
+        }
+
+        function addProcurement() {
+            const projectId = document.getElementById('project-select-procurement').value;
+            const group = document.getElementById('procurement-group').value.trim();
+            const item = document.getElementById('procurement-item').value.trim();
+            const uom = document.getElementById('procurement-uom').value.trim();
+            const rate = parseFloat(document.getElementById('procurement-rate').value) || 0;
+            const qty = parseFloat(document.getElementById('procurement-qty').value) || 0;
+            const gst = parseFloat(document.getElementById('procurement-gst').value) || 0;
+
+            if (!item || !uom || rate <= 0 || qty <= 0) {
+                showAlert('Please fill in all required fields with valid values', 'error');
+                return;
+            }
+
+            const procurement = {
+                id: generateId(),
+                group: group,
+                item: item,
+                uom: uom,
+                rate: rate,
+                qty: qty,
+                gst: gst
+            };
+
+            // Initialize monthly tracking
+            for (let i = 1; i <= 24; i++) {
+                procurement[`month${i}`] = 0;
+            }
+
+            let procurementList = JSON.parse(localStorage.getItem(`procurement_${projectId}`) || '[]');
+            procurementList.push(procurement);
+            localStorage.setItem(`procurement_${projectId}`, JSON.stringify(procurementList));
+
+            // Clear form
+            document.getElementById('procurement-group').value = '';
+            document.getElementById('procurement-item').value = '';
+            document.getElementById('procurement-uom').value = '';
+            document.getElementById('procurement-rate').value = '';
+            document.getElementById('procurement-qty').value = '';
+            document.getElementById('procurement-gst').value = '';
+
+            displayProcurementTable(projectId);
+            generateProjectSummary();
+            showAlert('Procurement item added successfully!', 'success');
+        }
+
+        function displayProcurementTable(projectId) {
+            const procurement = JSON.parse(localStorage.getItem(`procurement_${projectId}`) || '[]');
+            const display = document.getElementById('procurement-display');
+
+            if (procurement.length === 0) {
+                display.innerHTML = '<p>No procurement items added yet.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Group</th>
+                            <th>Item</th>
+                            <th>UoM</th>
+                            <th>Rate (₹)</th>
+                            <th>Planned Qty</th>
+                            <th>GST (%)</th>
+                            <th>Planned Cost (₹)</th>
+                            <th>Actual Cost (₹)</th>
+                            <th>Variance (₹)</th>
+            `;
+
+            // Add month columns
+            for (let i = 1; i <= 12; i++) {
+                tableHTML += `<th>Month ${i}</th>`;
+            }
+
+            tableHTML += `<th>Actions</th></tr></thead><tbody>`;
+
+            procurement.forEach(item => {
+                const basePlannedCost = (parseFloat(item.rate) || 0) * (parseFloat(item.qty) || 0);
+                const plannedCost = basePlannedCost + (basePlannedCost * (parseFloat(item.gst) || 0) / 100);
+                const actualCost = calculateProcurementActualCost(item);
+                const variance = actualCost - plannedCost;
+
+                tableHTML += `
+                    <tr data-item-id="${item.id}">
+                        <td>${item.group || '-'}</td>
+                        <td><strong>${item.item}</strong></td>
+                        <td>${item.uom}</td>
+                        <td>₹${item.rate}</td>
+                        <td>${item.qty}</td>
+                        <td>${item.gst}%</td>
+                        <td class="planned-cost">₹${plannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${Math.abs(variance).toLocaleString('en-IN')}
+                        </td>
+                `;
+
+                // Monthly quantity columns
+                for (let i = 1; i <= 12; i++) {
+                    const monthValue = item[`month${i}`] || 0;
+                    tableHTML += `
+                        <td>
+                            <input type="number" value="${monthValue}" 
+                                   onchange="updateMonthlyQuantity('${item.id}', 'procurement', ${i}, this.value, '${projectId}')"
+                                   step="0.1" min="0" class="month-input">
+                        </td>
+                    `;
+                }
+
+                tableHTML += `
+                        <td>
+                            <button onclick="deleteProcurement('${item.id}', '${projectId}')" class="danger">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            display.innerHTML = tableHTML;
+        }
+
+        function deleteProcurement(procurementId, projectId) {
+            if (!confirm('Are you sure you want to delete this procurement item?')) {
+                return;
+            }
+
+            let procurementList = JSON.parse(localStorage.getItem(`procurement_${projectId}`) || '[]');
+            procurementList = procurementList.filter(p => p.id !== procurementId);
+            localStorage.setItem(`procurement_${projectId}`, JSON.stringify(procurementList));
+
+            displayProcurementTable(projectId);
+            generateProjectSummary();
+            showAlert('Procurement item deleted successfully!', 'success');
+        }
+
+        // Services functions
+        function showServicesForm() {
+            const projectId = document.getElementById('project-select-services').value;
+            const form = document.getElementById('services-form');
+            const display = document.getElementById('services-display');
+
+            if (projectId) {
+                form.style.display = 'block';
+                currentProject = projectId;
+                displayServicesTable(projectId);
+            } else {
+                form.style.display = 'none';
+                display.innerHTML = '';
+            }
+        }
+
+        function addService() {
+            const projectId = document.getElementById('project-select-services').value;
+            const group = document.getElementById('services-group').value.trim();
+            const service = document.getElementById('services-service').value.trim();
+            const plannedCost = parseFloat(document.getElementById('services-planned-cost').value) || 0;
+            const gst = parseFloat(document.getElementById('services-gst').value) || 0;
+
+            if (!service || plannedCost <= 0) {
+                showAlert('Please fill in all required fields with valid values', 'error');
+                return;
+            }
+
+            const serviceItem = {
+                id: generateId(),
+                group: group,
+                service: service,
+                plannedCost: plannedCost,
+                gst: gst
+            };
+
+            // Initialize monthly tracking
+            for (let i = 1; i <= 24; i++) {
+                serviceItem[`month${i}`] = 0;
+            }
+
+            let servicesList = JSON.parse(localStorage.getItem(`services_${projectId}`) || '[]');
+            servicesList.push(serviceItem);
+            localStorage.setItem(`services_${projectId}`, JSON.stringify(servicesList));
+
+            // Clear form
+            document.getElementById('services-group').value = '';
+            document.getElementById('services-service').value = '';
+            document.getElementById('services-planned-cost').value = '';
+            document.getElementById('services-gst').value = '';
+
+            displayServicesTable(projectId);
+            generateProjectSummary();
+            showAlert('Service added successfully!', 'success');
+        }
+
+        function displayServicesTable(projectId) {
+            const services = JSON.parse(localStorage.getItem(`services_${projectId}`) || '[]');
+            const display = document.getElementById('services-display');
+
+            if (services.length === 0) {
+                display.innerHTML = '<p>No services added yet.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Group</th>
+                            <th>Service</th>
+                            <th>Planned Cost (₹)</th>
+                            <th>GST (%)</th>
+                            <th>Total Planned (₹)</th>
+                            <th>Actual Cost (₹)</th>
+                            <th>Variance (₹)</th>
+            `;
+
+            // Add month columns
+            for (let i = 1; i <= 12; i++) {
+                tableHTML += `<th>Month ${i}</th>`;
+            }
+
+            tableHTML += `<th>Actions</th></tr></thead><tbody>`;
+
+            services.forEach(service => {
+                const basePlannedCost = parseFloat(service.plannedCost) || 0;
+                const totalPlannedCost = basePlannedCost + (basePlannedCost * (parseFloat(service.gst) || 0) / 100);
+                const actualCost = calculateServiceActualCost(service);
+                const variance = actualCost - totalPlannedCost;
+
+                tableHTML += `
+                    <tr data-item-id="${service.id}">
+                        <td>${service.group || '-'}</td>
+                        <td><strong>${service.service}</strong></td>
+                        <td>₹${basePlannedCost.toLocaleString('en-IN')}</td>
+                        <td>${service.gst}%</td>
+                        <td class="planned-cost">₹${totalPlannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${Math.abs(variance).toLocaleString('en-IN')}
+                        </td>
+                `;
+
+                // Monthly booking columns
+                for (let i = 1; i <= 12; i++) {
+                    const monthValue = service[`month${i}`] || 0;
+                    tableHTML += `
+                        <td>
+                            <input type="number" value="${monthValue}" 
+                                   onchange="updateMonthlyQuantity('${service.id}', 'services', ${i}, this.value, '${projectId}')"
+                                   step="0.01" min="0" class="month-input">
+                        </td>
+                    `;
+                }
+
+                tableHTML += `
+                        <td>
+                            <button onclick="deleteService('${service.id}', '${projectId}')" class="danger">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            display.innerHTML = tableHTML;
+        }
+
+        function deleteService(serviceId, projectId) {
+            if (!confirm('Are you sure you want to delete this service?')) {
+                return;
+            }
+
+            let servicesList = JSON.parse(localStorage.getItem(`services_${projectId}`) || '[]');
+            servicesList = servicesList.filter(s => s.id !== serviceId);
+            localStorage.setItem(`services_${projectId}`, JSON.stringify(servicesList));
+
+            displayServicesTable(projectId);
+            generateProjectSummary();
+            showAlert('Service deleted successfully!', 'success');
+        }
+
+        // Materials functions
+        function showMaterialsForm() {
+            const projectId = document.getElementById('project-select-materials').value;
+            const form = document.getElementById('materials-form');
+            const display = document.getElementById('materials-display');
+
+            if (projectId) {
+                form.style.display = 'block';
+                currentProject = projectId;
+                displayMaterialsTable(projectId);
+            } else {
+                form.style.display = 'none';
+                display.innerHTML = '';
+            }
+        }
+
+        function addMaterial() {
+            const projectId = document.getElementById('project-select-materials').value;
+            const item = document.getElementById('materials-item').value.trim();
+            const uom = document.getElementById('materials-uom').value.trim();
+            const rate = parseFloat(document.getElementById('materials-rate').value) || 0;
+            const qty = parseFloat(document.getElementById('materials-qty').value) || 0;
+
+            if (!item || !uom || rate <= 0 || qty <= 0) {
+                showAlert('Please fill in all fields with valid values', 'error');
+                return;
+            }
+
+            const material = {
+                id: generateId(),
+                item: item,
+                uom: uom,
+                rate: rate,
+                qty: qty
+            };
+
+            // Initialize monthly tracking
+            for (let i = 1; i <= 24; i++) {
+                material[`month${i}`] = 0;
+            }
+
+            let materialsList = JSON.parse(localStorage.getItem(`materials_${projectId}`) || '[]');
+            materialsList.push(material);
+            localStorage.setItem(`materials_${projectId}`, JSON.stringify(materialsList));
+
+            // Clear form
+            document.getElementById('materials-item').value = '';
+            document.getElementById('materials-uom').value = '';
+            document.getElementById('materials-rate').value = '';
+            document.getElementById('materials-qty').value = '';
+
+            displayMaterialsTable(projectId);
+            generateProjectSummary();
+            showAlert('Material added successfully!', 'success');
+        }
+
+        function displayMaterialsTable(projectId) {
+            const materials = JSON.parse(localStorage.getItem(`materials_${projectId}`) || '[]');
+            const display = document.getElementById('materials-display');
+
+            if (materials.length === 0) {
+                display.innerHTML = '<p>No materials added yet.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>UoM</th>
+                            <th>Rate (₹)</th>
+                            <th>Planned Qty</th>
+                            <th>Planned Cost (₹)</th>
+                            <th>Actual Cost (₹)</th>
+                            <th>Variance (₹)</th>
+            `;
+
+            // Add month columns
+            for (let i = 1; i <= 12; i++) {
+                tableHTML += `<th>Month ${i}</th>`;
+            }
+
+            tableHTML += `<th>Actions</th></tr></thead><tbody>`;
+
+            materials.forEach(material => {
+                const plannedCost = (parseFloat(material.rate) || 0) * (parseFloat(material.qty) || 0);
+                const actualCost = calculateMaterialActualCost(material);
+                const variance = actualCost - plannedCost;
+
+                tableHTML += `
+                    <tr data-item-id="${material.id}">
+                        <td><strong>${material.item}</strong></td>
+                        <td>${material.uom}</td>
+                        <td>₹${material.rate}</td>
+                        <td>${material.qty}</td>
+                        <td class="planned-cost">₹${plannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${Math.abs(variance).toLocaleString('en-IN')}
+                        </td>
+                `;
+
+                // Monthly quantity columns
+                for (let i = 1; i <= 12; i++) {
+                    const monthValue = material[`month${i}`] || 0;
+                    tableHTML += `
+                        <td>
+                            <input type="number" value="${monthValue}" 
+                                   onchange="updateMonthlyQuantity('${material.id}', 'materials', ${i}, this.value, '${projectId}')"
+                                   step="0.1" min="0" class="month-input">
+                        </td>
+                    `;
+                }
+
+                tableHTML += `
+                        <td>
+                            <button onclick="deleteMaterial('${material.id}', '${projectId}')" class="danger">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            display.innerHTML = tableHTML;
+        }
+
+        function deleteMaterial(materialId, projectId) {
+            if (!confirm('Are you sure you want to delete this material?')) {
+                return;
+            }
+
+            let materialsList = JSON.parse(localStorage.getItem(`materials_${projectId}`) || '[]');
+            materialsList = materialsList.filter(m => m.id !== materialId);
+            localStorage.setItem(`materials_${projectId}`, JSON.stringify(materialsList));
+
+            displayMaterialsTable(projectId);
+            generateProjectSummary();
+            showAlert('Material deleted successfully!', 'success');
+        }
+
+        // Equipment functions
+        function showEquipmentForm() {
+            const projectId = document.getElementById('project-select-equipment').value;
+            const form = document.getElementById('equipment-form');
+            const display = document.getElementById('equipment-display');
+
+            if (projectId) {
+                form.style.display = 'block';
+                currentProject = projectId;
+                displayEquipmentTable(projectId);
+            } else {
+                form.style.display = 'none';
+                display.innerHTML = '';
+            }
+        }
+
+        function addEquipment() {
+            const projectId = document.getElementById('project-select-equipment').value;
+            const item = document.getElementById('equipment-item').value.trim();
+            const uom = document.getElementById('equipment-uom').value.trim();
+            const rate = parseFloat(document.getElementById('equipment-rate').value) || 0;
+            const qty = parseFloat(document.getElementById('equipment-qty').value) || 0;
+
+            if (!item || !uom || rate <= 0 || qty <= 0) {
+                showAlert('Please fill in all fields with valid values', 'error');
+                return;
+            }
+
+            const equipment = {
+                id: generateId(),
+                item: item,
+                uom: uom,
+                rate: rate,
+                qty: qty
+            };
+
+            // Initialize monthly tracking
+            for (let i = 1; i <= 24; i++) {
+                equipment[`month${i}`] = 0;
+            }
+
+            let equipmentList = JSON.parse(localStorage.getItem(`equipment_${projectId}`) || '[]');
+            equipmentList.push(equipment);
+            localStorage.setItem(`equipment_${projectId}`, JSON.stringify(equipmentList));
+
+            // Clear form
+            document.getElementById('equipment-item').value = '';
+            document.getElementById('equipment-uom').value = '';
+            document.getElementById('equipment-rate').value = '';
+            document.getElementById('equipment-qty').value = '';
+
+            displayEquipmentTable(projectId);
+            generateProjectSummary();
+            showAlert('Equipment added successfully!', 'success');
+        }
+
+        function displayEquipmentTable(projectId) {
+            const equipment = JSON.parse(localStorage.getItem(`equipment_${projectId}`) || '[]');
+            const display = document.getElementById('equipment-display');
+
+            if (equipment.length === 0) {
+                display.innerHTML = '<p>No equipment added yet.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>UoM</th>
+                            <th>Rate (₹)</th>
+                            <th>Planned Qty</th>
+                            <th>Planned Cost (₹)</th>
+                            <th>Actual Cost (₹)</th>
+                            <th>Variance (₹)</th>
+            `;
+
+            // Add month columns
+            for (let i = 1; i <= 12; i++) {
+                tableHTML += `<th>Month ${i}</th>`;
+            }
+
+            tableHTML += `<th>Actions</th></tr></thead><tbody>`;
+
+            equipment.forEach(item => {
+                const plannedCost = (parseFloat(item.rate) || 0) * (parseFloat(item.qty) || 0);
+                const actualCost = calculateEquipmentActualCost(item);
+                const variance = actualCost - plannedCost;
+
+                tableHTML += `
+                    <tr data-item-id="${item.id}">
+                        <td><strong>${item.item}</strong></td>
+                        <td>${item.uom}</td>
+                        <td>₹${item.rate}</td>
+                        <td>${item.qty}</td>
+                        <td class="planned-cost">₹${plannedCost.toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${actualCost.toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${Math.abs(variance).toLocaleString('en-IN')}
+                        </td>
+                `;
+
+                // Monthly quantity columns
+                for (let i = 1; i <= 12; i++) {
+                    const monthValue = item[`month${i}`] || 0;
+                    tableHTML += `
+                        <td>
+                            <input type="number" value="${monthValue}" 
+                                   onchange="updateMonthlyQuantity('${item.id}', 'equipment', ${i}, this.value, '${projectId}')"
+                                   step="0.1" min="0" class="month-input">
+                        </td>
+                    `;
+                }
+
+                tableHTML += `
+                        <td>
+                            <button onclick="deleteEquipment('${item.id}', '${projectId}')" class="danger">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            display.innerHTML = tableHTML;
+        }
+
+        function deleteEquipment(equipmentId, projectId) {
+            if (!confirm('Are you sure you want to delete this equipment?')) {
+                return;
+            }
+
+            let equipmentList = JSON.parse(localStorage.getItem(`equipment_${projectId}`) || '[]');
+            equipmentList = equipmentList.filter(e => e.id !== equipmentId);
+            localStorage.setItem(`equipment_${projectId}`, JSON.stringify(equipmentList));
+
+            displayEquipmentTable(projectId);
+            generateProjectSummary();
+            showAlert('Equipment deleted successfully!', 'success');
+        }
+
+        // S-Curve functions
+        function showSCurveForm() {
+            const projectId = document.getElementById('project-select-scurve').value;
+            const display = document.getElementById('scurve-display');
+
+            if (projectId) {
+                generateSCurve(projectId);
+            } else {
+                display.innerHTML = '';
+            }
+        }
+
+        function generateSCurve(projectId) {
+            const display = document.getElementById('scurve-display');
+            const project = projects.find(p => p.id === projectId);
+
+            if (!project) {
+                display.innerHTML = '<p>Project not found.</p>';
+                return;
+            }
+
+            // Calculate monthly cumulative costs
+            let monthlyPlanned = new Array(24).fill(0);
+            let monthlyActual = new Array(24).fill(0);
+
+            // Get all categories data
+            const categories = ['personnel', 'procurement', 'services', 'materials', 'equipment'];
+
+            categories.forEach(category => {
+                const data = JSON.parse(localStorage.getItem(`${category}_${projectId}`) || '[]');
+                data.forEach(item => {
+                    for (let month = 1; month <= 24; month++) {
+                        const monthlyQty = parseFloat(item[`month${month}`]) || 0;
+                        if (monthlyQty > 0) {
+                            let monthlyCost = 0;
+
+                            switch(category) {
+                                case 'personnel':
+                                    monthlyCost = (parseFloat(item.rate) || 0) * monthlyQty;
+                                    break;
+                                case 'procurement':
+                                    const baseCost = (parseFloat(item.rate) || 0) * monthlyQty;
+                                    monthlyCost = baseCost + (baseCost * (parseFloat(item.gst) || 0) / 100);
+                                    break;
+                                case 'services':
+                                    monthlyCost = monthlyQty + (monthlyQty * (parseFloat(item.gst) || 0) / 100);
+                                    break;
+                                case 'materials':
+                                case 'equipment':
+                                    monthlyCost = (parseFloat(item.rate) || 0) * monthlyQty;
+                                    break;
+                            }
+
+                            monthlyActual[month - 1] += monthlyCost;
+                        }
+                    }
+                });
+            });
+
+            // Calculate planned distribution (assuming linear distribution for simplicity)
+            const totalPlanned = calculateProjectPlannedCost(projectId);
+            const monthlyPlannedAmount = totalPlanned / 24;
+            for (let i = 0; i < 24; i++) {
+                monthlyPlanned[i] = monthlyPlannedAmount;
+            }
+
+            // Calculate cumulative values
+            let cumulativePlanned = [];
+            let cumulativeActual = [];
+            let runningPlanned = 0;
+            let runningActual = 0;
+
+            for (let i = 0; i < 24; i++) {
+                runningPlanned += monthlyPlanned[i];
+                runningActual += monthlyActual[i];
+                cumulativePlanned.push(runningPlanned);
+                cumulativeActual.push(runningActual);
+            }
+
+            // Generate S-Curve table
+            let scurveHTML = `
+                <div class="summary-container">
+                    <h3>📈 S-Curve Analysis - ${project.name}</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Planned Monthly (₹)</th>
+                                <th>Actual Monthly (₹)</th>
+                                <th>Cumulative Planned (₹)</th>
+                                <th>Cumulative Actual (₹)</th>
+                                <th>Variance (₹)</th>
+                                <th>Progress (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            for (let i = 0; i < 24; i++) {
+                const variance = cumulativeActual[i] - cumulativePlanned[i];
+                const progress = totalPlanned > 0 ? ((cumulativeActual[i] / totalPlanned) * 100).toFixed(1) : 0;
+
+                scurveHTML += `
+                    <tr>
+                        <td><strong>Month ${i + 1}</strong></td>
+                        <td class="planned-cost">₹${monthlyPlanned[i].toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${monthlyActual[i].toLocaleString('en-IN')}</td>
+                        <td class="planned-cost">₹${cumulativePlanned[i].toLocaleString('en-IN')}</td>
+                        <td class="actual-cost">₹${cumulativeActual[i].toLocaleString('en-IN')}</td>
+                        <td class="variance ${getVarianceClass(variance)}">
+                            ${variance >= 0 ? '+' : ''}₹${variance.toLocaleString('en-IN')}
+                        </td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                            ${progress}%
+                        </td>
+                    </tr>
+                `;
+            }
+
+            scurveHTML += '</tbody></table></div>';
+            display.innerHTML = scurveHTML;
+        }
+
+        // Utility functions
+        function generateId() {
+            return '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function getVarianceClass(variance) {
+            if (variance > 0) return 'over-budget';
+            if (variance < 0) return 'under-budget';
+            return 'on-budget';
+        }
+
+        function getBudgetStatus(actual, budget) {
+            if (actual > budget) {
+                return { class: 'status-over-budget', text: 'Over Budget' };
+            } else if (actual < budget * 0.9) {
+                return { class: 'status-under-budget', text: 'Under Budget' };
+            } else {
+                return { class: 'status-on-budget', text: 'On Budget' };
+            }
+        }
+
+        function getCostStatus(variance) {
+            if (variance > 0) {
+                return { class: 'status-over-budget', text: 'Over Planned' };
+            } else if (variance < 0) {
+                return { class: 'status-under-budget', text: 'Under Planned' };
+            } else {
+                return { class: 'status-on-budget', text: 'As Planned' };
+            }
+        }
+
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+
+            // Insert at the top of the container
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Event listeners for project selection changes
+        document.getElementById('project-select-personnel').addEventListener('change', showPersonnelForm);
+        document.getElementById('project-select-procurement').addEventListener('change', showProcurementForm);
+        document.getElementById('project-select-services').addEventListener('change', showServicesForm);
+        document.getElementById('project-select-materials').addEventListener('change', showMaterialsForm);
+        document.getElementById('project-select-equipment').addEventListener('change', showEquipmentForm);
+        document.getElementById('project-select-scurve').addEventListener('change', showSCurveForm);
+
+        // Import/Export functions
+        function exportData() {
+            const loading = document.getElementById('loading');
+            const progressFill = document.getElementById('progress-fill');
+
+            loading.classList.add('active');
+
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                progressFill.style.width = progress + '%';
+
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    setTimeout(() => {
+                        loading.classList.remove('active');
+                        progressFill.style.width = '0%';
+                    }, 500);
+                }
+            }, 50);
+
+            const exportData = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                projects: projects
+            };
+
+            // Add all project-specific data
+            projects.forEach(project => {
+                exportData[`personnel_${project.id}`] = JSON.parse(localStorage.getItem(`personnel_${project.id}`) || '[]');
+                exportData[`procurement_${project.id}`] = JSON.parse(localStorage.getItem(`procurement_${project.id}`) || '[]');
+                exportData[`services_${project.id}`] = JSON.parse(localStorage.getItem(`services_${project.id}`) || '[]');
+                exportData[`materials_${project.id}`] = JSON.parse(localStorage.getItem(`materials_${project.id}`) || '[]');
+                exportData[`equipment_${project.id}`] = JSON.parse(localStorage.getItem(`equipment_${project.id}`) || '[]');
+            });
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `cost-tracker-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showAlert('Data exported successfully!', 'success');
+        }
+
+        function importData() {
+            const fileInput = document.getElementById('import-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showAlert('Please select a file to import', 'error');
+                return;
+            }
+
+            if (!confirm('⚠️ WARNING: This will overwrite all existing data. Are you sure you want to continue?')) {
+                fileInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+
+                    // Validate import data
+                    if (!importData.projects || !Array.isArray(importData.projects)) {
+                        throw new Error('Invalid import file format');
+                    }
+
+                    const loading = document.getElementById('loading');
+                    const progressFill = document.getElementById('progress-fill');
+
+                    loading.classList.add('active');
+
+                    // Simulate progress
+                    let progress = 0;
+                    const progressInterval = setInterval(() => {
+                        progress += 10;
+                        progressFill.style.width = progress + '%';
+
+                        if (progress >= 100) {
+                            clearInterval(progressInterval);
+
+                            // Import data
+                            projects = importData.projects;
+                            localStorage.setItem('projects', JSON.stringify(projects));
+
+                            // Import project-specific data
+                            projects.forEach(project => {
+                                if (importData[`personnel_${project.id}`]) {
+                                    localStorage.setItem(`personnel_${project.id}`, JSON.stringify(importData[`personnel_${project.id}`]));
+                                }
+                                if (importData[`procurement_${project.id}`]) {
+                                    localStorage.setItem(`procurement_${project.id}`, JSON.stringify(importData[`procurement_${project.id}`]));
+                                }
+                                if (importData[`services_${project.id}`]) {
+                                    localStorage.setItem(`services_${project.id}`, JSON.stringify(importData[`services_${project.id}`]));
+                                }
+                                if (importData[`materials_${project.id}`]) {
+                                    localStorage.setItem(`materials_${project.id}`, JSON.stringify(importData[`materials_${project.id}`]));
+                                }
+                                if (importData[`equipment_${project.id}`]) {
+                                    localStorage.setItem(`equipment_${project.id}`, JSON.stringify(importData[`equipment_${project.id}`]));
+                                }
+                            });
+
+                            // Refresh displays
+                            loadProjects();
+                            updateProjectSelects();
+                            generateProjectSummary();
+
+                            setTimeout(() => {
+                                loading.classList.remove('active');
+                                progressFill.style.width = '0%';
+                                showAlert('Data imported successfully!', 'success');
+                            }, 500);
+                        }
+                    }, 50);
+
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showAlert('Error importing data. Please check the file format.', 'error');
+                }
+
+                fileInput.value = '';
+            };
+
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>

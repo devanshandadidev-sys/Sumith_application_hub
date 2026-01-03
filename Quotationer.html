@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quotation Maker Tool (GST Compliant)</title>
+    <style>
+        /* CSS Styling based on architectural constraints */
+        :root {
+            --primary-color: #005A9C;
+            --accent-color: #E87722;
+            --bg-color: #f4f7fa;
+            --text-color: #333;
+            --card-bg: #fff;
+            --border-color: #ddd;
+            --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: var(--card-bg);
+            padding: 20px 40px;
+            box-shadow: var(--shadow-medium);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8em;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow-light);
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-link {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 3px solid transparent;
+            transition: border-bottom-color 0.3s, color 0.3s;
+        }
+
+        .tab-link.active {
+            border-bottom-color: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        form > div {
+            min-width: 0;
+        }
+        
+        /* Specific layout for the settings page sections */
+        #company-details-form, #bank-details-form {
+            grid-template-columns: 1fr 1fr;
+        }
+        #company-details-form div:nth-child(2),
+        #company-details-form div:nth-child(4) {
+            grid-column: span 2;
+        }
+
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn-primary, .btn-accent, .btn-danger {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--card-bg);
+        }
+
+        .btn-accent {
+            background-color: var(--accent-color);
+            color: var(--card-bg);
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            color: var(--card-bg);
+        }
+
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--bg-color);
+            font-weight: 600;
+        }
+
+        .cost-header, .text-right {
+            text-align: right !important;
+        }
+
+        /* Quote Creation Specifics */
+        #item-line-items {
+            grid-column: 1 / -1;
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 0.5fr;
+            gap: 10px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        
+        #totals-summary {
+            grid-column: 2 / 3;
+            text-align: right;
+            padding: 15px;
+            border-top: 2px solid var(--primary-color);
+            font-weight: 600;
+        }
+        
+        #settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        /* PRINT STYLES */
+        @media print {
+            body {
+                background-color: #fff;
+                margin: 0;
+                padding: 0;
+            }
+            .container, header, .tabs, .card, .btn-primary, .form-actions, #print-quote-btn {
+                display: none;
+            }
+            #print-area {
+                display: block !important;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+            }
+
+            .quote-print-container {
+                padding: 30px;
+                border: 1px solid #000;
+            }
+            
+            .company-header {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid var(--primary-color);
+            }
+            .company-header h2 {
+                color: var(--primary-color);
+                margin: 0;
+            }
+            .company-header p {
+                margin: 2px 0;
+                font-size: 0.9em;
+            }
+
+            .quote-details {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+            }
+
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+            }
+
+            .print-table th, .print-table td {
+                border: 1px solid #000;
+                padding: 8px;
+            }
+            
+            /* Image size for printed items */
+            .print-table .item-image {
+                width: 2cm !important;
+                height: 2cm !important;
+                object-fit: contain;
+                display: block;
+            }
+            
+            .terms-section {
+                border: 1px solid #000;
+                padding: 15px;
+                margin-top: 20px;
+            }
+            
+            .bank-details, .delivery-details {
+                margin-top: 20px;
+                font-size: 0.9em;
+            }
+            .bank-details p, .delivery-details p {
+                margin: 5px 0;
+            }
+
+            .signatures {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 50px;
+                align-items: flex-end; /* Align signature image/text to the bottom */
+            }
+            .signature-line {
+                width: 45%;
+                border-top: 1px solid #000;
+                padding-top: 5px;
+                text-align: center;
+            }
+            .signature-image {
+                max-width: 150px;
+                max-height: 50px;
+                object-fit: contain;
+                display: block;
+                margin: 0 auto 5px auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Quotation Maker Tool</h1>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <span class="tab-link active" data-tab="quotes">Quotations</span>
+            <span class="tab-link" data-tab="clients">Clients/Customers</span>
+            <span class="tab-link" data-tab="items">Products/Services</span>
+            <span class="tab-link" data-tab="settings">Settings</span>
+        </div>
+
+        <div id="quotes" class="tab-content active">
+            <div class="card">
+                <h2>New/Edit Quotation</h2>
+                <form id="quote-form">
+                    <input type="hidden" id="quote-id">
+                    <div>
+                        <label for="quote-client-select">Select Client:</label>
+                        <select id="quote-client-select" required></select>
+                    </div>
+                    <div>
+                        <label for="quote-date">Quotation Date:</label>
+                        <input type="date" id="quote-date" required>
+                    </div>
+                    <div>
+                        <label for="quote-ref">Reference/Quote #:</label>
+                        <input type="text" id="quote-ref" placeholder="QTR-001" required>
+                    </div>
+                    <div>
+                        <label for="quote-validity">Validity (Days):</label>
+                        <input type="number" id="quote-validity" min="1" value="30">
+                    </div>
+                    <div class="grid-col-2">
+                        <label for="quote-payment-terms">Payment Terms (For Print):</label>
+                        <textarea id="quote-payment-terms" rows="2">50% Advance, 50% Upon Delivery. Valid for 30 days.</textarea>
+                    </div>
+
+                    <div id="item-line-items">
+                        <h3>Item List</h3>
+                        <div id="line-items-container">
+                            </div>
+                        <button type="button" id="add-line-item-btn" class="btn-accent" style="margin-top: 10px;">+ Add Item</button>
+                    </div>
+
+                    <div id="totals-summary">
+                        <div>Sub Total: <span id="sub-total">₹ 0.00</span></div>
+                        <div>Total GST (<span id="gst-rate-display"></span>%): <span id="total-gst">₹ 0.00</span></div>
+                        <hr>
+                        <div>**Grand Total:** <strong id="grand-total">₹ 0.00</strong></div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Quotation</button>
+                        <button type="button" id="print-quote-btn" class="btn-primary">Print/PDF View</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Recorded Quotations</h2>
+                <table id="quotes-table">
+                    <thead>
+                        <tr>
+                            <th>Quote #</th>
+                            <th>Client Name</th>
+                            <th>Date</th>
+                            <th class="cost-header">Grand Total (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="clients" class="tab-content">
+            <div class="card">
+                <h2>Add/Edit Client</h2>
+                <form id="client-form">
+                    <input type="hidden" id="client-id">
+                    <div><label for="client-name">Name:</label><input type="text" id="client-name" required></div>
+                    <div><label for="client-contact">Contact Person:</label><input type="text" id="client-contact"></div>
+                    <div><label for="client-email">Email:</label><input type="email" id="client-email"></div>
+                    <div><label for="client-phone">Phone:</label><input type="text" id="client-phone"></div>
+                    <div><label for="client-gstin">GSTIN:</label><input type="text" id="client-gstin" placeholder="Optional"></div>
+                    <div class="grid-col-2"><label for="client-address">Address:</label><textarea id="client-address" rows="2"></textarea></div>
+                    <div class="form-actions"><button type="submit" class="btn-primary">Save Client</button></div>
+                </form>
+            </div>
+            <div class="card">
+                <h2>Client List</h2>
+                <table id="clients-table">
+                    <thead><tr><th>ID</th><th>Name</th><th>Contact</th><th>GSTIN</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="items" class="tab-content">
+            <div class="card">
+                <h2>Add/Edit Product/Service</h2>
+                <form id="item-form">
+                    <input type="hidden" id="item-id">
+                    <div><label for="item-name">Name/Title:</label><input type="text" id="item-name" required></div>
+                    <div><label for="item-unit-price">Unit Price (₹):</label><input type="number" id="item-unit-price" min="0" step="0.01" required></div>
+                    <div><label for="item-gst-rate">GST Rate (%):</label><input type="number" id="item-gst-rate" min="0" max="28" step="0.1" value="18" required></div>
+                    <div><label for="item-image-url">Image URL (Optional):</label><input type="text" id="item-image-url" placeholder="https://via.placeholder.com/100"></div>
+                    <div class="grid-col-2"><label for="item-description">Description:</label><textarea id="item-description" rows="2"></textarea></div>
+                    <div class="form-actions"><button type="submit" class="btn-primary">Save Item</button></div>
+                </form>
+            </div>
+            <div class="card">
+                <h2>Item List</h2>
+                <table id="items-table">
+                    <thead><tr><th>ID</th><th>Name</th><th class="cost-header">Price (₹)</th><th>GST (%)</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="settings" class="tab-content">
+            <div id="settings-grid">
+                
+                <div class="card">
+                    <h2>Company Details (Letter Head)</h2>
+                    <form id="company-details-form">
+                        <div><label for="company-name">Company Name:</label><input type="text" id="company-name" required></div>
+                        <div><label for="company-gstin">GSTIN:</label><input type="text" id="company-gstin"></div>
+                        <div><label for="company-address">Company Address:</label><textarea id="company-address" rows="2" required></textarea></div>
+                        
+                        <div><label for="contact-person-name">Contact Person:</label><input type="text" id="contact-person-name"></div>
+                        <div><label for="contact-mobile">Mobile Number:</label><input type="text" id="contact-mobile"></div>
+                        <div><label for="contact-email">Email:</label><input type="email" id="contact-email"></div>
+                        
+                        <div class="grid-col-2"><label for="delivery-address">Standard Delivery Address (For Print):</label><textarea id="delivery-address" rows="2"></textarea></div>
+
+                        <div class="form-actions"><button type="button" class="btn-primary" onclick="saveSettings('company')">Save Company Details</button></div>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <h2>Bank Details & Signature</h2>
+                    <form id="bank-details-form">
+                        <h3>Bank Details for Payment</h3>
+                        <div><label for="bank-name">Bank Name:</label><input type="text" id="bank-name"></div>
+                        <div><label for="account-number">Account Number:</label><input type="text" id="account-number"></div>
+                        <div><label for="ifsc-code">IFSC Code:</label><input type="text" id="ifsc-code"></div>
+                        <div><label for="bank-beneficiary">Beneficiary Name:</label><input type="text" id="bank-beneficiary"></div>
+                        
+                        <h3 style="grid-column: 1/ -1;">Signature Image</h3>
+                        <div class="grid-col-2">
+                            <label for="signature-image-url">Signature Image URL:</label>
+                            <input type="text" id="signature-image-url" placeholder="Paste URL of your digital signature image (e.g., Dropbox/Imgur link)">
+                        </div>
+
+                        <div class="form-actions"><button type="button" class="btn-primary" onclick="saveSettings('bank')">Save Bank & Signature Details</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="print-area" style="display: none;">
+        <div class="quote-print-container">
+            <div class="company-header">
+                <h2 id="print-company-name">YOUR COMPANY NAME</h2>
+                <p>
+                    <span id="print-company-address-line"></span><br>
+                    Phone: <span id="print-contact-mobile"></span> | Email: <span id="print-contact-email"></span> | GSTIN: <span id="print-company-gstin"></span>
+                </p>
+            </div>
+
+            <div class="quote-details">
+                <div>
+                    <strong>QUOTATION #<span id="print-ref"></span></strong><br>
+                    Date: <span id="print-date"></span><br>
+                    Validity: <span id="print-validity"></span> days
+                </div>
+                <div class="text-right">
+                    **To:**<br>
+                    <strong id="print-client-name"></strong><br>
+                    <span id="print-client-address"></span><br>
+                    GSTIN: <span id="print-client-gstin"></span>
+                </div>
+            </div>
+
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Image</th>
+                        <th>Description</th>
+                        <th class="text-right">Qty</th>
+                        <th class="text-right">Unit Price (₹)</th>
+                        <th class="text-right">Amount (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="print-item-list">
+                    </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-right">Sub Total (Taxable Value)</td>
+                        <td id="print-sub-total" class="text-right"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="5" class="text-right">Total GST (<span id="print-gst-rate"></span>%)</td>
+                        <td id="print-total-gst" class="text-right"></td>
+                    </tr>
+                    <tr style="font-weight: bold; background-color: #eee;">
+                        <td colspan="5" class="text-right">GRAND TOTAL</td>
+                        <td id="print-grand-total" class="text-right"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="6">Amount in Words: <strong id="print-amount-words"></strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="delivery-details">
+                <h4>Delivery Address:</h4>
+                <p id="print-delivery-address"></p>
+            </div>
+
+            <div class="terms-section">
+                <h4>Payment & Other Terms</h4>
+                <p id="print-payment-terms"></p>
+            </div>
+            
+            <div class="bank-details">
+                <h4>Payment Details (Bank Transfer)</h4>
+                <p>Bank: <strong id="print-bank-name"></strong> | A/C No: <strong id="print-account-number"></strong> | IFSC: <strong id="print-ifsc-code"></strong></p>
+                <p>Beneficiary: <strong id="print-bank-beneficiary"></strong></p>
+            </div>
+
+            <div class="signatures">
+                <div class="signature-line">Client Signature</div>
+                <div class="signature-line">
+                    <img id="print-signature-image" class="signature-image" style="display: none;" alt="Company Signature">
+                    For <span id="print-signature-contact-person"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- IndexedDB Setup and Helpers ---
+        const DB_NAME = 'QuotationMakerDB_v1';
+        const DB_VERSION = 2;
+        const STORE_QUOTES = 'quotes';
+        const STORE_CLIENTS = 'clients';
+        const STORE_ITEMS = 'items';
+        const STORE_SETTINGS = 'settings';
+        let db;
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (db) { resolve(db); return; }
+                
+                const request = indexedDB.open(DB_NAME, DB_VERSION); 
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    // Existing stores (version 1)
+                    if (!db.objectStoreNames.contains(STORE_QUOTES)) db.createObjectStore(STORE_QUOTES, { keyPath: 'id', autoIncrement: true });
+                    if (!db.objectStoreNames.contains(STORE_CLIENTS)) db.createObjectStore(STORE_CLIENTS, { keyPath: 'id', autoIncrement: true });
+                    if (!db.objectStoreNames.contains(STORE_ITEMS)) db.createObjectStore(STORE_ITEMS, { keyPath: 'id', autoIncrement: true });
+                    
+                    // New store (version 2)
+                    if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+                        db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' }); 
+                    }
+                };
+
+                request.onsuccess = (event) => { 
+                    db = event.target.result; 
+                    resolve(db); 
+                };
+                request.onerror = (event) => reject(new Error("IndexedDB error: " + event.target.errorCode));
+            });
+        }
+
+        async function getAll(storeName) {
+            await openDB();
+            const store = db.transaction(storeName, 'readonly').objectStore(storeName); 
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getById(storeName, id) {
+            await openDB();
+            const store = db.transaction(storeName, 'readonly').objectStore(storeName);
+            return new Promise((resolve, reject) => {
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        async function getSetting(key) {
+            await openDB();
+            const store = db.transaction(STORE_SETTINGS, 'readonly').objectStore(STORE_SETTINGS); 
+            return new Promise((resolve) => {
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result ? request.result.value : null);
+                request.onerror = () => resolve(null); 
+            });
+        }
+        
+        async function setSetting(key, value) {
+            await openDB();
+            const store = db.transaction(STORE_SETTINGS, 'readwrite').objectStore(STORE_SETTINGS); 
+            return new Promise((resolve, reject) => {
+                const request = store.put({ key: key, value: value });
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function save(storeName, item) {
+            await openDB();
+            const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+            return new Promise((resolve, reject) => {
+                const request = store.put(item);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function remove(storeName, id) {
+            await openDB();
+            const store = db.transaction(storeName, 'readwrite').objectStore(storeName);
+            return new Promise((resolve, reject) => {
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // --- Utility Functions ---
+
+        function formatINR(amount) {
+            if (typeof amount !== 'number' || isNaN(amount)) return '₹ 0.00';
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+        }
+
+        // --- NEW AND IMPROVED numberToWords FUNCTION ---
+        function numberToWords(n) {
+            if (n === 0) return "Zero Rupees Only";
+
+            const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            const p = ['', 'Thousand', 'Lakh', 'Crore'];
+
+            const converter = (num) => {
+                let s = num.toString().padStart(2, '0');
+                let str = '';
+                let n2 = parseInt(s.substring(0, 2), 10);
+                if (n2 < 20) {
+                    str = a[n2];
+                } else {
+                    str = b[Math.floor(n2 / 10)] + (n2 % 10 !== 0 ? ' ' + a[n2 % 10] : '');
+                }
+                return str.trim();
+            };
+
+            const num = Math.round(n * 100) / 100;
+            let [rupees, paise] = num.toFixed(2).split('.');
+            rupees = rupees.padStart(9, '0'); // Pad up to 9 digits (99,99,99,999)
+
+            let finalWords = [];
+            
+            // Indian style grouping (Crore, Lakh, Thousand)
+            const parts = [
+                rupees.substring(0, 2),    // Crores
+                rupees.substring(2, 4),    // Lakhs
+                rupees.substring(4, 6),    // Thousands
+                rupees.substring(6, 9)     // Hundreds/Tens/Ones
+            ];
+
+            const scale = [3, 2, 1, 0]; // Corresponds to p array index (Crore, Lakh, Thousand, Hundred/Tens/Ones)
+            let currentWords = [];
+            
+            // Process the number parts from Crores down to Thousands
+            for (let i = 0; i < 3; i++) {
+                let val = parseInt(parts[i], 10);
+                if (val > 0) {
+                    currentWords.push(converter(val));
+                    currentWords.push(p[scale[i]]);
+                }
+            }
+
+            // Process the last three digits (Hundreds, Tens, Ones)
+            let lastThree = parseInt(parts[3], 10);
+            if (lastThree > 0) {
+                let h = Math.floor(lastThree / 100);
+                let t = lastThree % 100;
+                if (h > 0) {
+                    currentWords.push(a[h]);
+                    currentWords.push('Hundred');
+                }
+                if (t > 0) {
+                    currentWords.push(converter(t));
+                }
+            }
+            
+            finalWords = currentWords.join(' ').trim();
+            
+            if (finalWords.length > 0) {
+                finalWords += ' Rupees';
+            }
+
+            if (parseInt(paise, 10) > 0) {
+                let paiseWords = converter(parseInt(paise, 10));
+                if (finalWords.length > 0) {
+                    finalWords += ' and ';
+                }
+                finalWords += `${paiseWords} Paise`;
+            }
+
+            return finalWords.trim() + ' Only.';
+        }
+        // --- END numberToWords FUNCTION ---
+
+
+        // --- Tab Management ---
+        document.querySelectorAll('.tab-link').forEach(link => {
+            link.addEventListener('click', async (e) => {
+                const targetTab = e.target.getAttribute('data-tab');
+                document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(targetTab).classList.add('active');
+
+                // Reload data for tabs
+                if (targetTab === 'quotes') {
+                    await loadAllItemsForSelects();
+                    renderQuotes();
+                    populateQuoteClients();
+                    if (document.getElementById('line-items-container').children.length === 0) {
+                        addLineItem();
+                    }
+                }
+                if (targetTab === 'clients') renderClients();
+                if (targetTab === 'items') renderItems();
+                if (targetTab === 'settings') loadSettings();
+            });
+        });
+
+        // --- Settings Module ---
+        
+        async function saveSettings(type) {
+            let form, prefix;
+            if (type === 'company') {
+                form = document.getElementById('company-details-form');
+                prefix = 'company-';
+            } else if (type === 'bank') {
+                form = document.getElementById('bank-details-form');
+                prefix = '';
+            } else {
+                return;
+            }
+
+            const inputs = form.querySelectorAll('input, textarea');
+            let data = {};
+            
+            // Collect data from the form inputs
+            for (let input of inputs) {
+                let key = input.id;
+                data[key] = input.value;
+            }
+
+            // Save each setting as a key/value pair in IndexedDB
+            const keys = Object.keys(data);
+            for (const key of keys) {
+                await setSetting(key, data[key]);
+            }
+            
+            alert(`${type === 'company' ? 'Company' : 'Bank & Signature'} Details saved successfully!`);
+        }
+
+        async function loadSettings() {
+            const keys = [
+                'company-name', 'company-gstin', 'company-address', 'contact-person-name', 
+                'contact-mobile', 'contact-email', 'delivery-address', 'bank-name', 
+                'account-number', 'ifsc-code', 'bank-beneficiary', 'signature-image-url'
+            ];
+            
+            for (const key of keys) {
+                const value = await getSetting(key);
+                const input = document.getElementById(key);
+                if (input && value !== null) {
+                    input.value = value;
+                }
+            }
+        }
+        
+        // --- Clients Module (unchanged) ---
+        const clientForm = document.getElementById('client-form');
+        const clientsTableBody = document.querySelector('#clients-table tbody');
+
+        clientForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('client-id').value;
+            const client = {
+                name: document.getElementById('client-name').value,
+                contact: document.getElementById('client-contact').value,
+                email: document.getElementById('client-email').value,
+                phone: document.getElementById('client-phone').value,
+                gstin: document.getElementById('client-gstin').value,
+                address: document.getElementById('client-address').value,
+            };
+            if (id) client.id = parseInt(id);
+            await save(STORE_CLIENTS, client);
+            clientForm.reset();
+            document.getElementById('client-id').value = '';
+            await renderClients();
+            await populateQuoteClients();
+            alert(`Client ${id ? 'updated' : 'added'} successfully.`);
+        });
+
+        async function renderClients() {
+            const clients = await getAll(STORE_CLIENTS);
+            clientsTableBody.innerHTML = '';
+            clients.forEach(c => {
+                const row = clientsTableBody.insertRow();
+                row.insertCell().textContent = c.id;
+                row.insertCell().textContent = c.name;
+                row.insertCell().textContent = c.contact;
+                row.insertCell().textContent = c.gstin || '-';
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `<button class="btn-accent" onclick="editClient(${c.id})">Edit</button>
+                                         <button class="btn-danger" onclick="deleteClient(${c.id})">Delete</button>`;
+            });
+        }
+
+        async function editClient(id) {
+            const c = await getById(STORE_CLIENTS, id);
+            document.getElementById('client-id').value = c.id;
+            document.getElementById('client-name').value = c.name;
+            document.getElementById('client-contact').value = c.contact;
+            document.getElementById('client-email').value = c.email;
+            document.getElementById('client-phone').value = c.phone;
+            document.getElementById('client-gstin').value = c.gstin;
+            document.getElementById('client-address').value = c.address;
+        }
+
+        async function deleteClient(id) {
+            if (!confirm("Are you sure you want to delete this client?")) return;
+            await remove(STORE_CLIENTS, id);
+            await renderClients();
+            await populateQuoteClients();
+            alert('Client deleted.');
+        }
+
+        // --- Items Module (cache fix included) ---
+        const itemForm = document.getElementById('item-form');
+        const itemsTableBody = document.querySelector('#items-table tbody');
+
+        itemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('item-id').value;
+            const item = {
+                name: document.getElementById('item-name').value,
+                unitPrice: parseFloat(document.getElementById('item-unit-price').value),
+                gstRate: parseFloat(document.getElementById('item-gst-rate').value),
+                imageUrl: document.getElementById('item-image-url').value,
+                description: document.getElementById('item-description').value,
+            };
+            if (id) item.id = parseInt(id);
+            
+            try {
+                await save(STORE_ITEMS, item);
+                itemForm.reset();
+                document.getElementById('item-id').value = '';
+                await renderItems();
+                await loadAllItemsForSelects(); 
+                rebuildItemRows();
+                alert(`Item ${id ? 'updated' : 'added'} successfully.`);
+            } catch (error) {
+                console.error("Error saving item:", error);
+                alert("Could not save item.");
+            }
+        });
+
+        async function renderItems() {
+            const items = await getAll(STORE_ITEMS);
+            itemsTableBody.innerHTML = '';
+            items.forEach(i => {
+                const row = itemsTableBody.insertRow();
+                row.insertCell().textContent = i.id;
+                row.insertCell().textContent = i.name;
+                row.insertCell().classList.add('text-right');
+                row.cells[2].textContent = formatINR(i.unitPrice);
+                row.insertCell().textContent = `${i.gstRate}%`;
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `<button class="btn-accent" onclick="editItem(${i.id})">Edit</button>
+                                         <button class="btn-danger" onclick="deleteItem(${i.id})">Delete</button>`;
+            });
+        }
+
+        async function editItem(id) {
+            const i = await getById(STORE_ITEMS, id);
+            document.getElementById('item-id').value = i.id;
+            document.getElementById('item-name').value = i.name;
+            document.getElementById('item-unit-price').value = i.unitPrice;
+            document.getElementById('item-gst-rate').value = i.gstRate;
+            document.getElementById('item-image-url').value = i.imageUrl;
+            document.getElementById('item-description').value = i.description;
+        }
+
+        async function deleteItem(id) {
+            if (!confirm("Are you sure you want to delete this item?")) return;
+            await remove(STORE_ITEMS, id);
+            await renderItems();
+            await loadAllItemsForSelects();
+            rebuildItemRows();
+            alert('Item deleted.');
+        }
+
+        // --- Quotation Creation Module (unchanged logic) ---
+        const quoteForm = document.getElementById('quote-form');
+        const quoteClientSelect = document.getElementById('quote-client-select');
+        const lineItemsContainer = document.getElementById('line-items-container');
+        const addLineItemBtn = document.getElementById('add-line-item-btn');
+        const quotesTableBody = document.querySelector('#quotes-table tbody');
+        let allItems = [];
+
+        async function populateQuoteClients() {
+            const clients = await getAll(STORE_CLIENTS);
+            quoteClientSelect.innerHTML = '<option value="">-- Select Client --</option>';
+            clients.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.id;
+                option.textContent = c.name;
+                quoteClientSelect.appendChild(option);
+            });
+        }
+
+        async function loadAllItemsForSelects() {
+            allItems = await getAll(STORE_ITEMS);
+        }
+
+        function rebuildItemRows() {
+            const currentRowsData = Array.from(lineItemsContainer.querySelectorAll('.item-row')).map(row => {
+                return {
+                    itemId: parseInt(row.querySelector('.item-select').value) || null,
+                    qty: parseFloat(row.querySelector('.item-qty').value) || 1,
+                    unitPrice: parseFloat(row.querySelector('.item-price').value) || 0,
+                };
+            }).filter(item => item.itemId);
+
+            lineItemsContainer.innerHTML = '';
+            if (currentRowsData.length === 0) {
+                addLineItem();
+            } else {
+                currentRowsData.forEach(data => addLineItem(data));
+            }
+        }
+
+
+        function createItemSelect(selectedItemId = '') {
+            const select = document.createElement('select');
+            select.className = 'item-select';
+            select.required = true;
+            select.innerHTML = '<option value="">-- Select Item --</option>';
+            allItems.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = `${item.name} (${formatINR(item.unitPrice)}) - ${item.gstRate}% GST`;
+                if (item.id == selectedItemId) option.selected = true;
+                select.appendChild(option);
+            });
+            return select;
+        }
+        
+        function getItemData(itemId) {
+            return allItems.find(i => i.id == itemId);
+        }
+
+        function addLineItem(itemData = {}) {
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            
+            const itemSelectDiv = document.createElement('div');
+            const itemSelect = createItemSelect(itemData.itemId);
+            itemSelectDiv.appendChild(itemSelect);
+            row.appendChild(itemSelectDiv);
+
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.className = 'item-qty';
+            qtyInput.min = '1';
+            qtyInput.step = '1';
+            qtyInput.placeholder = 'Qty';
+            qtyInput.value = itemData.qty || 1;
+            row.appendChild(qtyInput);
+
+            const priceInput = document.createElement('input');
+            priceInput.type = 'number';
+            priceInput.className = 'item-price';
+            priceInput.min = '0';
+            priceInput.step = '0.01';
+            priceInput.readOnly = true; 
+            priceInput.placeholder = 'Unit Price';
+            
+            const initialItem = itemData.itemId ? getItemData(itemData.itemId) : null;
+            priceInput.value = initialItem ? initialItem.unitPrice : (itemData.unitPrice || '');
+
+            row.appendChild(priceInput);
+
+            const amountSpan = document.createElement('span');
+            amountSpan.className = 'item-amount text-right';
+            amountSpan.textContent = formatINR(0);
+            row.appendChild(amountSpan);
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'btn-danger';
+            deleteBtn.textContent = 'X';
+            deleteBtn.onclick = () => {
+                row.remove();
+                calculateQuoteTotals();
+            };
+            row.appendChild(deleteBtn);
+            
+            lineItemsContainer.appendChild(row);
+
+            const updateItemRow = (itemId) => {
+                const selectedItem = getItemData(parseInt(itemId));
+                if (selectedItem) {
+                    priceInput.value = selectedItem.unitPrice;
+                    calculateQuoteTotals();
+                } else {
+                    priceInput.value = '';
+                    calculateQuoteTotals();
+                }
+            };
+
+            itemSelect.addEventListener('change', (e) => updateItemRow(e.target.value));
+            qtyInput.addEventListener('input', calculateQuoteTotals);
+
+            if (itemData.itemId) {
+                updateItemRow(itemData.itemId);
+            } else {
+                calculateQuoteTotals();
+            }
+        }
+
+        addLineItemBtn.addEventListener('click', () => addLineItem());
+
+        function calculateQuoteTotals() {
+            let subTotal = 0;
+            let totalGST = 0;
+            let maxGSTRate = 0;
+            const lineItems = lineItemsContainer.querySelectorAll('.item-row');
+
+            lineItems.forEach(row => {
+                const itemId = parseInt(row.querySelector('.item-select').value);
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const unitPrice = parseFloat(row.querySelector('.item-price').value) || 0;
+                const item = getItemData(itemId);
+
+                if (!item || qty <= 0 || unitPrice <= 0) {
+                    row.querySelector('.item-amount').textContent = formatINR(0);
+                    return;
+                }
+
+                const amount = qty * unitPrice;
+                const gstRate = item.gstRate || 0;
+                const gstAmount = amount * (gstRate / 100);
+
+                subTotal += amount;
+                totalGST += gstAmount;
+                maxGSTRate = Math.max(maxGSTRate, gstRate);
+
+                row.querySelector('.item-amount').textContent = formatINR(amount + gstAmount);
+            });
+
+            const grandTotal = subTotal + totalGST;
+
+            document.getElementById('sub-total').textContent = formatINR(subTotal);
+            document.getElementById('gst-rate-display').textContent = maxGSTRate.toFixed(1);
+            document.getElementById('total-gst').textContent = formatINR(totalGST);
+            document.getElementById('grand-total').textContent = formatINR(grandTotal);
+
+            return { subTotal, totalGST, grandTotal, maxGSTRate };
+        }
+        
+        quoteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const totals = calculateQuoteTotals();
+            const id = document.getElementById('quote-id').value;
+            const lineItemsData = Array.from(lineItemsContainer.querySelectorAll('.item-row')).map(row => {
+                const itemId = parseInt(row.querySelector('.item-select').value);
+                const qty = parseFloat(row.querySelector('.item-qty').value);
+                const item = getItemData(itemId);
+                return {
+                    itemId: itemId,
+                    qty: qty,
+                    unitPrice: item.unitPrice,
+                    gstRate: item.gstRate,
+                    amount: qty * item.unitPrice,
+                    image: item.imageUrl,
+                    name: item.name,
+                    description: item.description,
+                };
+            }).filter(item => item.itemId);
+
+            if (lineItemsData.length === 0) {
+                alert("Please add at least one item to the quotation.");
+                return;
+            }
+
+            const quote = {
+                clientId: parseInt(quoteClientSelect.value),
+                date: document.getElementById('quote-date').value,
+                ref: document.getElementById('quote-ref').value,
+                validity: parseInt(document.getElementById('quote-validity').value),
+                paymentTerms: document.getElementById('quote-payment-terms').value,
+                items: lineItemsData,
+                subTotal: totals.subTotal,
+                totalGST: totals.totalGST,
+                grandTotal: totals.grandTotal,
+                gstRate: totals.maxGSTRate
+            };
+
+            if (id) quote.id = parseInt(id);
+
+            await save(STORE_QUOTES, quote);
+            quoteForm.reset();
+            document.getElementById('quote-id').value = '';
+            lineItemsContainer.innerHTML = '';
+            addLineItem();
+            await renderQuotes();
+            alert(`Quotation ${id ? 'updated' : 'added'} successfully.`);
+        });
+        
+        async function renderQuotes() {
+            const quotes = await getAll(STORE_QUOTES);
+            const clients = await getAll(STORE_CLIENTS);
+            const clientMap = new Map(clients.map(c => [c.id, c.name]));
+            quotesTableBody.innerHTML = '';
+            quotes.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            quotes.forEach(q => {
+                const row = quotesTableBody.insertRow();
+                row.insertCell().textContent = q.ref;
+                row.insertCell().textContent = clientMap.get(q.clientId) || 'N/A';
+                row.insertCell().textContent = q.date;
+                row.insertCell().classList.add('text-right');
+                row.cells[3].textContent = formatINR(q.grandTotal);
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `<button class="btn-accent" onclick="editQuote(${q.id})">Edit</button>
+                                         <button class="btn-primary" onclick="printQuote(${q.id})">Print</button>
+                                         <button class="btn-danger" onclick="deleteQuote(${q.id})">Delete</button>`;
+            });
+        }
+        
+        async function editQuote(id) {
+            const q = await getById(STORE_QUOTES, id);
+            document.getElementById('quote-id').value = q.id;
+            document.getElementById('quote-client-select').value = q.clientId;
+            document.getElementById('quote-date').value = q.date;
+            document.getElementById('quote-ref').value = q.ref;
+            document.getElementById('quote-validity').value = q.validity;
+            document.getElementById('quote-payment-terms').value = q.paymentTerms;
+
+            lineItemsContainer.innerHTML = '';
+            q.items.forEach(item => {
+                addLineItem({
+                    itemId: item.itemId,
+                    qty: item.qty,
+                    unitPrice: item.unitPrice,
+                });
+            });
+            calculateQuoteTotals();
+        }
+        
+        async function deleteQuote(id) {
+            if (!confirm("Are you sure you want to delete this quotation?")) return;
+            await remove(STORE_QUOTES, id);
+            await renderQuotes();
+            alert('Quotation deleted.');
+        }
+
+        // --- Print/PDF View Module ---
+
+        document.getElementById('print-quote-btn').addEventListener('click', async () => {
+            const id = document.getElementById('quote-id').value;
+            if (!id) {
+                alert("Please save the quotation before printing.");
+                return;
+            }
+            await printQuote(parseInt(id));
+        });
+
+        async function printQuote(id) {
+            const quote = await getById(STORE_QUOTES, id);
+            const client = await getById(STORE_CLIENTS, quote.clientId);
+            const printList = document.getElementById('print-item-list');
+            printList.innerHTML = '';
+            
+            const settingsKeys = [
+                'company-name', 'company-gstin', 'company-address', 'contact-mobile', 
+                'contact-email', 'delivery-address', 'bank-name', 'account-number', 
+                'ifsc-code', 'bank-beneficiary', 'signature-image-url', 'contact-person-name'
+            ];
+            const settings = {};
+            for (const key of settingsKeys) {
+                settings[key] = await getSetting(key);
+            }
+
+            // Populate Company Letter Head Details
+            document.getElementById('print-company-name').textContent = settings['company-name'] || 'YOUR COMPANY NAME (Set in Settings)';
+            document.getElementById('print-company-address-line').textContent = settings['company-address'] ? settings['company-address'].replace(/\n/g, ', ') : '123 Company Address (Set in Settings)';
+            document.getElementById('print-contact-mobile').textContent = settings['contact-mobile'] || 'N/A';
+            document.getElementById('print-contact-email').textContent = settings['contact-email'] || 'N/A';
+            document.getElementById('print-company-gstin').textContent = settings['company-gstin'] || 'N/A';
+            
+            // Populate Bank, Delivery, and Signature
+            document.getElementById('print-delivery-address').textContent = settings['delivery-address'] || 'To be determined (Set in Settings)';
+            
+            document.getElementById('print-bank-name').textContent = settings['bank-name'] || 'N/A';
+            document.getElementById('print-account-number').textContent = settings['account-number'] || 'N/A';
+            document.getElementById('print-ifsc-code').textContent = settings['ifsc-code'] || 'N/A';
+            document.getElementById('print-bank-beneficiary').textContent = settings['bank-beneficiary'] || 'N/A';
+            
+            const signatureImg = document.getElementById('print-signature-image');
+            if (settings['signature-image-url']) {
+                signatureImg.src = settings['signature-image-url'];
+                signatureImg.style.display = 'block';
+            } else {
+                signatureImg.style.display = 'none';
+            }
+            document.getElementById('print-signature-contact-person').textContent = settings['contact-person-name'] || 'Authorized Signatory';
+            
+
+            // Populate Quote & Client Details
+            document.getElementById('print-ref').textContent = quote.ref;
+            document.getElementById('print-date').textContent = quote.date;
+            document.getElementById('print-validity').textContent = quote.validity;
+            document.getElementById('print-payment-terms').textContent = quote.paymentTerms;
+            document.getElementById('print-client-name').textContent = client.name;
+            document.getElementById('print-client-address').textContent = client.address.replace(/\n/g, ', ');
+            document.getElementById('print-client-gstin').textContent = client.gstin || 'N/A';
+
+            // Populate Items List
+            quote.items.forEach((item, index) => {
+                const lineSubTotal = item.unitPrice * item.qty;
+                const lineGST = lineSubTotal * (item.gstRate / 100);
+                const lineTotal = lineSubTotal + lineGST;
+
+                const row = printList.insertRow();
+                row.insertCell().textContent = index + 1;
+                
+                const imageCell = row.insertCell();
+                const img = document.createElement('img');
+                img.className = 'item-image'; 
+                img.src = item.image || 'https://via.placeholder.com/50?text=No+Image';
+                imageCell.appendChild(img);
+
+                const descCell = row.insertCell();
+                descCell.innerHTML = `<strong>${item.name}</strong><br><small>${item.description}</small><br><small>GST: ${item.gstRate}%</small>`;
+
+                row.insertCell().classList.add('text-right');
+                row.cells[3].textContent = item.qty;
+                
+                row.insertCell().classList.add('text-right');
+                row.cells[4].textContent = formatINR(item.unitPrice);
+                
+                row.insertCell().classList.add('text-right');
+                row.cells[5].textContent = formatINR(lineTotal);
+            });
+
+            // Populate Totals
+            document.getElementById('print-sub-total').textContent = formatINR(quote.subTotal);
+            document.getElementById('print-gst-rate').textContent = quote.gstRate.toFixed(1);
+            document.getElementById('print-total-gst').textContent = formatINR(quote.totalGST);
+            document.getElementById('print-grand-total').textContent = formatINR(quote.grandTotal);
+            
+            // 🚨 Use the corrected function here
+            document.getElementById('print-amount-words').textContent = numberToWords(quote.grandTotal); 
+
+            // Trigger Print
+            window.print();
+        }
+
+        // --- Initialization ---
+        async function init() {
+            await openDB(); 
+            
+            await loadAllItemsForSelects();
+            await populateQuoteClients();
+            renderQuotes();
+            renderClients();
+            renderItems();
+            addLineItem();
+            document.getElementById('quote-date').valueAsDate = new Date();
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

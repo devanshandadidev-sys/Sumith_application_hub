@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Checklist Survey: Select Projects to Compare</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+body { background: #f7f8fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif; margin: 0;}
+#nav { display: flex; background: #1674ee; color: #fff; justify-content: center; align-items: center;}
+#nav button { background: transparent; border: none; color: #fff; font-size: 18px; padding: 18px 33px; cursor: pointer; font-weight: bold; outline: none; border-right: 1px solid #266fd1; transition: background 0.16s;}
+#nav button.active, #nav button:hover { background: #266fd1;}
+.container { max-width: 1100px; background: #fff; margin: 40px auto 0 auto; padding: 24px 32px 32px 32px; border-radius: 10px; box-shadow: 0 8px 38px rgba(0,0,0,0.10);}
+h2, h3 { margin-top: 0; color: #1674ee;}
+hr { margin: 18px 0; border: none; border-bottom: 1px solid #e9e9ee;}
+label { font-weight: 500;}
+button, input, textarea { font-family: inherit; font-size: inherit;}
+.hidden { display: none;}
+.delete-btn { background: #fff; color: #d23636; border: 1px solid #d23636; border-radius: 4px; padding: 2px 7px; font-size: 14px; cursor: pointer; margin-left: 7px; vertical-align: middle;}
+.edit-btn, .save-btn, .add-btn { background: #1674ee; color: #fff; border:none; border-radius:4px; padding:2px 9px; margin-left: 7px; cursor: pointer;}
+.print-btn { background: #2562b0; color: #fff; font-weight: bold; border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; margin-left: 12px;}
+table { border-collapse: collapse; width: 100%;}
+th, td { border: 1px solid #c0c0c0; padding: 7px 10px; text-align: center; vertical-align: top;}
+th { background: #f1f3f5;}
+.no-answer { color: #bbb;}
+.template-edit-list input[type="text"] { width: 75%; padding: 5px; font-size: 15px; }
+.template-edit-list .delete-btn { margin: 0 0 0 8px;}
+.template-edit-list li { display: flex; align-items: center; margin-bottom: 6px;}
+.item-survey { padding: 15px 0; border-bottom: 1px solid #f3f3f3; display: flex; align-items: flex-start; gap: 30px;}
+.item-survey:last-child { border-bottom: none; }
+.item-text { flex-grow: 1; }
+.survey-row .comment-input { width: 250px; padding: 6px; resize: vertical; font-size:15px; border-radius:3px; border:1px solid #ddd; }
+#print-select-row {margin: 8px 0 16px 0;}
+.print-table { display: none; }
+@media print {
+    #nav, .template-page, .projects-page, .survey-actions, .edit-btn, .save-btn, .add-btn, .delete-btn,
+    #checklist-items,
+    #print-select-row, #project-selects-label
+    { display: none !important; }
+    .print-table { display: block !important; }
+    .container { box-shadow: none; border-radius: 0; margin: 0; padding: 0; }
+}
+</style>
+</head>
+<body>
+<div id="nav">
+    <button id="nav-templates" class="active">Templates</button>
+    <button id="nav-projects">Projects</button>
+    <button id="nav-checklist">Checklist</button>
+    <button id="nav-compare">Compare Projects</button>
+</div>
+<div class="container">
+    <!-- Templates Page -->
+    <div id="templates-page" class="template-page">
+        <h2>Checklist Templates</h2>
+        <form id="template-form">
+            <label>Template Name</label><br>
+            <input type="text" id="template-name" required style="width: 100%; padding:10px; margin-bottom: 10px;">
+            <label>Checklist Items (one per line)</label><br>
+            <textarea id="template-items" required rows="4" style="width: 100%;padding:10px;"></textarea><br>
+            <button type="submit" style="background:#1674ee;color:#fff;border:none;padding:8px 16px;border-radius:4px;margin-top:10px;">Save Template</button>
+        </form>
+        <hr>
+        <div>
+            <strong>Saved Templates (click template name to edit):</strong>
+            <ul id="template-list" style="margin-top:8px;padding-left:20px;"></ul>
+            <div id="template-edit" class="hidden">
+                <h3>Edit Template</h3>
+                <input type="text" id="edit-template-name" style="width:80%;padding:8px;">
+                <ul id="edit-template-items" class="template-edit-list" style="margin-top:13px;"></ul>
+                <input type="text" id="edit-add-item" style="width:70%;margin-top:13px;padding:7px;" placeholder="Add new item">
+                <button id="edit-add-btn" class="add-btn">Add Item</button>
+                <br>
+                <button id="save-edit-btn" class="save-btn" style="margin-top:13px;">Save Changes</button>
+                <button id="cancel-edit-btn" class="delete-btn" style="margin-left:13px;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <!-- Projects Page -->
+    <div id="projects-page" class="projects-page hidden">
+        <h2>Projects</h2>
+        <div class="nav-controls">
+            <label for="project-template-select"><b>Create project from template:</b></label>
+            <select id="project-template-select" style="padding:5px 10px;"></select>
+            <input type="text" id="new-project-name" placeholder="Project name" style="padding:5px 10px; margin-left:12px;">
+            <button id="create-project-btn" style="background:#1674ee;color:#fff;border:none;padding:7px 16px;border-radius:4px;margin-left:12px;">Create</button>
+        </div>
+        <hr>
+        <b>Saved Projects:</b>
+        <ul id="project-list" style="margin-top:8px;padding-left:20px;"></ul>
+    </div>
+    <!-- Checklist/Survey Page -->
+    <div id="checklist-page" class="checklist-page hidden">
+        <h2 id="checklist-project-title">Project Survey</h2>
+        <div id="print-report-table" class="print-table"></div>
+        <div id="checklist-items"></div>
+        <div class="survey-actions">
+            <button id="save-survey-btn" style="background:#1674ee;color:#fff;border:none;padding:8px 18px;border-radius:4px;margin-top:14px;">Save</button>
+            <button id="print-btn" class="print-btn">Print</button>
+        </div>
+    </div>
+    <!-- Compare Projects Page -->
+    <div id="compare-page" class="compare-page hidden">
+        <h2>Compare Projects</h2>
+        <div id="print-select-row">
+            <b id="project-selects-label">Select Projects to Compare:</b>
+            <span id="compare-project-selects"></span>
+        </div>
+        <div id="compare-content"></div>
+        <button id="print-compare-btn" class="print-btn">Print Comparison</button>
+    </div>
+</div>
+<script>
+let db, activeProjectId=null, templates=[], projects=[], answers=[], editTemplateId=null, compareSelIds=[];
+function openDB() {
+    const request = indexedDB.open("ProjectSurveyDB", 1);
+    request.onupgradeneeded = e => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains('templates'))
+            db.createObjectStore('templates', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('projects'))
+            db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('survey_responses'))
+            db.createObjectStore('survey_responses', { keyPath: 'projectId' });
+    };
+    request.onsuccess = e => {
+        db = e.target.result;
+        loadTemplates();
+        loadProjects();
+    };
+}
+function showPage(page) {
+    document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
+    document.getElementById(page + '-page').classList.remove('hidden');
+    document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-' + page).classList.add('active');
+    if (page === "compare") updateCompareUI();
+}
+document.getElementById('nav-templates').onclick = ()=>showPage('templates');
+document.getElementById('nav-projects').onclick = ()=>{ showPage('projects'); loadProjects(); };
+document.getElementById('nav-checklist').onclick = ()=>{
+    if (activeProjectId) { showPage('checklist'); loadSurvey(activeProjectId);}
+};
+document.getElementById('nav-compare').onclick = ()=> showPage('compare');
+// --- Template CRUD ---
+document.getElementById('template-form').onsubmit = function(e){
+    e.preventDefault();
+    let name = document.getElementById('template-name').value.trim();
+    let items = document.getElementById('template-items').value.split('\n').map(x=>x.trim()).filter(x=>x);
+    let tx = db.transaction('templates','readwrite');
+    tx.objectStore('templates').add({name,items}).onsuccess = ()=>{ loadTemplates(); this.reset(); };
+};
+function loadTemplates() {
+    let tx = db.transaction('templates','readonly');
+    tx.objectStore('templates').getAll().onsuccess = e=>{
+        templates = e.target.result||[];
+        let list = document.getElementById('template-list');
+        list.innerHTML = "";
+        templates.forEach(t=>{
+            let li = document.createElement('li');
+            li.innerHTML = `<span class="template-link" style="color:#1674ee;cursor:pointer;">${t.name}</span>`;
+            let delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.className = "delete-btn";
+            delBtn.onclick = ()=>{
+                let tx2 = db.transaction('templates','readwrite');
+                tx2.objectStore('templates').delete(t.id).onsuccess=()=>{ loadTemplates(); document.getElementById('template-edit').classList.add('hidden'); };
+            };
+            li.appendChild(delBtn);
+            li.querySelector('.template-link').onclick = () => showTemplateEditForm(t.id);
+            list.appendChild(li);
+        });
+        updateProjectTemplateDropdown();
+        document.getElementById('template-edit').classList.add('hidden');
+    };
+}
+function showTemplateEditForm(tid) {
+    editTemplateId = tid;
+    let t = templates.find(t=>t.id===tid);
+    if(!t) return;
+    document.getElementById('template-edit').classList.remove('hidden');
+    document.getElementById('edit-template-name').value = t.name;
+    renderEditItems(t.items);
+}
+function renderEditItems(items) {
+    let ul = document.getElementById('edit-template-items');
+    ul.innerHTML = "";
+    items.forEach((it,i)=>{
+        let li = document.createElement('li');
+        if(!li) return;
+        li.innerHTML = `<span class="item-editable">${it}</span>`;
+        let editbtn = document.createElement('button');
+        editbtn.textContent = "Edit";
+        editbtn.className="edit-btn";
+        let deletebtn = document.createElement('button');
+        deletebtn.textContent="Delete";
+        deletebtn.className="delete-btn";
+        editbtn.onclick = () => {
+            let input = document.createElement('input');
+            input.type = "text"; input.value=it;
+            input.onkeydown = e => { if(e.key=="Enter"){ saveEdit(i,input.value); }}
+            li.innerHTML="";
+            li.appendChild(input);
+            let saveBtn = document.createElement('button');
+            saveBtn.textContent="Save"; saveBtn.className="save-btn";
+            saveBtn.onclick = ()=> saveEdit(i,input.value);
+            li.appendChild(saveBtn); li.appendChild(deletebtn);
+        };
+        deletebtn.onclick = ()=> {
+            let t = templates.find(t=>t.id===editTemplateId);
+            t.items.splice(i,1);
+            renderEditItems(t.items);
+        };
+        li.appendChild(editbtn);
+        li.appendChild(deletebtn);
+        ul.appendChild(li);
+    });
+}
+function saveEdit(ii,newtext) {
+    let t = templates.find(t=>t.id===editTemplateId);
+    if(t && newtext.trim()) {
+        t.items[ii] = newtext.trim();
+        renderEditItems(t.items);
+    }
+}
+document.getElementById('edit-add-btn').onclick = ()=>{
+    let txt = document.getElementById('edit-add-item').value.trim();
+    if(txt) {
+        let t = templates.find(t=>t.id===editTemplateId);
+        t.items.push(txt);
+        renderEditItems(t.items);
+        document.getElementById('edit-add-item').value="";
+    }
+};
+document.getElementById('save-edit-btn').onclick = ()=>{
+    let name = document.getElementById('edit-template-name').value.trim();
+    let t = templates.find(t=>t.id===editTemplateId);
+    if(t && name) {
+        t.name = name;
+        let tx = db.transaction('templates','readwrite');
+        tx.objectStore('templates').put(t).onsuccess=()=>{ loadTemplates(); document.getElementById('template-edit').classList.add('hidden'); };
+    }
+};
+document.getElementById('cancel-edit-btn').onclick = ()=>{ document.getElementById('template-edit').classList.add('hidden'); };
+// --- Projects CRUD ---
+document.getElementById('create-project-btn').onclick = () => {
+    let templateId = parseInt(document.getElementById('project-template-select').value);
+    let name = document.getElementById('new-project-name').value.trim();
+    if(!name || !templateId) return;
+    let tx = db.transaction('projects','readwrite');
+    tx.objectStore('projects').add({name,templateId,createdAt:new Date()}).onsuccess = ()=>{ 
+        document.getElementById('new-project-name').value=""; 
+        loadProjects(); 
+    };
+};
+function updateProjectTemplateDropdown() {
+    let sel = document.getElementById('project-template-select');
+    sel.innerHTML = "";
+    templates.forEach(t=>{
+        let opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        sel.appendChild(opt);
+    });
+}
+function loadProjects() {
+    let tx = db.transaction('projects','readonly');
+    tx.objectStore('projects').getAll().onsuccess = e=>{
+        projects = e.target.result||[];
+        let list = document.getElementById('project-list');
+        list.innerHTML = "";
+        projects.forEach(p=>{
+            let li = document.createElement('li');
+            li.innerHTML = `<span>${p.name}</span>`;
+            let delBtn = document.createElement('button');
+            delBtn.textContent = 'Delete';
+            delBtn.className = "delete-btn";
+            delBtn.onclick = ()=>{
+                let tx2 = db.transaction(['projects','survey_responses'],'readwrite');
+                tx2.objectStore('projects').delete(p.id);
+                tx2.objectStore('survey_responses').delete(p.id);
+                tx2.oncomplete=()=>loadProjects();
+            };
+            li.appendChild(delBtn);
+            li.onclick = ()=>{ activeProjectId=p.id; showPage('checklist'); loadSurvey(p.id);}
+            list.appendChild(li);
+        });
+        updateCompareUI();
+    };
+}
+function loadSurvey(projectId) {
+    let p = projects.find(x=>x.id===projectId);
+    let t = templates.find(x=>x.id===p?.templateId);
+    document.getElementById('checklist-project-title').textContent = p ? `Project: ${p.name}`:'Project Survey';
+    let tx = db.transaction('survey_responses','readonly');
+    tx.objectStore('survey_responses').get(projectId).onsuccess = e=>{
+        answers = e.target.result?.answers || t.items.map(txt=>({text:txt,ans:null,comment:""}));
+        let ciDiv = document.getElementById('checklist-items');
+        ciDiv.innerHTML = "";
+        answers.forEach((item,i)=>{
+            let div = document.createElement('div');
+            div.className = "item-survey survey-row";
+            div.innerHTML = `<div class="item-text">${item.text}</div>
+            <div class="options">
+                <label><input type="radio" name="survey-${i}" value="Yes" ${item.ans==="Yes"?"checked":""}> Yes</label>
+                <label><input type="radio" name="survey-${i}" value="No"  ${item.ans==="No"?"checked":""}> No</label>
+            </div>
+            <input type="text" class="comment-input" placeholder="Comments" value="${item.comment||""}">`;
+            div.querySelectorAll('input[type=radio]').forEach(radio=>{
+                radio.onchange = ()=>{ answers[i].ans=radio.value; };
+            });
+            div.querySelector('.comment-input').oninput = (e)=>{ answers[i].comment = e.target.value; };
+            ciDiv.appendChild(div);
+        });
+        renderChecklistPrintTable(p, answers);
+    }
+}
+function renderChecklistPrintTable(project, ansArray) {
+    let html = `<div style="page-break-after:avoid;"><h2 style="margin-top:30px;">Checklist Survey Report</h2>
+                <h3 style="margin-top:0;">${project ? 'Project: ' + project.name : ''}</h3>
+                <table border="1" cellpadding="5" cellspacing="0" style="width:100%;border-collapse:collapse;">
+                 <thead><tr><th>Checklist Item</th><th>Yes/No</th><th>Comment</th></tr></thead><tbody>`;
+    ansArray.forEach(it=>{
+        html += `<tr><td>${it.text}</td><td>${it.ans||"-"}</td><td>${it.comment||""}</td></tr>`;
+    });
+    html += "</tbody></table></div>";
+    document.getElementById("print-report-table").innerHTML = html;
+}
+document.getElementById('save-survey-btn').onclick = function(){
+    if(activeProjectId==null) return;
+    let tx = db.transaction('survey_responses','readwrite');
+    tx.objectStore('survey_responses').put({projectId:activeProjectId,answers:answers});
+    alert('Survey saved!');
+};
+document.getElementById('print-btn').onclick = function(){
+    renderChecklistPrintTable(projects.find(p=>p.id===activeProjectId),answers);
+    document.getElementById('print-report-table').style.display = "block";
+    window.print();
+    setTimeout(()=>document.getElementById('print-report-table').style.display="none",250);
+};
+
+// ---- COMPARE ----
+function updateCompareUI() {
+    let sel = document.getElementById('compare-project-selects');
+    sel.innerHTML = "";
+    // Default: all checked if nothing
+    if (!compareSelIds || compareSelIds.length === 0) compareSelIds = projects.map(p=>p.id);
+    projects.forEach(p=>{
+        const id = p.id;
+        const cb = document.createElement('input');
+        cb.type = "checkbox";
+        cb.value = id; cb.checked = compareSelIds.includes(id);
+        cb.onchange = function() {
+            if(cb.checked) compareSelIds.push(id);
+            else compareSelIds = compareSelIds.filter(pid=>pid!==id);
+            renderCompare();
+        }
+        sel.appendChild(cb);
+        const label = document.createElement('label');
+        label.appendChild(document.createTextNode(" " + p.name + " "));
+        sel.appendChild(label);
+    });
+    renderCompare();
+}
+function renderCompare() {
+    let compareDiv = document.getElementById('compare-content');
+    let selProjects = projects.filter(p=>compareSelIds.includes(p.id));
+    if (selProjects.length===0) {
+        compareDiv.innerHTML = "<i>Please select at least one project above.</i>";
+        return;
+    }
+    let allItems = [];
+    let itemSets = selProjects.map(p => {
+        let t = templates.find(t => t.id === p.templateId);
+        return t ? t.items : [];
+    });
+    itemSets.forEach(items => items.forEach(itm => {
+        if (!allItems.includes(itm)) allItems.push(itm);
+    }));
+    let projectAnswers = {};
+    let tx = db.transaction('survey_responses','readonly');
+    let requests = selProjects.map(p => {
+        return new Promise(res=>{
+            tx.objectStore('survey_responses').get(p.id).onsuccess = e=>{
+                projectAnswers[p.id] = (e.target.result?.answers||[]).reduce((obj,a)=>{ obj[a.text]={ans:a.ans||"",comment:a.comment||""}; return obj; },{});
+                res();
+            };
+        });
+    });
+    Promise.all(requests).then(()=>{
+        let html = `<table>
+        <tr><th rowspan="2">Checklist Item</th>`;
+        selProjects.forEach(p => html += `<th colspan="2">${p.name}</th>`);
+        html += `</tr><tr>`;
+        selProjects.forEach(() => html += `<th>Yes/No</th><th>Comment</th>`);
+        html += `</tr>`;
+        allItems.forEach(item => {
+            html += `<tr><td>${item}</td>`;
+            selProjects.forEach(p => {
+                let rec = projectAnswers[p.id]?.[item] || {};
+                html += `<td class="${rec.ans?"":"no-answer"}">${rec.ans||"–"}</td>`;
+                html += `<td>${rec.comment||""}</td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</table>`;
+        compareDiv.innerHTML = html;
+    });
+}
+document.getElementById('print-compare-btn').onclick = ()=>{ window.print(); };
+openDB();
+showPage('templates');
+</script>
+</body>
+</html>

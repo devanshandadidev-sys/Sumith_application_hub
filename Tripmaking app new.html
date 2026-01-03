@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Tender Management System</title>
+    <style>
+        /* ==================== CSS RESET & BASE STYLES ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-bg: #1f2937;
+            --light-bg: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--light-bg);
+        }
+
+        /* ==================== HEADER & NAVIGATION ==================== */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* ==================== CONTAINER & LAYOUT ==================== */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .controls-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1.5rem;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* ==================== FORM ELEMENTS ==================== */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="file"],
+        select,
+        textarea {
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        /* ==================== BUTTONS ==================== */
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: #059669;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: #dc2626;
+        }
+
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #4b5563;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* ==================== TENDER CARDS ==================== */
+        .tenders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tender-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
+            transition: all 0.3s;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tender-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .tender-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-color);
+        }
+
+        .tender-card.status-active::before {
+            background: var(--success-color);
+        }
+
+        .tender-card.status-closed::before {
+            background: var(--danger-color);
+        }
+
+        .tender-header {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tender-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .tender-id {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .tender-body {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .tender-field {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .field-value {
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .highlight {
+            background-color: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-closed {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-upcoming {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .confidence-score {
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: #f3f4f6;
+        }
+
+        .confidence-high {
+            color: var(--success-color);
+        }
+
+        .confidence-medium {
+            color: var(--warning-color);
+        }
+
+        .confidence-low {
+            color: var(--danger-color);
+        }
+
+        .tender-actions {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tender-actions .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.813rem;
+            flex: 1;
+        }
+
+        /* ==================== PAGINATION ==================== */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 1.25rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .page-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* ==================== MODAL ==================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: fadeIn 0.2s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: white;
+            margin: 2rem auto;
+            max-width: 800px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            max-height: calc(100vh - 4rem);
+            overflow-y: auto;
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: var(--light-bg);
+            color: var(--text-primary);
+        }
+
+        /* ==================== ALERTS ==================== */
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: start;
+            gap: 0.75rem;
+            animation: slideDown 0.3s;
+        }
+
+        .alert-success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .alert-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .alert-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        /* ==================== EMPTY STATE ==================== */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        /* ==================== DRAG & DROP ==================== */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: var(--light-bg);
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .drop-zone-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* ==================== PRINT STYLES ==================== */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .header,
+            .controls-section,
+            .pagination,
+            .tender-actions,
+            .btn,
+            .modal {
+                display: none !important;
+            }
+
+            .container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            .tenders-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .tender-card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #000;
+                margin-bottom: 1rem;
+                page-break-inside: avoid;
+            }
+
+            .tender-card:hover {
+                transform: none;
+            }
+
+            @page {
+                margin: 1cm;
+            }
+
+            .print-header {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 2px solid #000;
+            }
+
+            .print-footer {
+                display: block !important;
+                text-align: center;
+                margin-top: 2rem;
+                padding-top: 1rem;
+                border-top: 1px solid #000;
+                font-size: 0.875rem;
+            }
+        }
+
+        .print-header,
+        .print-footer {
+            display: none;
+        }
+
+        /* ==================== RESPONSIVE DESIGN ==================== */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stats {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tenders-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tender-field {
+                grid-template-columns: 1fr;
+            }
+
+            .pagination {
+                flex-direction: column;
+            }
+
+            .pagination-controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .modal-content {
+                margin: 1rem;
+                max-height: calc(100vh - 2rem);
+            }
+        }
+
+        /* ==================== UTILITY CLASSES ==================== */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-1 {
+            margin-top: 1rem;
+        }
+
+        .mb-1 {
+            margin-bottom: 1rem;
+        }
+
+        /* ==================== LOADING SPINNER ==================== */
+        .spinner {
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER SECTION -->
+    <header class="header">
+        <div class="header-content">
+            <h1>
+                <span>📋</span>
+                Tender Management System
+            </h1>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalTenders">0</div>
+                    <div>Total Tenders</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="activeTenders">0</div>
+                    <div>Active</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="closedTenders">0</div>
+                    <div>Closed</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <div class="container">
+        <!-- CONTROLS SECTION -->
+        <div class="controls-section">
+            <div class="controls-grid">
+                <!-- Search Input -->
+                <div class="form-group">
+                    <label for="searchInput">🔍 Search Tenders</label>
+                    <input type="text" id="searchInput" placeholder="Search by title, organization, location...">
+                </div>
+
+                <!-- Status Filter -->
+                <div class="form-group">
+                    <label for="statusFilter">Status Filter</label>
+                    <select id="statusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="closed">Closed</option>
+                        <option value="upcoming">Upcoming</option>
+                    </select>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="form-group">
+                    <label for="categoryFilter">Category Filter</label>
+                    <select id="categoryFilter">
+                        <option value="all">All Categories</option>
+                        <option value="state_govt">State Government</option>
+                        <option value="central_govt">Central Government</option>
+                        <option value="psu">PSU</option>
+                        <option value="private">Private</option>
+                    </select>
+                </div>
+
+                <!-- Items Per Page -->
+                <div class="form-group">
+                    <label for="itemsPerPage">Items Per Page</label>
+                    <select id="itemsPerPage">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group mt-1">
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    ➕ Add New Tender
+                </button>
+                <button class="btn btn-success" onclick="openImportModal()">
+                    📥 Import JSON
+                </button>
+                <button class="btn btn-secondary" onclick="exportToJSON()">
+                    📤 Export to JSON
+                </button>
+                <button class="btn btn-secondary" onclick="exportToCSV()">
+                    📊 Export to CSV
+                </button>
+                <button class="btn btn-secondary" onclick="printTenders()">
+                    🖨️ Print
+                </button>
+                <button class="btn btn-danger" onclick="clearAllData()">
+                    🗑️ Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- TENDERS GRID -->
+        <div id="alertContainer"></div>
+        <div id="tendersGrid" class="tenders-grid"></div>
+
+        <!-- PAGINATION -->
+        <div class="pagination">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div class="pagination-controls">
+                <button class="page-btn" id="firstPageBtn" onclick="goToFirstPage()">⏮️ First</button>
+                <button class="page-btn" id="prevPageBtn" onclick="goToPrevPage()">⬅️ Prev</button>
+                <div id="pageNumbers"></div>
+                <button class="page-btn" id="nextPageBtn" onclick="goToNextPage()">Next ➡️</button>
+                <button class="page-btn" id="lastPageBtn" onclick="goToLastPage()">Last ⏭️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINT HEADER & FOOTER (Hidden, shown only in print) -->
+    <div class="print-header">
+        <h1>Tender Management System - Records Report</h1>
+        <p>Generated on: <span id="printDate"></span></p>
+    </div>
+    <div class="print-footer">
+        <p>Confidential Document - Tender Management System</p>
+    </div>
+
+    <!-- ADD/EDIT TENDER MODAL -->
+    <div id="tenderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Tender</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="tenderForm">
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="tender_id">Tender ID</label>
+                            <input type="text" id="tender_id" name="tender_id" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tender_status">Status *</label>
+                            <select id="tender_status" name="tender_status" required>
+                                <option value="active">Active</option>
+                                <option value="closed">Closed</option>
+                                <option value="upcoming">Upcoming</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="title">Title *</label>
+                        <input type="text" id="title" name="title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="procuring_organization">Procuring Organization *</label>
+                        <input type="text" id="procuring_organization" name="procuring_organization" required>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="portal_source">Portal Source</label>
+                            <input type="text" id="portal_source" name="portal_source">
+                        </div>
+                        <div class="form-group">
+                            <label for="tender_value_inr">Tender Value (INR)</label>
+                            <input type="text" id="tender_value_inr" name="tender_value_inr">
+                        </div>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="publication_date">Publication Date</label>
+                            <input type="date" id="publication_date" name="publication_date">
+                        </div>
+                        <div class="form-group">
+                            <label for="submission_deadline">Submission Deadline</label>
+                            <input type="text" id="submission_deadline" name="submission_deadline">
+                        </div>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="tender_category">Category</label>
+                            <select id="tender_category" name="tender_category">
+                                <option value="state_govt">State Government</option>
+                                <option value="central_govt">Central Government</option>
+                                <option value="psu">PSU</option>
+                                <option value="private">Private</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <input type="text" id="location" name="location">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="product_service_description">Product/Service Description</label>
+                        <textarea id="product_service_description" name="product_service_description"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eligibility_criteria">Eligibility Criteria</label>
+                        <textarea id="eligibility_criteria" name="eligibility_criteria"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="key_requirements">Key Requirements</label>
+                        <textarea id="key_requirements" name="key_requirements"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_details">Contact Details</label>
+                        <textarea id="contact_details" name="contact_details"></textarea>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="form-group">
+                            <label for="portal_url">Portal URL</label>
+                            <input type="text" id="portal_url" name="portal_url">
+                        </div>
+                        <div class="form-group">
+                            <label for="document_links">Document Links</label>
+                            <input type="text" id="document_links" name="document_links">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confidence_score">Confidence Score (0.00 - 1.00)</label>
+                        <input type="number" id="confidence_score" name="confidence_score" min="0" max="1" step="0.01" value="1.00">
+                    </div>
+
+                    <input type="hidden" id="editId" name="editId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveTender()">Save Tender</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORT JSON MODAL -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Tender Data</h2>
+                <button class="close-btn" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">📁</div>
+                    <h3>Drag & Drop JSON File Here</h3>
+                    <p>or</p>
+                    <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+                    <button class="btn btn-primary" onclick="document.getElementById('jsonFileInput').click()">
+                        Choose File
+                    </button>
+                    <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        Supports single tender object or array of tenders
+                    </p>
+                </div>
+                <div class="form-group mt-1">
+                    <label for="jsonTextInput">Or Paste JSON Data</label>
+                    <textarea id="jsonTextInput" placeholder='{"tender_id": "...", "title": "...", ...}' rows="8"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="importJSON()">Import Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JAVASCRIPT APPLICATION ==================== -->
+    <script>
+        // ==================== DATABASE CONFIGURATION ====================
+        const DB_NAME = 'TenderManagementDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'tenders';
+        let db = null;
+
+        // ==================== APPLICATION STATE ====================
+        let currentPage = 1;
+        let itemsPerPage = 25;
+        let allTenders = [];
+        let filteredTenders = [];
+        let searchDebounceTimer = null;
+
+        // ==================== INDEXEDDB INITIALIZATION ====================
+        /**
+         * Initialize IndexedDB database and create object store with indexes
+         */
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                // Check for IndexedDB support
+                if (!window.indexedDB) {
+                    showAlert('IndexedDB is not supported in this browser. Please use a modern browser.', 'error');
+                    reject('IndexedDB not supported');
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                // Handle database upgrade (first time creation or version change)
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+
+                    // Create object store with auto-incrementing key
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        const objectStore = db.createObjectStore(STORE_NAME, {
+                            keyPath: 'id',
+                            autoIncrement: true
+                        });
+
+                        // Create indexes for efficient searching
+                        objectStore.createIndex('tender_id', 'tender_id', { unique: false });
+                        objectStore.createIndex('title', 'title', { unique: false });
+                        objectStore.createIndex('tender_status', 'tender_status', { unique: false });
+                        objectStore.createIndex('tender_category', 'tender_category', { unique: false });
+                        objectStore.createIndex('procuring_organization', 'procuring_organization', { unique: false });
+                        objectStore.createIndex('location', 'location', { unique: false });
+                        objectStore.createIndex('publication_date', 'publication_date', { unique: false });
+
+                        console.log('Object store created with indexes');
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('Database initialized successfully');
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Database error:', event.target.error);
+                    showAlert('Failed to initialize database: ' + event.target.error, 'error');
+                    reject(event.target.error);
+                };
+
+                request.onblocked = () => {
+                    showAlert('Database upgrade blocked. Please close other tabs with this application.', 'warning');
+                };
+            });
+        }
+
+        // ==================== CRUD OPERATIONS ====================
+        /**
+         * Add a new tender to the database
+         */
+        async function addTenderToDB(tender) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+
+                // Sanitize input data
+                const sanitizedTender = sanitizeInput(tender);
+
+                const request = objectStore.add(sanitizedTender);
+
+                request.onsuccess = () => {
+                    console.log('Tender added successfully');
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error('Error adding tender:', request.error);
+                    reject(request.error);
+                };
+
+                transaction.oncomplete = () => {
+                    console.log('Transaction completed');
+                };
+
+                transaction.onerror = () => {
+                    console.error('Transaction error:', transaction.error);
+                    reject(transaction.error);
+                };
+            });
+        }
+
+        /**
+         * Get all tenders from the database
+         */
+        async function getAllTenders() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.getAll();
+
+                request.onsuccess = () => {
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error('Error getting tenders:', request.error);
+                    reject(request.error);
+                };
+            });
+        }
+
+        /**
+         * Update an existing tender
+         */
+        async function updateTenderInDB(tender) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+
+                // Sanitize input data
+                const sanitizedTender = sanitizeInput(tender);
+
+                const request = objectStore.put(sanitizedTender);
+
+                request.onsuccess = () => {
+                    console.log('Tender updated successfully');
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error('Error updating tender:', request.error);
+                    reject(request.error);
+                };
+            });
+        }
+
+        /**
+         * Delete a tender from the database
+         */
+        async function deleteTenderFromDB(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.delete(id);
+
+                request.onsuccess = () => {
+                    console.log('Tender deleted successfully');
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.error('Error deleting tender:', request.error);
+                    reject(request.error);
+                };
+            });
+        }
+
+        /**
+         * Clear all tenders from the database
+         */
+        async function clearAllTenders() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.clear();
+
+                request.onsuccess = () => {
+                    console.log('All tenders cleared');
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.error('Error clearing tenders:', request.error);
+                    reject(request.error);
+                };
+            });
+        }
+
+        // ==================== DATA VALIDATION & SANITIZATION ====================
+        /**
+         * Sanitize input to prevent XSS attacks
+         */
+        function sanitizeInput(data) {
+            if (typeof data === 'string') {
+                return data.replace(/[<>]/g, '');
+            } else if (typeof data === 'object' && data !== null) {
+                const sanitized = {};
+                for (const key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        sanitized[key] = sanitizeInput(data[key]);
+                    }
+                }
+                return sanitized;
+            }
+            return data;
+        }
+
+        /**
+         * Validate JSON structure for tender data
+         */
+        function validateTenderJSON(data) {
+            const requiredFields = ['title', 'procuring_organization', 'tender_status'];
+            const validStatuses = ['active', 'closed', 'upcoming'];
+            const validCategories = ['state_govt', 'central_govt', 'psu', 'private'];
+
+            // Check if data is an object
+            if (typeof data !== 'object' || data === null) {
+                return { valid: false, error: 'Data must be an object' };
+            }
+
+            // Check required fields
+            for (const field of requiredFields) {
+                if (!data[field]) {
+                    return { valid: false, error: `Missing required field: ${field}` };
+                }
+            }
+
+            // Validate status
+            if (data.tender_status && !validStatuses.includes(data.tender_status.toLowerCase())) {
+                return { valid: false, error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` };
+            }
+
+            // Validate category if provided
+            if (data.tender_category && !validCategories.includes(data.tender_category.toLowerCase())) {
+                return { valid: false, error: `Invalid category. Must be one of: ${validCategories.join(', ')}` };
+            }
+
+            // Validate confidence score if provided
+            if (data.confidence_score !== undefined) {
+                const score = parseFloat(data.confidence_score);
+                if (isNaN(score) || score < 0 || score > 1) {
+                    return { valid: false, error: 'Confidence score must be between 0 and 1' };
+                }
+            }
+
+            return { valid: true };
+        }
+
+        /**
+         * Validate and parse JSON string
+         */
+        function parseJSON(jsonString) {
+            try {
+                const parsed = JSON.parse(jsonString);
+                return { success: true, data: parsed };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        // ==================== UI RENDERING ====================
+        /**
+         * Render tenders in grid layout
+         */
+        function renderTenders() {
+            const gridContainer = document.getElementById('tendersGrid');
+            
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const tendersToShow = filteredTenders.slice(startIndex, endIndex);
+
+            // Clear existing content
+            gridContainer.innerHTML = '';
+
+            if (tendersToShow.length === 0) {
+                gridContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>No Tenders Found</h3>
+                        <p>Try adjusting your search filters or add new tenders to get started.</p>
+                        <button class="btn btn-primary" onclick="openAddModal()">Add First Tender</button>
+                    </div>
+                `;
+                updatePagination();
+                return;
+            }
+
+            // Render each tender card
+            tendersToShow.forEach(tender => {
+                const card = createTenderCard(tender);
+                gridContainer.appendChild(card);
+            });
+
+            updatePagination();
+        }
+
+        /**
+         * Create a tender card element
+         */
+        function createTenderCard(tender) {
+            const card = document.createElement('div');
+            card.className = `tender-card status-${tender.tender_status}`;
+            
+            // Get confidence score class
+            const confidenceClass = getConfidenceClass(tender.confidence_score);
+            
+            // Highlight search terms
+            const searchTerm = document.getElementById('searchInput').value;
+            
+            card.innerHTML = `
+                <div class="tender-header">
+                    <div class="tender-title">${highlightText(tender.title, searchTerm)}</div>
+                    <div class="tender-id">ID: ${highlightText(tender.tender_id || 'N/A', searchTerm)}</div>
+                </div>
+                <div class="tender-body">
+                    <div class="tender-field">
+                        <span class="field-label">Organization:</span>
+                        <span class="field-value">${highlightText(tender.procuring_organization, searchTerm)}</span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Status:</span>
+                        <span class="field-value">
+                            <span class="status-badge status-${tender.tender_status}">
+                                ${tender.tender_status}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Category:</span>
+                        <span class="field-value">${tender.tender_category || 'N/A'}</span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Location:</span>
+                        <span class="field-value">${highlightText(tender.location || 'N/A', searchTerm)}</span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Value:</span>
+                        <span class="field-value">${tender.tender_value_inr || 'N/A'}</span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Published:</span>
+                        <span class="field-value">${tender.publication_date || 'N/A'}</span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Deadline:</span>
+                        <span class="field-value">${tender.submission_deadline || 'N/A'}</span>
+                    </div>
+                    <div class="tender-field">
+                        <span class="field-label">Portal:</span>
+                        <span class="field-value">${tender.portal_source || 'N/A'}</span>
+                    </div>
+                    ${tender.product_service_description ? `
+                    <div class="tender-field">
+                        <span class="field-label">Description:</span>
+                        <span class="field-value">${highlightText(tender.product_service_description, searchTerm)}</span>
+                    </div>
+                    ` : ''}
+                    ${tender.key_requirements ? `
+                    <div class="tender-field">
+                        <span class="field-label">Requirements:</span>
+                        <span class="field-value">${highlightText(tender.key_requirements, searchTerm)}</span>
+                    </div>
+                    ` : ''}
+                    ${tender.confidence_score ? `
+                    <div class="tender-field">
+                        <span class="field-label">Confidence:</span>
+                        <span class="field-value">
+                            <span class="confidence-score ${confidenceClass}">
+                                ${(parseFloat(tender.confidence_score) * 100).toFixed(0)}%
+                            </span>
+                        </span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="tender-actions">
+                    <button class="btn btn-primary" onclick="editTender(${tender.id})">✏️ Edit</button>
+                    <button class="btn btn-danger" onclick="deleteTender(${tender.id})">🗑️ Delete</button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        /**
+         * Get confidence score CSS class
+         */
+        function getConfidenceClass(score) {
+            if (!score) return '';
+            const numScore = parseFloat(score);
+            if (numScore >= 0.8) return 'confidence-high';
+            if (numScore >= 0.6) return 'confidence-medium';
+            return 'confidence-low';
+        }
+
+        /**
+         * Highlight search terms in text
+         */
+        function highlightText(text, searchTerm) {
+            if (!searchTerm || !text) return text;
+            
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        /**
+         * Update statistics in header
+         */
+        function updateStats() {
+            const total = allTenders.length;
+            const active = allTenders.filter(t => t.tender_status === 'active').length;
+            const closed = allTenders.filter(t => t.tender_status === 'closed').length;
+
+            document.getElementById('totalTenders').textContent = total;
+            document.getElementById('activeTenders').textContent = active;
+            document.getElementById('closedTenders').textContent = closed;
+        }
+
+        // ==================== PAGINATION ====================
+        /**
+         * Update pagination controls and info
+         */
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredTenders.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage + 1;
+            const endIndex = Math.min(currentPage * itemsPerPage, filteredTenders.length);
+
+            // Update pagination info
+            document.getElementById('paginationInfo').textContent = 
+                `Showing ${startIndex}-${endIndex} of ${filteredTenders.length} tenders`;
+
+            // Update button states
+            document.getElementById('firstPageBtn').disabled = currentPage === 1;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage === totalPages || totalPages === 0;
+            document.getElementById('lastPageBtn').disabled = currentPage === totalPages || totalPages === 0;
+
+            // Render page numbers
+            renderPageNumbers(totalPages);
+        }
+
+        /**
+         * Render page number buttons
+         */
+        function renderPageNumbers(totalPages) {
+            const container = document.getElementById('pageNumbers');
+            container.innerHTML = '';
+
+            if (totalPages <= 7) {
+                // Show all pages if 7 or fewer
+                for (let i = 1; i <= totalPages; i++) {
+                    container.appendChild(createPageButton(i));
+                }
+            } else {
+                // Show first page
+                container.appendChild(createPageButton(1));
+
+                if (currentPage > 3) {
+                    container.appendChild(createEllipsis());
+                }
+
+                // Show pages around current page
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+
+                for (let i = start; i <= end; i++) {
+                    container.appendChild(createPageButton(i));
+                }
+
+                if (currentPage < totalPages - 2) {
+                    container.appendChild(createEllipsis());
+                }
+
+                // Show last page
+                container.appendChild(createPageButton(totalPages));
+            }
+        }
+
+        /**
+         * Create page number button
+         */
+        function createPageButton(pageNum) {
+            const button = document.createElement('button');
+            button.className = `page-btn ${pageNum === currentPage ? 'active' : ''}`;
+            button.textContent = pageNum;
+            button.onclick = () => goToPage(pageNum);
+            return button;
+        }
+
+        /**
+         * Create ellipsis for page numbers
+         */
+        function createEllipsis() {
+            const span = document.createElement('span');
+            span.textContent = '...';
+            span.style.padding = '0 0.5rem';
+            return span;
+        }
+
+        // Pagination navigation functions
+        function goToFirstPage() {
+            currentPage = 1;
+            renderTenders();
+        }
+
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTenders();
+            }
+        }
+
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredTenders.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTenders();
+            }
+        }
+
+        function goToLastPage() {
+            const totalPages = Math.ceil(filteredTenders.length / itemsPerPage);
+            currentPage = totalPages;
+            renderTenders();
+        }
+
+        function goToPage(pageNum) {
+            currentPage = pageNum;
+            renderTenders();
+        }
+
+        // ==================== SEARCH & FILTER ====================
+        /**
+         * Apply search and filters to tender list
+         */
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+
+            filteredTenders = allTenders.filter(tender => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                    (tender.title && tender.title.toLowerCase().includes(searchTerm)) ||
+                    (tender.tender_id && tender.tender_id.toLowerCase().includes(searchTerm)) ||
+                    (tender.procuring_organization && tender.procuring_organization.toLowerCase().includes(searchTerm)) ||
+                    (tender.location && tender.location.toLowerCase().includes(searchTerm)) ||
+                    (tender.product_service_description && tender.product_service_description.toLowerCase().includes(searchTerm)) ||
+                    (tender.key_requirements && tender.key_requirements.toLowerCase().includes(searchTerm));
+
+                // Status filter
+                const matchesStatus = statusFilter === 'all' || tender.tender_status === statusFilter;
+
+                // Category filter
+                const matchesCategory = categoryFilter === 'all' || tender.tender_category === categoryFilter;
+
+                return matchesSearch && matchesStatus && matchesCategory;
+            });
+
+            currentPage = 1; // Reset to first page
+            renderTenders();
+        }
+
+        /**
+         * Debounced search to improve performance
+         */
+        function handleSearch() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                applyFilters();
+            }, 300);
+        }
+
+        // ==================== MODAL OPERATIONS ====================
+        /**
+         * Open modal to add new tender
+         */
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Tender';
+            document.getElementById('tenderForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('tenderModal').style.display = 'block';
+        }
+
+        /**
+         * Open modal to edit existing tender
+         */
+        function editTender(id) {
+            const tender = allTenders.find(t => t.id === id);
+            if (!tender) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit Tender';
+            
+            // Populate form fields
+            document.getElementById('tender_id').value = tender.tender_id || '';
+            document.getElementById('title').value = tender.title || '';
+            document.getElementById('procuring_organization').value = tender.procuring_organization || '';
+            document.getElementById('portal_source').value = tender.portal_source || '';
+            document.getElementById('tender_value_inr').value = tender.tender_value_inr || '';
+            document.getElementById('publication_date').value = tender.publication_date || '';
+            document.getElementById('submission_deadline').value = tender.submission_deadline || '';
+            document.getElementById('tender_category').value = tender.tender_category || 'state_govt';
+            document.getElementById('tender_status').value = tender.tender_status || 'active';
+            document.getElementById('location').value = tender.location || '';
+            document.getElementById('product_service_description').value = tender.product_service_description || '';
+            document.getElementById('eligibility_criteria').value = tender.eligibility_criteria || '';
+            document.getElementById('key_requirements').value = tender.key_requirements || '';
+            document.getElementById('contact_details').value = tender.contact_details || '';
+            document.getElementById('portal_url').value = tender.portal_url || '';
+            document.getElementById('document_links').value = tender.document_links || '';
+            document.getElementById('confidence_score').value = tender.confidence_score || '1.00';
+            document.getElementById('editId').value = tender.id;
+
+            document.getElementById('tenderModal').style.display = 'block';
+        }
+
+        /**
+         * Close tender modal
+         */
+        function closeModal() {
+            document.getElementById('tenderModal').style.display = 'none';
+        }
+
+        /**
+         * Save tender (add or update)
+         */
+        async function saveTender() {
+            const form = document.getElementById('tenderForm');
+            
+            // Basic form validation
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const tenderData = {
+                tender_id: document.getElementById('tender_id').value,
+                title: document.getElementById('title').value,
+                procuring_organization: document.getElementById('procuring_organization').value,
+                portal_source: document.getElementById('portal_source').value,
+                tender_value_inr: document.getElementById('tender_value_inr').value,
+                publication_date: document.getElementById('publication_date').value,
+                submission_deadline: document.getElementById('submission_deadline').value,
+                tender_category: document.getElementById('tender_category').value,
+                tender_status: document.getElementById('tender_status').value,
+                location: document.getElementById('location').value,
+                product_service_description: document.getElementById('product_service_description').value,
+                eligibility_criteria: document.getElementById('eligibility_criteria').value,
+                key_requirements: document.getElementById('key_requirements').value,
+                contact_details: document.getElementById('contact_details').value,
+                portal_url: document.getElementById('portal_url').value,
+                document_links: document.getElementById('document_links').value,
+                confidence_score: parseFloat(document.getElementById('confidence_score').value) || 1.0
+            };
+
+            // Validate tender data
+            const validation = validateTenderJSON(tenderData);
+            if (!validation.valid) {
+                showAlert(validation.error, 'error');
+                return;
+            }
+
+            const editId = document.getElementById('editId').value;
+
+            try {
+                if (editId) {
+                    // Update existing tender
+                    tenderData.id = parseInt(editId);
+                    await updateTenderInDB(tenderData);
+                    showAlert('Tender updated successfully!', 'success');
+                } else {
+                    // Add new tender
+                    await addTenderToDB(tenderData);
+                    showAlert('Tender added successfully!', 'success');
+                }
+
+                closeModal();
+                await loadTenders();
+            } catch (error) {
+                showAlert('Error saving tender: ' + error, 'error');
+            }
+        }
+
+        /**
+         * Delete tender with confirmation
+         */
+        async function deleteTender(id) {
+            if (!confirm('Are you sure you want to delete this tender? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                await deleteTenderFromDB(id);
+                showAlert('Tender deleted successfully!', 'success');
+                await loadTenders();
+            } catch (error) {
+                showAlert('Error deleting tender: ' + error, 'error');
+            }
+        }
+
+        // ==================== IMPORT/EXPORT ====================
+        /**
+         * Open import modal
+         */
+        function openImportModal() {
+            document.getElementById('jsonTextInput').value = '';
+            document.getElementById('jsonFileInput').value = '';
+            document.getElementById('importModal').style.display = 'block';
+        }
+
+        /**
+         * Close import modal
+         */
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        /**
+         * Import JSON data
+         */
+        async function importJSON() {
+            const textInput = document.getElementById('jsonTextInput').value;
+            const fileInput = document.getElementById('jsonFileInput');
+
+            let jsonData = null;
+
+            // Try to get data from text input first
+            if (textInput.trim()) {
+                const parseResult = parseJSON(textInput);
+                if (!parseResult.success) {
+                    showAlert('Invalid JSON format: ' + parseResult.error, 'error');
+                    return;
+                }
+                jsonData = parseResult.data;
+            } 
+            // Otherwise try file input
+            else if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                try {
+                    const text = await file.text();
+                    const parseResult = parseJSON(text);
+                    if (!parseResult.success) {
+                        showAlert('Invalid JSON file: ' + parseResult.error, 'error');
+                        return;
+                    }
+                    jsonData = parseResult.data;
+                } catch (error) {
+                    showAlert('Error reading file: ' + error.message, 'error');
+                    return;
+                }
+            } else {
+                showAlert('Please provide JSON data or select a file', 'warning');
+                return;
+            }
+
+            // Process the JSON data
+            try {
+                let tendersToImport = [];
+
+                // Check if it's an array or single object
+                if (Array.isArray(jsonData)) {
+                    tendersToImport = jsonData;
+                } else {
+                    tendersToImport = [jsonData];
+                }
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                // Import each tender
+                for (const tender of tendersToImport) {
+                    const validation = validateTenderJSON(tender);
+                    if (validation.valid) {
+                        try {
+                            await addTenderToDB(tender);
+                            successCount++;
+                        } catch (error) {
+                            console.error('Error importing tender:', error);
+                            errorCount++;
+                        }
+                    } else {
+                        console.error('Invalid tender:', validation.error);
+                        errorCount++;
+                    }
+                }
+
+                closeImportModal();
+                await loadTenders();
+
+                if (errorCount === 0) {
+                    showAlert(`Successfully imported ${successCount} tender(s)!`, 'success');
+                } else {
+                    showAlert(`Imported ${successCount} tender(s) with ${errorCount} error(s)`, 'warning');
+                }
+            } catch (error) {
+                showAlert('Error importing data: ' + error.message, 'error');
+            }
+        }
+
+        /**
+         * Export all tenders to JSON file
+         */
+        async function exportToJSON() {
+            if (allTenders.length === 0) {
+                showAlert('No tenders to export', 'warning');
+                return;
+            }
+
+            try {
+                // Remove id field from export (internal database key)
+                const exportData = allTenders.map(tender => {
+                    const { id, ...tenderWithoutId } = tender;
+                    return tenderWithoutId;
+                });
+
+                const jsonString = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const filename = `tenders_export_${timestamp}.json`;
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                showAlert('Tenders exported successfully!', 'success');
+            } catch (error) {
+                showAlert('Error exporting tenders: ' + error.message, 'error');
+            }
+        }
+
+        /**
+         * Export tenders to CSV file
+         */
+        async function exportToCSV() {
+            if (allTenders.length === 0) {
+                showAlert('No tenders to export', 'warning');
+                return;
+            }
+
+            try {
+                // Define CSV headers
+                const headers = [
+                    'tender_id', 'title', 'procuring_organization', 'portal_source',
+                    'tender_value_inr', 'publication_date', 'submission_deadline',
+                    'tender_category', 'tender_status', 'location',
+                    'product_service_description', 'eligibility_criteria',
+                    'key_requirements', 'contact_details', 'portal_url',
+                    'document_links', 'confidence_score'
+                ];
+
+                // Create CSV content
+                let csvContent = headers.join(',') + '\n';
+
+                allTenders.forEach(tender => {
+                    const row = headers.map(header => {
+                        let value = tender[header] || '';
+                        // Escape quotes and wrap in quotes if contains comma or newline
+                        value = value.toString().replace(/"/g, '""');
+                        if (value.includes(',') || value.includes('\n') || value.includes('"')) {
+                            value = `"${value}"`;
+                        }
+                        return value;
+                    });
+                    csvContent += row.join(',') + '\n';
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const filename = `tenders_export_${timestamp}.csv`;
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                showAlert('Tenders exported to CSV successfully!', 'success');
+            } catch (error) {
+                showAlert('Error exporting to CSV: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== PRINT FUNCTIONALITY ====================
+        /**
+         * Print tender records
+         */
+        function printTenders() {
+            if (filteredTenders.length === 0) {
+                showAlert('No tenders to print', 'warning');
+                return;
+            }
+
+            // Set print date
+            document.getElementById('printDate').textContent = new Date().toLocaleString();
+            
+            window.print();
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        /**
+         * Show alert message
+         */
+        function showAlert(message, type = 'info') {
+            const container = document.getElementById('alertContainer');
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(alert);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        /**
+         * Clear all data with confirmation
+         */
+        async function clearAllData() {
+            if (!confirm('Are you sure you want to delete ALL tenders? This action cannot be undone!')) {
+                return;
+            }
+
+            if (!confirm('This will permanently delete all tender records. Are you absolutely sure?')) {
+                return;
+            }
+
+            try {
+                await clearAllTenders();
+                showAlert('All tenders cleared successfully!', 'success');
+                await loadTenders();
+            } catch (error) {
+                showAlert('Error clearing tenders: ' + error, 'error');
+            }
+        }
+
+        /**
+         * Load all tenders from database and update UI
+         */
+        async function loadTenders() {
+            try {
+                allTenders = await getAllTenders();
+                applyFilters();
+                updateStats();
+            } catch (error) {
+                showAlert('Error loading tenders: ' + error, 'error');
+            }
+        }
+
+        /**
+         * Load sample tender data (optional)
+         */
+        async function loadSampleData() {
+            const sampleTender = {
+                "tender_id": "CG-DIAL112-2025",
+                "title": "Fleet Management and Operations for CG Dial-112 Project",
+                "procuring_organization": "Chhattisgarh Police Department",
+                "portal_source": "cgpolice.gov.in",
+                "tender_value_inr": "Reference document",
+                "publication_date": "2025-05-01",
+                "submission_deadline": "Active",
+                "tender_category": "state_govt",
+                "product_service_description": "Selection of agency for fleet management and operations of next phase of CG Dial-112 emergency response project",
+                "location": "Chhattisgarh State",
+                "eligibility_criteria": "Emergency services fleet management experience",
+                "key_requirements": "Fleet management, operations management, emergency response vehicle tracking, Dial-112 integration",
+                "contact_details": "PHQ/TS/DIAL-112, Chhattisgarh Police Department",
+                "portal_url": "https://cgpolice.gov.in",
+                "document_links": "Police department website",
+                "tender_status": "active",
+                "confidence_score": 0.84
+            };
+
+            try {
+                await addTenderToDB(sampleTender);
+                await loadTenders();
+                showAlert('Sample tender loaded successfully!', 'info');
+            } catch (error) {
+                console.error('Error loading sample data:', error);
+            }
+        }
+
+        // ==================== EVENT LISTENERS ====================
+        /**
+         * Set up all event listeners
+         */
+        function setupEventListeners() {
+            // Search input
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+
+            // Filter dropdowns
+            document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+
+            // Items per page
+            document.getElementById('itemsPerPage').addEventListener('change', (e) => {
+                itemsPerPage = parseInt(e.target.value);
+                currentPage = 1;
+                renderTenders();
+            });
+
+            // File input for import
+            document.getElementById('jsonFileInput').addEventListener('change', () => {
+                document.getElementById('jsonTextInput').value = '';
+            });
+
+            // Drag and drop for import
+            const dropZone = document.getElementById('dropZone');
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    document.getElementById('jsonFileInput').files = files;
+                    document.getElementById('jsonTextInput').value = '';
+                }
+            });
+
+            // Click on drop zone to trigger file input
+            dropZone.addEventListener('click', () => {
+                document.getElementById('jsonFileInput').click();
+            });
+
+            // Close modals on outside click
+            window.addEventListener('click', (e) => {
+                const tenderModal = document.getElementById('tenderModal');
+                const importModal = document.getElementById('importModal');
+                
+                if (e.target === tenderModal) {
+                    closeModal();
+                }
+                if (e.target === importModal) {
+                    closeImportModal();
+                }
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ctrl/Cmd + K to focus search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
+                
+                // Escape to close modals
+                if (e.key === 'Escape') {
+                    closeModal();
+                    closeImportModal();
+                }
+            });
+        }
+
+        // ==================== APPLICATION INITIALIZATION ====================
+        /**
+         * Initialize the application
+         */
+        async function initApp() {
+            try {
+                // Show loading state
+                document.getElementById('tendersGrid').innerHTML = '<div class="spinner"></div>';
+
+                // Initialize database
+                await initDB();
+
+                // Load tenders
+                await loadTenders();
+
+                // If no tenders exist, optionally load sample data
+                if (allTenders.length === 0) {
+                    const loadSample = confirm('No tenders found. Would you like to load a sample tender?');
+                    if (loadSample) {
+                        await loadSampleData();
+                    } else {
+                        renderTenders();
+                    }
+                }
+
+                // Set up event listeners
+                setupEventListeners();
+
+                console.log('Application initialized successfully');
+            } catch (error) {
+                console.error('Error initializing application:', error);
+                showAlert('Failed to initialize application: ' + error, 'error');
+            }
+        }
+
+        // Start the application when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>

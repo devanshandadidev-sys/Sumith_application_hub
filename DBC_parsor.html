@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone DBC Parser with Search</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #0c2d48;
+            color: white;
+            padding: 15px 25px;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        main {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        .panel {
+            margin: 10px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: auto;
+        }
+        #left-panel {
+            width: 25%;
+            display: flex;
+            flex-direction: column;
+        }
+        #right-panel {
+            width: 75%;
+            display: flex;
+            flex-direction: column;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 1.2em;
+            color: #0c2d48;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+            margin-top: 0;
+        }
+        button, input[type="file"] {
+            font-size: 1em;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            background-color: #2e8b57;
+            color: white;
+            font-weight: 500;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #276a45;
+        }
+        select, #search-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        #search-input {
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .table-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 35vh;
+        }
+        #log-decoder {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #log-output-container {
+             flex-grow: 1;
+             overflow-y: auto;
+             max-height: calc(100vh - 450px);
+        }
+        .file-input-label {
+            display: block;
+            margin-top: 10px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            background-color: #1a73e8;
+            color: white;
+            text-align: center;
+        }
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>Professional Standalone DBC Parser with Search</header>
+
+    <main>
+        <div id="left-panel" class="panel">
+            <div class="section">
+                <h2>DBC File Management</h2>
+                <label for="dbc-file-input" class="file-input-label">Upload New DBC File</label>
+                <input type="file" id="dbc-file-input" accept=".dbc">
+            </div>
+            <div class="section">
+                <h2>Select DBC Project</h2>
+                <select id="dbc-selector"></select>
+            </div>
+            <div id="log-decoder" class="section">
+                <h2>CAN Log Decoder</h2>
+                <label for="log-file-input" class="file-input-label">Upload CAN Log (CSV)</label>
+                <input type="file" id="log-file-input" accept=".csv">
+                <p style="font-size:0.8em; color:#666; margin-top:10px;">Expected CSV format: <code>timestamp_ms,id_hex,data_hex</code></p>
+            </div>
+        </div>
+
+        <div id="right-panel" class="panel">
+            <div id="dbc-content" class="section">
+                <h2>Parsed DBC Content</h2>
+                <input type="text" id="search-input" placeholder="Search messages or signals...">
+
+                <div id="parsed-data-container">
+                    <h3>Messages (BO_)</h3>
+                    <div class="table-container">
+                        <table id="messages-table">
+                            <thead>
+                                <tr><th>ID (Dec)</th><th>ID (Hex)</th><th>Name</th><th>DLC</th><th>Transmitter</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <h3 style="margin-top:20px;">Signals (SG_)</h3>
+                    <div class="table-container">
+                        <table id="signals-table">
+                            <thead>
+                                <tr><th>Message ID</th><th>Signal Name</th><th>Start Bit</th><th>Length</th><th>Byte Order</th><th>Scale</th><th>Offset</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+             <div id="log-output-section" class="section">
+                <h2>Decoded CAN Log</h2>
+                <div id="log-output-container">
+                    <table id="log-output-table">
+                        <thead>
+                            <tr><th>Timestamp (ms)</th><th>Message Name</th><th>Signal Name</th><th>Physical Value</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const dbName = 'DBCParserDB';
+        let db;
+        let parsedDBC = null;
+
+        // 1. --- IndexedDB Setup ---
+        function initDB() {
+            const request = indexedDB.open(dbName, 1);
+
+            request.onerror = (event) => {
+                console.error("Database error:", event.target.errorCode);
+            };
+
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains('dbcFiles')) {
+                    db.createObjectStore('dbcFiles', { keyPath: 'name' });
+                }
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                loadDBCFilesFromDB();
+            };
+        }
+
+        // 2. --- DBC File Handling & Storage ---
+        document.getElementById('dbc-file-input').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    const dbcFile = { name: file.name, content: content };
+                    
+                    const transaction = db.transaction(['dbcFiles'], 'readwrite');
+                    const store = transaction.objectStore('dbcFiles');
+                    store.put(dbcFile);
+
+                    transaction.oncomplete = () => {
+                        alert(`DBC file "${file.name}" saved to database.`);
+                        loadDBCFilesFromDB();
+                    };
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function loadDBCFilesFromDB() {
+            const selector = document.getElementById('dbc-selector');
+            selector.innerHTML = '<option value="">-- Select a DBC File --</option>';
+            
+            const transaction = db.transaction(['dbcFiles'], 'readonly');
+            const store = transaction.objectStore('dbcFiles');
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                request.result.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file.name;
+                    option.textContent = file.name;
+                    selector.appendChild(option);
+                });
+            };
+        }
+
+        // 3. --- DBC Parsing Logic ---
+        document.getElementById('dbc-selector').addEventListener('change', (event) => {
+            const fileName = event.target.value;
+            if (!fileName) {
+                clearTables();
+                parsedDBC = null;
+                return;
+            }
+            
+            const transaction = db.transaction(['dbcFiles'], 'readonly');
+            const store = transaction.objectStore('dbcFiles');
+            const request = store.get(fileName);
+
+            request.onsuccess = () => {
+                if (request.result) {
+                    parsedDBC = parseDBCContent(request.result.content);
+                    displayParsedData(parsedDBC);
+                }
+            };
+        });
+
+        function parseDBCContent(content) {
+            const lines = content.split('\n');
+            const messages = {};
+
+            const messageRegex = /^BO_ (\d+) (\w+) *: (\d+) (\w+)/;
+            const signalRegex = /^\s*SG_ (\w+) : (\d+)\|(\d+)@(\d+)([+-]) \(([\d\.-]+),([\d\.-]+)\) \[([\d\.-]+)\|([\d\.-]+)\] "(.*)"\s(.*)/;
+            
+            let currentMessage = null;
+
+            for (const line of lines) {
+                const messageMatch = line.match(messageRegex);
+                if (messageMatch) {
+                    const id = parseInt(messageMatch[1], 10);
+                    currentMessage = {
+                        id: id,
+                        hexId: `0x${id.toString(16).toUpperCase()}`,
+                        name: messageMatch[2],
+                        dlc: parseInt(messageMatch[3], 10),
+                        transmitter: messageMatch[4],
+                        signals: {}
+                    };
+                    messages[id] = currentMessage;
+                    continue;
+                }
+
+                const signalMatch = line.match(signalRegex);
+                if (signalMatch && currentMessage) {
+                    const signal = {
+                        name: signalMatch[1],
+                        startBit: parseInt(signalMatch[2], 10),
+                        length: parseInt(signalMatch[3], 10),
+                        byteOrder: parseInt(signalMatch[4], 10) === 1 ? 'Intel' : 'Motorola',
+                        isSigned: signalMatch[5] === '-',
+                        scale: parseFloat(signalMatch[6]),
+                        offset: parseFloat(signalMatch[7]),
+                        min: parseFloat(signalMatch[8]),
+                        max: parseFloat(signalMatch[9]),
+                        unit: signalMatch[10],
+                        receivers: signalMatch[11].split(',').map(r => r.trim())
+                    };
+                    currentMessage.signals[signal.name] = signal;
+                }
+            }
+            return messages;
+        }
+
+        // 4. --- Display and Search Logic ---
+        document.getElementById('search-input').addEventListener('keyup', (event) => {
+            const searchTerm = event.target.value.toLowerCase();
+            filterTable(document.getElementById('messages-table').querySelector('tbody'), searchTerm);
+            filterTable(document.getElementById('signals-table').querySelector('tbody'), searchTerm);
+        });
+
+        function filterTable(tbody, searchTerm) {
+            const rows = tbody.getElementsByTagName('tr');
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const rowText = row.textContent.toLowerCase();
+                if (rowText.includes(searchTerm)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        }
+
+        function displayParsedData(data) {
+            const msgTbody = document.getElementById('messages-table').querySelector('tbody');
+            const sigTbody = document.getElementById('signals-table').querySelector('tbody');
+            clearTables();
+
+            for (const id in data) {
+                const msg = data[id];
+                const msgRow = msgTbody.insertRow();
+                msgRow.innerHTML = `<td>${msg.id}</td><td>${msg.hexId}</td><td>${msg.name}</td><td>${msg.dlc}</td><td>${msg.transmitter}</td>`;
+
+                for (const sigName in msg.signals) {
+                    const sig = msg.signals[sigName];
+                    const sigRow = sigTbody.insertRow();
+                    sigRow.innerHTML = `<td>${msg.id}</td><td>${sig.name}</td><td>${sig.startBit}</td><td>${sig.length}</td><td>${sig.byteOrder}</td><td>${sig.scale}</td><td>${sig.offset}</td>`;
+                }
+            }
+        }
+        
+        function clearTables() {
+            document.getElementById('messages-table').querySelector('tbody').innerHTML = '';
+            document.getElementById('signals-table').querySelector('tbody').innerHTML = '';
+            document.getElementById('log-output-table').querySelector('tbody').innerHTML = '';
+        }
+
+        // 5. --- CAN Log Decoding Logic ---
+        document.getElementById('log-file-input').addEventListener('change', (event) => {
+            if (!parsedDBC) {
+                alert("Please select and parse a DBC file first.");
+                return;
+            }
+            
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const logContent = e.target.result;
+                    decodeLog(logContent);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function decodeLog(logContent) {
+            const logTbody = document.getElementById('log-output-table').querySelector('tbody');
+            logTbody.innerHTML = '';
+            const lines = logContent.split('\n').filter(line => line.trim() !== '');
+
+            for (const line of lines) {
+                const parts = line.split(',');
+                if (parts.length < 3) continue;
+
+                const timestamp = parts[0];
+                const idHex = parts[1];
+                const dataHex = parts[2].trim();
+                
+                const idDec = parseInt(idHex, 16);
+                
+                const message = parsedDBC[idDec];
+                if (message) {
+                    let binaryData = '';
+                    for (let i = 0; i < dataHex.length; i += 2) {
+                        binaryData += parseInt(dataHex.substring(i, i + 2), 16).toString(2).padStart(8, '0');
+                    }
+
+                    for (const sigName in message.signals) {
+                        const signal = message.signals[sigName];
+                        let rawValue;
+                        
+                        // Simplified bit extraction. A robust implementation would handle byte order more precisely.
+                        if (signal.byteOrder === 'Motorola') { // Big-Endian
+                            let bitString = '';
+                            for (let i = 0; i < signal.length; i++) {
+                                const bitPos = signal.startBit - i;
+                                const byteIndex = Math.floor(bitPos / 8);
+                                const bitIndexInByte = 7 - (bitPos % 8);
+                                bitString += binaryData[byteIndex * 8 + bitIndexInByte];
+                            }
+                            rawValue = parseInt(bitString, 2);
+                        } else { // Intel (Little-Endian)
+                           const bitString = binaryData.split('').reverse().join('');
+                           const start = (message.dlc * 8) - signal.startBit - signal.length;
+                           const end = start + signal.length;
+                           rawValue = parseInt(bitString.substring(start, end).split('').reverse().join(''), 2);
+                        }
+
+                        const physicalValue = rawValue * signal.scale + signal.offset;
+                        
+                        const row = logTbody.insertRow();
+                        row.innerHTML = `<td>${timestamp}</td><td>${message.name}</td><td>${signal.name}</td><td>${physicalValue.toFixed(4)} ${signal.unit || ''}</td>`;
+                    }
+                }
+            }
+        }
+        
+        // --- Initialize the application ---
+        window.onload = initDB;
+    </script>
+</body>
+</html>
